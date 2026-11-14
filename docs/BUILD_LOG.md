@@ -4,6 +4,33 @@ Last updated: 2026-11-14. This file records what actually runs, what was checked
 separately what exists as code but has **not** been independently verified end-to-end yet. See
 `docs/HANDOFF.md` for the detailed file-by-file breakdown and next-agent instructions.
 
+## Critical fix (2026-11-14): every login/modal screen was rendering as a broken sliver
+
+The client reported login screens rendering as a narrow, garbled column on both apps. Root
+cause: `packages/ui/src/styles/tokens.css` defined the spacing scale as
+`--spacing-xs/sm/md/lg/xl` inside an `@theme` block. This Tailwind build (4.3.5) resolves
+`max-w-sm`/`max-w-md`/`max-w-xl` from whichever theme namespace defines that bare key first —
+once `--spacing-sm` existed, `.max-w-sm` resolved to `var(--spacing-sm)` (8px) instead of
+Tailwind's own `--container-sm` default (24rem/384px). Every login/register/reset-password/
+OTP/return-request screen, `Modal`/`Drawer`, and several admin forms use `max-w-sm|md|xl` for
+their card width, so all of them collapsed to an 8–40px sliver with word-wrapped text.
+
+**Fixed:** renamed the custom scale's keys to non-colliding names (`sp-1`..`sp-5`) and updated
+every usage (53 files) — `gap-sm`→`gap-sp-2`, `max-w-sm` left alone (now correctly resolves to
+Tailwind's stock 384px again). Verified live: admin login card measures 384px (was 65.6px);
+screenshots confirm clean rendering across storefront auth/catalogue/PDP/cart/account and admin
+dashboard/products. **Before trusting any screen's layout in this project, re-check this class
+of bug if a width/sizing hard-override appears — don't assume "renders in Claude's browser pane
+once" means "correct on every screen using the same utility".**
+
+Also found and worked around, same investigation: Turbopack's `next dev` for `apps/admin` serves
+a CSS chunk containing only the font-loader output and never links the real compiled
+`globals.css` chunk into the page (confirmed on disk: the correct 1835-line file exists, it's
+just never referenced in the served HTML; reproduced across multiple full cold-cache rebuilds,
+so not a caching issue). `apps/admin/package.json`'s `dev` script now runs
+`next dev -p 7001 --webpack`, which bundles correctly. `apps/storefront` is unaffected and stays
+on the default Turbopack bundler.
+
 ## Scope change (2026-11-14): resale/authentication layer now required for v1
 
 Client confirmed the product is explicitly CultureCircle-style (resale + authentication
