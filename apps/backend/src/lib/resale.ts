@@ -136,3 +136,13 @@ export function computeOrderbookSpread(
   const spreadPct = Number(((spreadRupees / lowestAsk) * 100).toFixed(1));
   return { spread_rupees: spreadRupees, spread_pct: spreadPct };
 }
+
+export function calculateConsignorPayout(
+  askPriceRupees: number,
+  platformFeeRate: number = 0.095,
+): { platform_fee_rupees: number; estimated_payout_rupees: number } {
+  const ask = Math.max(0, Math.round(askPriceRupees));
+  const fee = Math.round(ask * platformFeeRate);
+  const payout = Math.max(0, ask - fee);
+  return { platform_fee_rupees: fee, estimated_payout_rupees: payout };
+}

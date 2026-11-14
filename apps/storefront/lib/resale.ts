@@ -209,6 +209,26 @@ export async function searchBySight(body: {
   }
 }
 
+export interface SellerAskRecord {
+  id: string;
+  variant_id: string;
+  ask_price: number | string;
+  condition_grade: string;
+  box_condition: string;
+  status: string;
+  created_at: string;
+  variant?: {
+    size: string;
+    sku: string | null;
+  };
+  product?: {
+    id: string;
+    title: string;
+    handle: string;
+    thumbnail: string | null;
+  };
+}
+
 export async function placeResaleBid(
   variantId: string,
   bidPrice: number,
@@ -226,6 +246,65 @@ export async function placeResaleBid(
     }
     const data = await res.json();
     return { success: true, bid: data.bid };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Network error" };
+  }
+}
+
+export async function placeResaleAsk(
+  variantId: string,
+  askPrice: number,
+  conditionGrade: string,
+  boxCondition: string,
+  token: string,
+): Promise<{ success: boolean; error?: string; ask?: unknown }> {
+  try {
+    const res = await fetch(`${MEDUSA_URL}/store/resale/asks`, {
+      method: "POST",
+      headers: headers(token),
+      body: JSON.stringify({
+        variant_id: variantId,
+        ask_price: askPrice,
+        condition_grade: conditionGrade,
+        box_condition: boxCondition,
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: "Failed to list item for sale." }));
+      return { success: false, error: err.message || "Failed to list item." };
+    }
+    const data = await res.json();
+    return { success: true, ask: data.ask };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Network error" };
+  }
+}
+
+export async function listMyAsks(token: string): Promise<SellerAskRecord[]> {
+  try {
+    const res = await fetch(`${MEDUSA_URL}/store/resale/asks`, {
+      headers: headers(token),
+      cache: "no-store",
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.asks ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function cancelMyAsk(askId: string, token: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch(`${MEDUSA_URL}/store/resale/asks/${encodeURIComponent(askId)}`, {
+      method: "DELETE",
+      headers: headers(token),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: "Failed to cancel listing." }));
+      return { success: false, error: err.message || "Failed to cancel listing." };
+    }
+    return { success: true };
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : "Network error" };
   }

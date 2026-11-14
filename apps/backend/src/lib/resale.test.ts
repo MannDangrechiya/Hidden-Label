@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  calculateConsignorPayout,
   calculatePriceMetrics,
   cmToStandardUk,
   computeOrderbookSpread,
@@ -121,6 +122,26 @@ describe("Resale & Fit Studio Calculations (apps/backend/src/lib/resale.ts)", ()
     it("returns null when either ask or bid is missing", () => {
       expect(computeOrderbookSpread(null, 36000)).toEqual({ spread_rupees: null, spread_pct: null });
       expect(computeOrderbookSpread(40000, null)).toEqual({ spread_rupees: null, spread_pct: null });
+    });
+  });
+
+  describe("calculateConsignorPayout", () => {
+    it("calculates standard 9.5% consignment fee and net seller payout correctly", () => {
+      const payout = calculateConsignorPayout(20000);
+      expect(payout.platform_fee_rupees).toBe(1900); // 20000 * 0.095 = 1900
+      expect(payout.estimated_payout_rupees).toBe(18100);
+    });
+
+    it("handles custom platform fee rate", () => {
+      const payout = calculateConsignorPayout(10000, 0.05); // 5% fee
+      expect(payout.platform_fee_rupees).toBe(500);
+      expect(payout.estimated_payout_rupees).toBe(9500);
+    });
+
+    it("handles zero and negative amounts safely", () => {
+      const payout = calculateConsignorPayout(0);
+      expect(payout.platform_fee_rupees).toBe(0);
+      expect(payout.estimated_payout_rupees).toBe(0);
     });
   });
 });

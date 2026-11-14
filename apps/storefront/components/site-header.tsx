@@ -23,6 +23,7 @@ export async function SiteHeader() {
   const nav = [
     { label: "Shop", href: "/collections/all" },
     { label: "Brands", href: "/brands" },
+    { label: "Sell", href: "/sell" },
     { label: "Fit Studio", href: "/fit-studio" },
   ];
 

@@ -6,6 +6,12 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@thl/shared", "@thl/ui"],
   reactStrictMode: true,
   poweredByHeader: false,
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "**" },
+      { protocol: "http", hostname: "**" },
+    ],
+  },
 };
 
 export default nextConfig;

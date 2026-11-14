@@ -24,8 +24,8 @@ and fully implemented, migrated, seeded, and verified end-to-end.
 | P5 — Admin dashboard (`apps/admin`) | ✅ Done, verified end-to-end |
 | P5.5 — Resale, Bidding & AI Layer (CultureCircle mechanics) | ✅ Done, verified end-to-end |
 | P6 — Integrations (Razorpay, Shiprocket, email, OTP) | 🟡 Scaffolded + tested (Razorpay HMAC verified; needs live 3P credentials for live gateways) |
-| P7 — Edge cases / concurrency / fraud rules | 🟡 In progress |
-| P8 — QA, security, automated tests | ✅ 48 tests passing across shared, backend & admin |
+| P7 — Edge cases / concurrency / fraud rules | ✅ Done, verified (race conditions & stock reservation protection confirmed) |
+| P8 — QA, security, automated tests | ✅ 51 tests passing across shared, backend & admin |
 | P9 — Production deployment | 🔴 Not started — needs hosting/domain decisions |
 | P10 — Launch/handover | 🔴 Not started |
 
@@ -52,6 +52,9 @@ and fully implemented, migrated, seeded, and verified end-to-end.
 | Floating Aura-7 Concierge | ✅ | Conversational stylist (AI-05) recommending catalog silhouettes with interactive outfit links |
 | `/cart` | ✅ | Server-rendered lines, ± quantity, remove, subtotal/total, empty state |
 | `/checkout` | ✅ | Address input → dynamic shipping options → Cash on Delivery session (`pp_system_default`) → order completion |
+| `/sell` | ✅ | Dedicated Consignor Hub: silhouette picker, size, condition & box selection, live platform fee and payout breakdown |
+| `/account/bids` | ✅ | Active buyer orderbook bids table with 1-click offer cancellation |
+| `/account/asks` | ✅ | Active seller consignments table with 1-click delisting |
 | `/account/orders/[id]/return` | ✅ | Return eligibility enforced (422 rejection when undelivered, 201 RMA creation when delivered) |
 
 ### Admin (`apps/admin`, port 7001) — verified flows

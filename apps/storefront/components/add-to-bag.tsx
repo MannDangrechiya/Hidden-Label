@@ -17,6 +17,7 @@ export interface SizeOption {
 
 interface AddToBagProps {
   sizes: SizeOption[];
+  productHandle?: string;
   onOpenBidModal?: (variantId: string, sizeLabel: string, suggestedBid: number) => void;
 }
 
@@ -28,7 +29,7 @@ function formatPrice(amount: number): string {
   }
 }
 
-export function AddToBag({ sizes, onOpenBidModal }: AddToBagProps) {
+export function AddToBag({ sizes, productHandle, onOpenBidModal }: AddToBagProps) {
   const router = useRouter();
 
   // Find lowest price available variant as default
@@ -173,6 +174,17 @@ export function AddToBag({ sizes, onOpenBidModal }: AddToBagProps) {
             {currentBid ? `High: ${formatPrice(currentBid)}` : "Make an offer"}
           </span>
         </button>
+      </div>
+
+      {/* Sell / Consign This Pair CTA */}
+      <div className="flex items-center justify-between text-xs font-mono pt-0.5 px-0.5">
+        <span className="text-muted">Got a pair in this silhouette?</span>
+        <a
+          href={`/sell?product=${encodeURIComponent(productHandle ?? "")}&size=${encodeURIComponent(chosen?.label ?? "")}`}
+          className="font-bold text-ink hover:underline uppercase inline-flex items-center gap-1"
+        >
+          Sell from {currentPrice ? formatPrice(currentPrice) : "₹15,000"} →
+        </a>
       </div>
 
       {message && (

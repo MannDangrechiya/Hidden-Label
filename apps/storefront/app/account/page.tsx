@@ -95,10 +95,22 @@ export default async function AccountPage() {
               My Bids
             </Link>
             <Link
+              href="/account/asks"
+              className="border border-ink px-4 py-2 font-mono text-label-caps uppercase text-ink no-underline hover:bg-ink hover:text-white"
+            >
+              Consignments
+            </Link>
+            <Link
               href="/account/wishlist"
               className="border border-ink px-4 py-2 font-mono text-label-caps uppercase text-ink no-underline hover:bg-ink hover:text-white"
             >
               Wishlist
+            </Link>
+            <Link
+              href="/fit-studio"
+              className="border border-ink px-4 py-2 font-mono text-label-caps uppercase text-ink no-underline hover:bg-ink hover:text-white"
+            >
+              Fit Studio
             </Link>
             <Link
               href="/account/addresses"

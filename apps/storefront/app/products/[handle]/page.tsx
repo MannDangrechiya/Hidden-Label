@@ -182,7 +182,7 @@ export default async function ProductPage({ params }: PageProps) {
             productHandle={product.handle}
           />
 
-          <AddToBag sizes={sizes} />
+          <AddToBag sizes={sizes} productHandle={product.handle} />
 
           {/* Secondary Market Orderbook & The Price Index (AI-02) */}
           {resaleData && resaleData.variants.length > 0 ? (

@@ -19,13 +19,14 @@ Whichever agent picks this up should:
 ## 2. Real Verified State of the Project Right Now
 
 ### Summary
-- **Overall Completion:** ~85% of total v1 scope.
+- **Overall Completion:** ~90% of total v1 scope.
 - **Database:** PostgreSQL 18.6 on port 5437 with **159 tables** (151 core/custom + 8 Phase 5.5 tables).
-- **Backend:** Medusa 2.22.7 on port 9000, 100% clean typecheck, automated test suites passing.
-- **Storefront:** Next.js on port 3000, 100% clean typecheck. Feature flags active.
-- **Admin App:** Next.js on port 7001, 100% clean typecheck.
-- **Automated Tests:** **48 passing vitest unit/integration tests** across `@thl/shared`, `@thl/backend`, and `@thl/admin`.
+- **Backend:** Medusa 2.22.7 on port 9000, 100% clean typecheck and production build, automated test suites passing.
+- **Storefront:** Next.js on port 3000, 100% clean typecheck and production build. CultureCircle UX complete.
+- **Admin App:** Next.js on port 7001, 100% clean typecheck and production build.
+- **Automated Tests:** **51 passing vitest unit/integration tests** across `@thl/shared`, `@thl/backend`, and `@thl/admin`.
 - **E2E Walkthrough:** 100% passing across all 7 verification checkpoints (`scripts/walkthrough-verify.mjs`).
+- **Concurrency & Stock Safety (Phase 7):** 100% verified (`scripts/test-concurrency.mjs`). Simultaneous orders safely reserve stock; overselling attempts strictly blocked.
 
 ---
 
