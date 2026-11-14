@@ -4,6 +4,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddToBag, type SizeOption } from "@/components/add-to-bag";
 import { WishlistButton } from "@/components/wishlist-button";
+import { PriceIndexCard } from "@/components/price-index-card";
+import { InspectionViewer } from "@/components/inspection-viewer";
+import { FitStudioWidget } from "@/components/fit-studio-widget";
+import { fetchResaleProductIndex, fetchInspectionCertificate } from "@/lib/resale";
 import {
   fetchProduct,
   fetchWishlist,
@@ -79,6 +83,13 @@ export default async function ProductPage({ params }: PageProps) {
   const soldOut = sizes.length > 0 && sizes.every((size) => !size.available);
 
   const session = await getCurrentCustomer().catch(() => null);
+  const resaleData = await fetchResaleProductIndex(handle).catch(() => null);
+  const sampleSerial = resaleData?.variants?.find((v) => v.inspection_summary?.unit_serial)
+    ?.inspection_summary?.unit_serial;
+  const inspection = sampleSerial
+    ? await fetchInspectionCertificate(sampleSerial).catch(() => null)
+    : null;
+
   let wishlistVariantIds = new Set<string>();
   if (session) {
     try {
@@ -124,6 +135,13 @@ export default async function ProductPage({ params }: PageProps) {
               </div>
             )}
           </div>
+
+          {/* 360° Inspection Viewer & Lab Authentication (AI-03) */}
+          {inspection ? (
+            <div className="mt-2">
+              <InspectionViewer inspection={inspection} compact={false} />
+            </div>
+          ) : null}
         </div>
 
         <div className="flex flex-col gap-lg">
@@ -142,7 +160,22 @@ export default async function ProductPage({ params }: PageProps) {
             </div>
           </div>
 
+          {/* Fit Studio Sizing Assistant (AI-04) */}
+          <FitStudioWidget
+            productTitle={product.title}
+            productHandle={product.handle}
+          />
+
           <AddToBag sizes={sizes} />
+
+          {/* Secondary Market Orderbook & The Price Index (AI-02) */}
+          {resaleData && resaleData.variants.length > 0 ? (
+            <PriceIndexCard
+              variants={resaleData.variants}
+              selectedVariantId={firstAvailable?.id}
+              customerToken={session?.token ?? null}
+            />
+          ) : null}
 
           {firstAvailable ? (
             session ? (

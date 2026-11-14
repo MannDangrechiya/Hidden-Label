@@ -1,9 +1,17 @@
 export { BannerSlot } from "./banner-slot";
 export { Brand } from "./brand";
 export { CmsPage } from "./cms-page";
+export { ConciergeMessage } from "./concierge-message";
+export { ConciergeThread } from "./concierge-thread";
+export { ConditionInspection } from "./condition-inspection";
+export { CustomerFitProfile } from "./customer-fit-profile";
 export { OtpChallenge } from "./otp-challenge";
+export { PriceHistoryPoint } from "./price-history-point";
+export { ResaleAsk } from "./resale-ask";
+export { ResaleBid } from "./resale-bid";
 export { ReturnItem } from "./return-item";
 export { ReturnRequest } from "./return-request";
 export { Shipment } from "./shipment";
 export { ShipmentEvent } from "./shipment-event";
+export { SilhouetteFitRule } from "./silhouette-fit-rule";
 export { WishlistItem } from "./wishlist-item";

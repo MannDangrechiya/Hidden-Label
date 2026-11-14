@@ -16,7 +16,6 @@ export async function sendEmail(input: EmailInput): Promise<{ sent: boolean; rea
 
   if (!apiKey) {
     // Local/dev: visibly recorded, never silently dropped.
-    // eslint-disable-next-line no-console
     console.info(`[email:not-configured] to=${input.to} subject="${input.subject}"`);
     return { sent: false, reason: "RESEND_API_KEY is not configured." };
   }

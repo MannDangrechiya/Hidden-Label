@@ -21,6 +21,18 @@ export default defineMiddlewares({
       middlewares: [authenticate("customer", ["bearer", "session"])],
     },
     {
+      matcher: "/store/resale/bids*",
+      middlewares: [authenticate("customer", ["bearer", "session"])],
+    },
+    {
+      matcher: "/store/resale/asks*",
+      middlewares: [authenticate("customer", ["bearer", "session"])],
+    },
+    {
+      matcher: "/store/fit/profile*",
+      middlewares: [authenticate("customer", ["bearer", "session"])],
+    },
+    {
       matcher: "/admin/*",
       middlewares: [authenticate("user", ["bearer", "session"])],
       // Webhooks and the public store API live under /store, so every /admin route is private.

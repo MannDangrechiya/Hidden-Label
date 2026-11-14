@@ -3,6 +3,7 @@ import { Hanken_Grotesk, JetBrains_Mono, Syne } from "next/font/google";
 import type { ReactNode } from "react";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { StyleConcierge } from "@/components/style-concierge";
 import "./globals.css";
 
 // Self-hosted at build time by next/font — no runtime CDN request, no layout shift.
@@ -44,6 +45,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <SiteHeader />
         <div className="flex-1">{children}</div>
         <SiteFooter />
+        <StyleConcierge />
       </body>
     </html>
   );

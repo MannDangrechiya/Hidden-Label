@@ -26,6 +26,9 @@ const ITEMS: NavItem[] = [
   { href: "/promotions", label: "Promotions", code: "A-13", minimum: "support" },
   { href: "/content", label: "Content & CMS", code: "A-14", minimum: "support" },
   { href: "/reports", label: "Reports", code: "A-15", minimum: "support" },
+  { href: "/inspections", label: "Inspections (AI-03)", code: "A-18", minimum: "support" },
+  { href: "/resale", label: "Resale Orderbook", code: "A-19", minimum: "support" },
+  { href: "/fit-rules", label: "Fit Studio Rules", code: "A-20", minimum: "support" },
   { href: "/settings", label: "Settings", code: "A-16", minimum: "manager" },
   { href: "/audit", label: "Audit log", code: "A-17", minimum: "support" },
 ];

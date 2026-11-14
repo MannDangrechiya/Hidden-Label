@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { SearchBySight } from "@/components/search-by-sight";
 
 interface Suggestion {
   products: { id: string; title: string; handle: string; thumbnail: string | null }[];
@@ -19,6 +20,7 @@ const EMPTY: Suggestion = { products: [], brands: [] };
 export function SearchOverlay() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [sightSearchOpen, setSightSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion>(EMPTY);
   const [loading, setLoading] = useState(false);
@@ -103,6 +105,15 @@ export function SearchOverlay() {
                 aria-label="Search query"
               />
               <button
+                type="button"
+                onClick={() => setSightSearchOpen(true)}
+                title="Search by Sight (AI-01)"
+                className="flex items-center gap-1 border-l border-line px-3 py-2 font-mono text-[11px] uppercase tracking-wider text-muted hover:text-ink hover:bg-surface-container/50 whitespace-nowrap"
+              >
+                <span>📷</span>
+                <span className="hidden sm:inline">Sight</span>
+              </button>
+              <button
                 type="submit"
                 className="px-4 font-mono text-label-caps uppercase text-muted hover:text-ink"
               >
@@ -110,7 +121,17 @@ export function SearchOverlay() {
               </button>
             </form>
 
-            <div className="max-h-[60vh] overflow-y-auto p-md">
+            {sightSearchOpen ? (
+              <div className="p-4 border-t border-line">
+                <SearchBySight
+                  onClose={() => {
+                    setSightSearchOpen(false);
+                    setOpen(false);
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="max-h-[60vh] overflow-y-auto p-md">
               {loading ? (
                 <p className="font-mono text-label-caps uppercase text-muted">Searching…</p>
               ) : query.trim().length < 2 ? (
@@ -170,6 +191,7 @@ export function SearchOverlay() {
                 </div>
               )}
             </div>
+            )}
           </div>
         </div>
       ) : null}
