@@ -81,7 +81,7 @@ export default async function ProductPage({ params }: PageProps) {
 
   if (error) {
     return (
-      <main className="mx-auto w-full max-w-page px-margin py-xl sm:px-margin-tablet lg:px-margin-desktop">
+      <main className="mx-auto w-full max-w-page px-margin py-sp-5 sm:px-margin-tablet lg:px-margin-desktop">
         <div role="alert" className="border border-error px-6 py-10">
           <h1 className="mb-2 font-display text-headline-sm text-error">Product unavailable</h1>
           <p className="font-sans text-body-sm text-on-surface-variant">{error}</p>
@@ -117,8 +117,8 @@ export default async function ProductPage({ params }: PageProps) {
   }
 
   return (
-    <main className="mx-auto w-full max-w-page px-margin py-lg sm:px-margin-tablet lg:px-margin-desktop">
-      <nav aria-label="Breadcrumb" className="mb-md">
+    <main className="mx-auto w-full max-w-page px-margin py-sp-4 sm:px-margin-tablet lg:px-margin-desktop">
+      <nav aria-label="Breadcrumb" className="mb-sp-3">
         <ol className="flex list-none gap-2 p-0 font-mono text-label-caps uppercase text-muted">
           <li>
             <Link href="/" className="text-muted no-underline hover:text-ink">
@@ -136,7 +136,7 @@ export default async function ProductPage({ params }: PageProps) {
         </ol>
       </nav>
 
-      <div className="grid gap-lg lg:grid-cols-2 lg:gap-xl">
+      <div className="grid gap-sp-4 lg:grid-cols-2 lg:gap-sp-5">
         <div className="flex flex-col gap-2">
           <div className="relative aspect-[3/4] w-full overflow-hidden bg-surface-container">
             {product.thumbnail ? (
@@ -160,8 +160,8 @@ export default async function ProductPage({ params }: PageProps) {
           ) : null}
         </div>
 
-        <div className="flex flex-col gap-lg">
-          <div className="flex flex-col gap-2 border-b border-line pb-md">
+        <div className="flex flex-col gap-sp-4">
+          <div className="flex flex-col gap-2 border-b border-line pb-sp-3">
             {brand ? (
               <span className="font-mono text-label-caps uppercase text-muted">{brand}</span>
             ) : null}
@@ -210,13 +210,13 @@ export default async function ProductPage({ params }: PageProps) {
           ) : null}
 
           {product.description ? (
-            <div className="border-t border-line pt-md">
+            <div className="border-t border-line pt-sp-3">
               <h2 className="mb-2 font-mono text-label-caps uppercase text-muted">Details</h2>
               <p className="font-sans text-body-sm text-on-surface-variant">{product.description}</p>
             </div>
           ) : null}
 
-          <div className="border-t border-line pt-md">
+          <div className="border-t border-line pt-sp-3">
             <h2 className="mb-2 font-mono text-label-caps uppercase text-muted">Shipping &amp; returns</h2>
             <p className="font-sans text-body-sm text-on-surface-variant">
               Dispatched in 2–4 working days. Returns accepted within the policy window if the item

@@ -29,7 +29,7 @@ export async function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-ink bg-canvas/95 backdrop-blur-sm">
-      <div className="mx-auto flex w-full max-w-page items-center justify-between gap-md px-margin py-4 sm:px-margin-tablet lg:px-margin-desktop">
+      <div className="mx-auto flex w-full max-w-page items-center justify-between gap-sp-3 px-margin py-4 sm:px-margin-tablet lg:px-margin-desktop">
         <Link
           href="/"
           className="shrink-0 whitespace-nowrap font-display text-[15px] uppercase tracking-[-0.02em] text-ink no-underline sm:text-headline-sm"
@@ -37,7 +37,7 @@ export async function SiteHeader() {
           The Hidden Label
         </Link>
 
-        <nav aria-label="Primary" className="hidden items-center gap-lg sm:flex">
+        <nav aria-label="Primary" className="hidden items-center gap-sp-4 sm:flex">
           {nav.map((item) => (
             <Link
               key={item.label}
@@ -49,7 +49,7 @@ export async function SiteHeader() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-3 sm:gap-md">
+        <div className="flex items-center gap-3 sm:gap-sp-3">
           <SearchOverlay />
           <Link
             href={session ? "/account/wishlist" : "/login"}

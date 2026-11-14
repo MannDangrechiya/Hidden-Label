@@ -26,15 +26,15 @@ export default async function ReturnRequestPage({ params }: PageProps) {
   }));
 
   return (
-    <main className="mx-auto w-full max-w-md px-margin py-xl sm:px-margin-tablet lg:px-margin-desktop">
-      <nav aria-label="Breadcrumb" className="mb-md">
+    <main className="mx-auto w-full max-w-md px-margin py-sp-5 sm:px-margin-tablet lg:px-margin-desktop">
+      <nav aria-label="Breadcrumb" className="mb-sp-3">
         <Link href={`/account/orders/${order.id}`} className="font-mono text-label-caps uppercase text-muted no-underline hover:text-ink">
           ← Back to order THL-{order.display_id}
         </Link>
       </nav>
 
       <h1 className="type-headline-lg mb-2 uppercase">Request a return</h1>
-      <p className="mb-md font-sans text-body-sm text-on-surface-variant">
+      <p className="mb-sp-3 font-sans text-body-sm text-on-surface-variant">
         Returns are accepted within 7 days of delivery for unworn items with original tags.
         Final-sale items are not eligible. Eligibility is re-checked by our team on review.
       </p>

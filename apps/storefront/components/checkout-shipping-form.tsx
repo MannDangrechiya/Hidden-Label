@@ -35,7 +35,7 @@ export function CheckoutShippingForm({
   }
 
   return (
-    <form action={submit} className="flex flex-col gap-md">
+    <form action={submit} className="flex flex-col gap-sp-3">
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-2 font-mono text-label-caps uppercase text-on-surface-variant">
           Shipping method

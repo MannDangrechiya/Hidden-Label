@@ -34,8 +34,8 @@ export default async function BrandsPage() {
   const grouped = groupByLetter(brands);
 
   return (
-    <main className="mx-auto w-full max-w-page px-margin py-xl sm:px-margin-tablet lg:px-margin-desktop">
-      <header className="mb-lg flex flex-col gap-2 border-b border-line pb-md">
+    <main className="mx-auto w-full max-w-page px-margin py-sp-5 sm:px-margin-tablet lg:px-margin-desktop">
+      <header className="mb-sp-4 flex flex-col gap-2 border-b border-line pb-sp-3">
         <h1 className="type-headline-lg uppercase">Brand directory</h1>
         <p className="font-mono text-label-caps uppercase text-muted">
           {error ? "Directory unavailable" : `${brands.length} brand${brands.length === 1 ? "" : "s"}`}
@@ -58,9 +58,9 @@ export default async function BrandsPage() {
           }
         />
       ) : (
-        <div className="flex flex-col gap-xl">
+        <div className="flex flex-col gap-sp-5">
           {/* A–Z anchor matrix per U-03 */}
-          <nav aria-label="Jump to letter" className="flex flex-wrap gap-2 border-b border-line pb-md">
+          <nav aria-label="Jump to letter" className="flex flex-wrap gap-2 border-b border-line pb-sp-3">
             {[...grouped.keys()].map((letter) => (
               <a
                 key={letter}
@@ -76,7 +76,7 @@ export default async function BrandsPage() {
             <section key={letter} id={`letter-${letter}`} aria-labelledby={`letter-${letter}-heading`}>
               <h2
                 id={`letter-${letter}-heading`}
-                className="mb-md font-display text-headline-sm uppercase text-muted"
+                className="mb-sp-3 font-display text-headline-sm uppercase text-muted"
               >
                 {letter}
               </h2>
@@ -85,7 +85,7 @@ export default async function BrandsPage() {
                   <li key={brand.id}>
                     <Link
                       href={`/brands/${brand.handle}`}
-                      className="group flex flex-col gap-2 border border-line p-md no-underline transition-colors hover:border-ink"
+                      className="group flex flex-col gap-2 border border-line p-sp-3 no-underline transition-colors hover:border-ink"
                     >
                       <span className="font-display text-headline-sm uppercase text-ink">{brand.name}</span>
                       {brand.tagline ? (

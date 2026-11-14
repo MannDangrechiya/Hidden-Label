@@ -32,8 +32,8 @@ export default async function CartPage() {
   const empty = items.length === 0;
 
   return (
-    <main className="mx-auto w-full max-w-page px-margin py-xl sm:px-margin-tablet lg:px-margin-desktop">
-      <h1 className="type-headline-lg mb-lg uppercase">Your bag</h1>
+    <main className="mx-auto w-full max-w-page px-margin py-sp-5 sm:px-margin-tablet lg:px-margin-desktop">
+      <h1 className="type-headline-lg mb-sp-4 uppercase">Your bag</h1>
 
       {error ? (
         <div role="alert" className="border border-error px-6 py-8">
@@ -48,16 +48,16 @@ export default async function CartPage() {
           </p>
           <Link
             href="/collections/all"
-            className="mt-md inline-flex min-h-12 items-center justify-center bg-ink px-6 py-3 font-mono text-label-caps uppercase tracking-[0.12em] text-white no-underline transition-colors hover:bg-accent hover:text-ink"
+            className="mt-sp-3 inline-flex min-h-12 items-center justify-center bg-ink px-6 py-3 font-mono text-label-caps uppercase tracking-[0.12em] text-white no-underline transition-colors hover:bg-accent hover:text-ink"
           >
             Shop all
           </Link>
         </div>
       ) : (
-        <div className="grid gap-xl lg:grid-cols-[1fr_360px]">
+        <div className="grid gap-sp-5 lg:grid-cols-[1fr_360px]">
           <ul className="list-none divide-y divide-line p-0">
             {items.map((item) => (
-              <li key={item.id} className="grid grid-cols-[96px_1fr] gap-md py-md">
+              <li key={item.id} className="grid grid-cols-[96px_1fr] gap-sp-3 py-sp-3">
                 <div className="aspect-[3/4] w-24 bg-surface-container">
                   {item.thumbnail ? (
                     <img
@@ -125,8 +125,8 @@ export default async function CartPage() {
             ))}
           </ul>
 
-          <aside className="h-fit border border-line p-md">
-            <h2 className="mb-md font-mono text-label-caps uppercase text-muted">Summary</h2>
+          <aside className="h-fit border border-line p-sp-3">
+            <h2 className="mb-sp-3 font-mono text-label-caps uppercase text-muted">Summary</h2>
             <dl className="m-0 flex flex-col gap-2 font-sans text-body-sm">
               <div className="flex justify-between">
                 <dt className="text-on-surface-variant">Item subtotal</dt>
@@ -148,7 +148,7 @@ export default async function CartPage() {
 
             <Link
               href="/checkout"
-              className="mt-md flex min-h-12 w-full items-center justify-center bg-ink px-6 py-3 font-mono text-label-caps uppercase tracking-[0.12em] text-white no-underline transition-colors hover:bg-accent hover:text-ink"
+              className="mt-sp-3 flex min-h-12 w-full items-center justify-center bg-ink px-6 py-3 font-mono text-label-caps uppercase tracking-[0.12em] text-white no-underline transition-colors hover:bg-accent hover:text-ink"
             >
               Checkout
             </Link>
@@ -157,7 +157,7 @@ export default async function CartPage() {
               Razorpay test keys are configured.
             </p>
 
-            <p className="mt-md font-sans text-body-sm text-muted">
+            <p className="mt-sp-3 font-sans text-body-sm text-muted">
               All prices in INR, inclusive of duties and GST.
             </p>
           </aside>

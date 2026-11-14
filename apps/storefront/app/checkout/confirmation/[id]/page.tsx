@@ -22,16 +22,16 @@ export default async function OrderConfirmationPage({ params }: PageProps) {
   if (!order) notFound();
 
   return (
-    <main className="mx-auto w-full max-w-page px-margin py-xl sm:px-margin-tablet lg:px-margin-desktop">
-      <div className="mx-auto max-w-2xl border border-ink p-lg">
+    <main className="mx-auto w-full max-w-page px-margin py-sp-5 sm:px-margin-tablet lg:px-margin-desktop">
+      <div className="mx-auto max-w-2xl border border-ink p-sp-4">
         <p className="font-mono text-label-caps uppercase text-accent">Order confirmed</p>
-        <h1 className="type-headline-lg mb-md mt-2 uppercase">THL-{order.display_id}</h1>
-        <p className="mb-lg font-sans text-body-md text-on-surface-variant">
+        <h1 className="type-headline-lg mb-sp-3 mt-2 uppercase">THL-{order.display_id}</h1>
+        <p className="mb-sp-4 font-sans text-body-md text-on-surface-variant">
           Thank you — we have received your order and will begin preparing it. A confirmation has
           been sent to {order.email}.
         </p>
 
-        <ol className="mb-lg flex flex-wrap gap-4 border-b border-line pb-md font-mono text-label-caps uppercase text-muted">
+        <ol className="mb-sp-4 flex flex-wrap gap-4 border-b border-line pb-sp-3 font-mono text-label-caps uppercase text-muted">
           <li className="text-ink">Placed</li>
           <li aria-hidden="true">→</li>
           <li>Processing</li>
@@ -41,7 +41,7 @@ export default async function OrderConfirmationPage({ params }: PageProps) {
           <li>Delivered</li>
         </ol>
 
-        <ul className="m-0 mb-md flex list-none flex-col gap-3 divide-y divide-line p-0">
+        <ul className="m-0 mb-sp-3 flex list-none flex-col gap-3 divide-y divide-line p-0">
           {(order.items ?? []).map((item) => (
             <li key={item.id} className="flex items-center justify-between gap-4 pt-3 first:pt-0">
               <span className="font-sans text-body-sm text-ink">
@@ -57,7 +57,7 @@ export default async function OrderConfirmationPage({ params }: PageProps) {
           <Price value={moneyFromRupees(order.total)} size="lg" />
         </div>
 
-        <div className="mt-lg flex flex-wrap gap-3">
+        <div className="mt-sp-4 flex flex-wrap gap-3">
           <Link
             href="/account/orders"
             className="inline-flex min-h-12 items-center justify-center bg-ink px-6 py-3 font-mono text-label-caps uppercase tracking-[0.12em] text-white no-underline transition-colors hover:bg-accent hover:text-ink"

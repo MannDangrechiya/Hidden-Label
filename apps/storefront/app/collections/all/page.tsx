@@ -29,7 +29,7 @@ export default async function CatalogPage({ searchParams }: PageProps) {
   }
 
   return (
-    <main className="mx-auto w-full max-w-page px-margin py-xl sm:px-margin-tablet lg:px-margin-desktop">
+    <main className="mx-auto w-full max-w-page px-margin py-sp-5 sm:px-margin-tablet lg:px-margin-desktop">
       <header className="mb-8 flex flex-col gap-2 border-b border-line pb-6">
         <div className="flex items-center gap-2">
           <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />

@@ -37,7 +37,7 @@ export function CheckoutPaymentForm({ availableProviderIds }: { availableProvide
   }
 
   return (
-    <div className="flex flex-col gap-md">
+    <div className="flex flex-col gap-sp-3">
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-2 font-mono text-label-caps uppercase text-on-surface-variant">
           Payment method

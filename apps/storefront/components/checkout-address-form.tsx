@@ -39,9 +39,9 @@ export function CheckoutAddressForm({
   }
 
   return (
-    <form action={submit} className="flex flex-col gap-md" noValidate>
+    <form action={submit} className="flex flex-col gap-sp-3" noValidate>
       <Input label="Email" name="email" type="email" defaultValue={defaultEmail} required error={fields.email} />
-      <div className="grid grid-cols-2 gap-md">
+      <div className="grid grid-cols-2 gap-sp-3">
         <Input label="First name" name="first_name" defaultValue={defaultValues?.first_name ?? ""} required error={fields.first_name} />
         <Input label="Last name" name="last_name" defaultValue={defaultValues?.last_name ?? ""} required error={fields.last_name} />
       </div>
@@ -56,7 +56,7 @@ export function CheckoutAddressForm({
       />
       <Input label="Address line 1" name="address_1" defaultValue={defaultValues?.address_1 ?? ""} required error={fields.address_1} />
       <Input label="Address line 2 (optional)" name="address_2" defaultValue={defaultValues?.address_2 ?? ""} error={fields.address_2} />
-      <div className="grid grid-cols-2 gap-md">
+      <div className="grid grid-cols-2 gap-sp-3">
         <Input label="City" name="city" defaultValue={defaultValues?.city ?? ""} required error={fields.city} />
         <Input label="State" name="province" defaultValue={defaultValues?.province ?? ""} required error={fields.province} />
       </div>

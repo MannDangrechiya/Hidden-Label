@@ -23,7 +23,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
 
   if (done) {
     return (
-      <div className="flex flex-col gap-md">
+      <div className="flex flex-col gap-sp-3">
         <p role="status" className="border border-line px-4 py-3 font-sans text-body-sm text-ink">
           {message}
         </p>
@@ -35,7 +35,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
   }
 
   return (
-    <form action={submit} className="flex flex-col gap-md" noValidate>
+    <form action={submit} className="flex flex-col gap-sp-3" noValidate>
       <input type="hidden" name="token" value={token} />
       <Input
         label="New password"

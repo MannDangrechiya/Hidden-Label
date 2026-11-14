@@ -16,7 +16,7 @@ export interface LoadMoreProps {
  */
 export function LoadMore({ hasMore, loading = false, onLoadMore, action, shown, total }: LoadMoreProps) {
   return (
-    <div className="mt-lg flex flex-col items-center gap-2">
+    <div className="mt-sp-4 flex flex-col items-center gap-2">
       <p className="font-mono text-label-caps uppercase text-muted">
         Showing {shown} of {total}
       </p>

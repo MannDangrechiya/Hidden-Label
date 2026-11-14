@@ -44,8 +44,8 @@ export default async function SearchPage({ searchParams }: PageProps) {
   }
 
   return (
-    <main className="mx-auto w-full max-w-page px-margin py-xl sm:px-margin-tablet lg:px-margin-desktop">
-      <header className="mb-lg flex flex-col gap-2 border-b border-line pb-md">
+    <main className="mx-auto w-full max-w-page px-margin py-sp-5 sm:px-margin-tablet lg:px-margin-desktop">
+      <header className="mb-sp-4 flex flex-col gap-2 border-b border-line pb-sp-3">
         <h1 className="type-headline-lg uppercase">
           {query ? `Results for "${query}"` : "Search"}
         </h1>

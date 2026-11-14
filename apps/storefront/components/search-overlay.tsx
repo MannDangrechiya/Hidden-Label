@@ -138,7 +138,7 @@ export function SearchOverlay() {
                 />
               </div>
             ) : (
-              <div className="max-h-[60vh] overflow-y-auto p-md">
+              <div className="max-h-[60vh] overflow-y-auto p-sp-3">
               {loading ? (
                 <p className="font-mono text-label-caps uppercase text-muted">Searching…</p>
               ) : query.trim().length < 2 ? (
@@ -150,7 +150,7 @@ export function SearchOverlay() {
                   No quick matches. Press enter to search the full catalogue for &ldquo;{query}&rdquo;.
                 </p>
               ) : (
-                <div className="flex flex-col gap-md">
+                <div className="flex flex-col gap-sp-3">
                   {suggestions.brands.length > 0 ? (
                     <div>
                       <p className="mb-2 font-mono text-label-caps uppercase text-muted">Brands</p>

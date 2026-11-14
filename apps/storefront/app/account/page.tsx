@@ -24,8 +24,8 @@ export default async function AccountPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-page px-margin py-xl sm:px-margin-tablet lg:px-margin-desktop">
-      <header className="mb-lg flex flex-wrap items-center justify-between gap-4 border-b border-line pb-md">
+    <main className="mx-auto w-full max-w-page px-margin py-sp-5 sm:px-margin-tablet lg:px-margin-desktop">
+      <header className="mb-sp-4 flex flex-wrap items-center justify-between gap-4 border-b border-line pb-sp-3">
         <div>
           <p className="font-mono text-label-caps uppercase text-muted">Customer dashboard</p>
           <h1 className="type-headline-lg mt-2 uppercase">
@@ -42,8 +42,8 @@ export default async function AccountPage() {
         </form>
       </header>
 
-      <div className="grid gap-xl lg:grid-cols-[1fr_360px]">
-        <section className="flex flex-col gap-md">
+      <div className="grid gap-sp-5 lg:grid-cols-[1fr_360px]">
+        <section className="flex flex-col gap-sp-3">
           <div className="flex items-center justify-between border-b border-line pb-2">
             <h2 className="font-display text-headline-sm uppercase">Recent orders</h2>
             <Link href="/account/orders" className="font-mono text-label-caps uppercase text-muted hover:text-ink">
@@ -64,7 +64,7 @@ export default async function AccountPage() {
           ) : (
             <ul className="m-0 flex list-none flex-col gap-0 border border-line p-0">
               {recentOrders.map((order) => (
-                <li key={order.id} className="border-b border-line p-md last:border-b-0">
+                <li key={order.id} className="border-b border-line p-sp-3 last:border-b-0">
                   <Link href={`/account/orders/${order.id}`} className="flex items-center justify-between no-underline">
                     <div className="flex flex-col">
                       <span className="font-mono text-label-caps uppercase text-ink">
@@ -81,7 +81,7 @@ export default async function AccountPage() {
             </ul>
           )}
 
-          <nav aria-label="Account" className="mt-md flex flex-wrap gap-3">
+          <nav aria-label="Account" className="mt-sp-3 flex flex-wrap gap-3">
             <Link
               href="/account/orders"
               className="border border-ink px-4 py-2 font-mono text-label-caps uppercase text-ink no-underline hover:bg-ink hover:text-white"
@@ -121,8 +121,8 @@ export default async function AccountPage() {
           </nav>
         </section>
 
-        <aside className="h-fit border border-line p-md">
-          <h2 className="mb-md font-mono text-label-caps uppercase text-muted">Profile</h2>
+        <aside className="h-fit border border-line p-sp-3">
+          <h2 className="mb-sp-3 font-mono text-label-caps uppercase text-muted">Profile</h2>
           <ProfileForm
             action={updateProfileAction}
             defaultValues={{
@@ -131,7 +131,7 @@ export default async function AccountPage() {
               phone: session.customer.phone ?? "",
             }}
           />
-          <p className="mt-md font-sans text-body-sm text-muted">Email: {session.customer.email}</p>
+          <p className="mt-sp-3 font-sans text-body-sm text-muted">Email: {session.customer.email}</p>
         </aside>
       </div>
     </main>

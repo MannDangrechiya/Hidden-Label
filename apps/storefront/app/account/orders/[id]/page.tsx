@@ -38,8 +38,8 @@ export default async function OrderDetailPage({ params }: PageProps) {
   const canReturn = order.status === "completed" || order.fulfillment_status === "delivered";
 
   return (
-    <main className="mx-auto w-full max-w-page px-margin py-xl sm:px-margin-tablet lg:px-margin-desktop">
-      <header className="mb-lg flex flex-wrap items-start justify-between gap-4 border-b border-line pb-md">
+    <main className="mx-auto w-full max-w-page px-margin py-sp-5 sm:px-margin-tablet lg:px-margin-desktop">
+      <header className="mb-sp-4 flex flex-wrap items-start justify-between gap-4 border-b border-line pb-sp-3">
         <div>
           <p className="font-mono text-label-caps uppercase text-muted">Order detail</p>
           <h1 className="type-headline-lg mt-2 uppercase">THL-{order.display_id}</h1>
@@ -57,8 +57,8 @@ export default async function OrderDetailPage({ params }: PageProps) {
         ) : null}
       </header>
 
-      <div className="grid gap-xl lg:grid-cols-[1fr_360px]">
-        <section className="flex flex-col gap-md">
+      <div className="grid gap-sp-5 lg:grid-cols-[1fr_360px]">
+        <section className="flex flex-col gap-sp-3">
           <h2 className="border-b border-line pb-2 font-display text-headline-sm uppercase">Items</h2>
           <ul className="m-0 flex list-none flex-col divide-y divide-line p-0">
             {(order.items ?? []).map((item) => (
@@ -79,7 +79,7 @@ export default async function OrderDetailPage({ params }: PageProps) {
             ))}
           </ul>
 
-          <h2 className="mt-md border-b border-line pb-2 font-display text-headline-sm uppercase">Tracking</h2>
+          <h2 className="mt-sp-3 border-b border-line pb-2 font-display text-headline-sm uppercase">Tracking</h2>
           {shipment?.shipment ? (
             <div className="flex flex-col gap-2">
               <p className="font-sans text-body-sm text-on-surface-variant">
@@ -104,8 +104,8 @@ export default async function OrderDetailPage({ params }: PageProps) {
           )}
         </section>
 
-        <aside className="h-fit border border-line p-md">
-          <h2 className="mb-md font-mono text-label-caps uppercase text-muted">Summary</h2>
+        <aside className="h-fit border border-line p-sp-3">
+          <h2 className="mb-sp-3 font-mono text-label-caps uppercase text-muted">Summary</h2>
           <dl className="m-0 flex flex-col gap-2 font-sans text-body-sm">
             <div className="flex justify-between">
               <dt className="text-on-surface-variant">Subtotal</dt>
@@ -128,7 +128,7 @@ export default async function OrderDetailPage({ params }: PageProps) {
           </dl>
 
           {order.shipping_address ? (
-            <div className="mt-md border-t border-line pt-md">
+            <div className="mt-sp-3 border-t border-line pt-sp-3">
               <h3 className="mb-2 font-mono text-label-caps uppercase text-muted">Delivery address</h3>
               <address className="not-italic font-sans text-body-sm text-on-surface-variant">
                 {order.shipping_address.first_name} {order.shipping_address.last_name}

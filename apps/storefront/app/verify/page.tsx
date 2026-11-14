@@ -15,9 +15,9 @@ export default async function VerifyPage({ searchParams }: PageProps) {
   if (!session) redirect("/login");
 
   return (
-    <main className="mx-auto w-full max-w-md px-margin py-xl sm:px-margin-tablet lg:px-margin-desktop">
+    <main className="mx-auto w-full max-w-md px-margin py-sp-5 sm:px-margin-tablet lg:px-margin-desktop">
       <p className="font-mono text-label-caps uppercase text-muted">OTP verification</p>
-      <h1 className="type-headline-lg mb-md mt-2 uppercase">Verify your email</h1>
+      <h1 className="type-headline-lg mb-sp-3 mt-2 uppercase">Verify your email</h1>
 
       <VerifyForm
         destination={session.customer.email}

@@ -38,9 +38,9 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
         aria-modal="true"
         aria-label={title}
         onClick={(event) => event.stopPropagation()}
-        className="max-h-[85vh] w-full overflow-y-auto border-t border-ink bg-white p-lg sm:max-w-md sm:border"
+        className="max-h-[85vh] w-full overflow-y-auto border-t border-ink bg-white p-sp-4 sm:max-w-md sm:border"
       >
-        <div className="mb-md flex items-center justify-between gap-4 border-b border-line pb-md">
+        <div className="mb-sp-3 flex items-center justify-between gap-4 border-b border-line pb-sp-3">
           <h2 className="font-display text-headline-sm uppercase">{title}</h2>
           <button
             type="button"

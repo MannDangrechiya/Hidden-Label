@@ -21,13 +21,13 @@ export default async function AddressesPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-page px-margin py-xl sm:px-margin-tablet lg:px-margin-desktop">
-      <header className="mb-lg flex flex-col gap-2 border-b border-line pb-md">
+    <main className="mx-auto w-full max-w-page px-margin py-sp-5 sm:px-margin-tablet lg:px-margin-desktop">
+      <header className="mb-sp-4 flex flex-col gap-2 border-b border-line pb-sp-3">
         <p className="font-mono text-label-caps uppercase text-muted">Delivery addresses</p>
         <h1 className="type-headline-lg uppercase">Address book</h1>
       </header>
 
-      <div className="grid gap-xl lg:grid-cols-[1fr_360px]">
+      <div className="grid gap-sp-5 lg:grid-cols-[1fr_360px]">
         <section>
           {error ? (
             <ErrorState message={error} />
@@ -36,7 +36,7 @@ export default async function AddressesPage() {
           ) : (
             <ul className="m-0 flex list-none flex-col gap-0 border border-line p-0">
               {addresses.map((address) => (
-                <li key={address.id} className="flex items-start justify-between gap-4 border-b border-line p-md last:border-b-0">
+                <li key={address.id} className="flex items-start justify-between gap-4 border-b border-line p-sp-3 last:border-b-0">
                   <address className="not-italic font-sans text-body-sm text-on-surface-variant">
                     <span className="font-sans text-body-md text-ink">
                       {address.first_name} {address.last_name}
@@ -70,8 +70,8 @@ export default async function AddressesPage() {
           )}
         </section>
 
-        <aside className="h-fit border border-line p-md">
-          <h2 className="mb-md font-mono text-label-caps uppercase text-muted">Add an address</h2>
+        <aside className="h-fit border border-line p-sp-3">
+          <h2 className="mb-sp-3 font-mono text-label-caps uppercase text-muted">Add an address</h2>
           <AddressForm action={createAddressAction} submitLabel="Save address" />
         </aside>
       </div>

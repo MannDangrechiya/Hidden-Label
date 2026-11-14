@@ -19,7 +19,7 @@ export default async function SellPage({
   const { products } = await fetchProducts({ limit: 50 }).catch(() => ({ products: [] }));
 
   return (
-    <main className="mx-auto w-full max-w-page px-margin py-xl sm:px-margin-tablet lg:px-margin-desktop">
+    <main className="mx-auto w-full max-w-page px-margin py-sp-5 sm:px-margin-tablet lg:px-margin-desktop">
       {/* Editorial Header */}
       <div className="mb-10 text-center max-w-2xl mx-auto">
         <p className="font-mono text-xs uppercase tracking-widest text-emerald-600 font-bold mb-2">

@@ -3,8 +3,8 @@ import { SkeletonCard } from "@thl/ui";
 /** Loading state for the catalogue: mirrors the final grid so nothing shifts when data lands. */
 export default function Loading() {
   return (
-    <main className="mx-auto w-full max-w-page px-margin py-lg sm:px-margin-tablet lg:px-margin-desktop">
-      <header className="mb-xl flex flex-col gap-2 border-b border-line pb-md">
+    <main className="mx-auto w-full max-w-page px-margin py-sp-4 sm:px-margin-tablet lg:px-margin-desktop">
+      <header className="mb-sp-5 flex flex-col gap-2 border-b border-line pb-sp-3">
         <h1 className="type-headline-lg uppercase">The Hidden Label</h1>
         <p className="font-mono text-label-caps uppercase text-muted">Loading catalogue…</p>
       </header>

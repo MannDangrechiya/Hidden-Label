@@ -11,10 +11,10 @@ export default async function RegisterPage() {
   if (session) redirect("/account");
 
   return (
-    <main className="mx-auto grid w-full max-w-page gap-xl px-margin py-xl sm:px-margin-tablet lg:grid-cols-2 lg:px-margin-desktop">
+    <main className="mx-auto grid w-full max-w-page gap-sp-5 px-margin py-sp-5 sm:px-margin-tablet lg:grid-cols-2 lg:px-margin-desktop">
       <div className="hidden bg-surface-container lg:block" aria-hidden="true" />
 
-      <div className="mx-auto flex w-full max-w-md flex-col gap-lg">
+      <div className="mx-auto flex w-full max-w-md flex-col gap-sp-4">
         <div>
           <p className="font-mono text-label-caps uppercase text-muted">Create vault account</p>
           <h1 className="type-headline-lg mt-2 uppercase">Register</h1>
@@ -25,7 +25,7 @@ export default async function RegisterPage() {
 
         <RegisterForm />
 
-        <p className="border-t border-line pt-md font-sans text-body-sm text-on-surface-variant">
+        <p className="border-t border-line pt-sp-3 font-sans text-body-sm text-on-surface-variant">
           Already have an account?{" "}
           <Link href="/login" className="underline">
             Sign in

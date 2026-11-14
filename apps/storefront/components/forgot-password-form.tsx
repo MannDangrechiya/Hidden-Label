@@ -27,7 +27,7 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <form action={submit} className="flex flex-col gap-md" noValidate>
+    <form action={submit} className="flex flex-col gap-sp-3" noValidate>
       <Input label="Email" name="email" type="email" autoComplete="email" required />
       {message ? (
         <p role="alert" className="font-sans text-body-sm text-error">

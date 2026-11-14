@@ -17,7 +17,7 @@ export default async function CustomerAsksPage() {
   const asks = await listMyAsks(session.token);
 
   return (
-    <main className="mx-auto w-full max-w-page px-margin py-xl sm:px-margin-tablet lg:px-margin-desktop">
+    <main className="mx-auto w-full max-w-page px-margin py-sp-5 sm:px-margin-tablet lg:px-margin-desktop">
       <div className="mb-6 flex flex-wrap items-center justify-between border-b border-line pb-4">
         <div>
           <div className="flex items-center gap-2">

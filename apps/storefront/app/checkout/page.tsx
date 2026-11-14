@@ -61,8 +61,8 @@ export default async function CheckoutPage({ searchParams }: PageProps) {
   }
 
   return (
-    <main className="mx-auto w-full max-w-page px-margin py-xl sm:px-margin-tablet lg:px-margin-desktop">
-      <header className="mb-lg flex flex-col gap-2 border-b border-line pb-md">
+    <main className="mx-auto w-full max-w-page px-margin py-sp-5 sm:px-margin-tablet lg:px-margin-desktop">
+      <header className="mb-sp-4 flex flex-col gap-2 border-b border-line pb-sp-3">
         <p className="font-mono text-label-caps uppercase text-muted">Payment &amp; settlement</p>
         <h1 className="type-headline-lg uppercase">Checkout</h1>
         <nav aria-label="Checkout steps" className="flex gap-3 font-mono text-label-caps uppercase">
@@ -74,7 +74,7 @@ export default async function CheckoutPage({ searchParams }: PageProps) {
         </nav>
       </header>
 
-      <div className="grid gap-xl lg:grid-cols-[1fr_360px]">
+      <div className="grid gap-sp-5 lg:grid-cols-[1fr_360px]">
         <section>
           {step === "address" ? (
             <CheckoutAddressForm
@@ -90,16 +90,16 @@ export default async function CheckoutPage({ searchParams }: PageProps) {
           {step !== "address" ? (
             <Link
               href="/checkout?step=address"
-              className="mt-md inline-block font-mono text-label-caps uppercase text-muted underline-offset-4 hover:text-ink hover:underline"
+              className="mt-sp-3 inline-block font-mono text-label-caps uppercase text-muted underline-offset-4 hover:text-ink hover:underline"
             >
               Edit delivery address
             </Link>
           ) : null}
         </section>
 
-        <aside className="h-fit border border-line p-md">
-          <h2 className="mb-md font-mono text-label-caps uppercase text-muted">Order review</h2>
-          <ul className="m-0 mb-md flex list-none flex-col gap-3 divide-y divide-line p-0">
+        <aside className="h-fit border border-line p-sp-3">
+          <h2 className="mb-sp-3 font-mono text-label-caps uppercase text-muted">Order review</h2>
+          <ul className="m-0 mb-sp-3 flex list-none flex-col gap-3 divide-y divide-line p-0">
             {cart.items.map((item) => (
               <li key={item.id} className="flex items-center justify-between gap-3 pt-3 first:pt-0">
                 <span className="font-sans text-body-sm text-ink">
@@ -129,7 +129,7 @@ export default async function CheckoutPage({ searchParams }: PageProps) {
               </dd>
             </div>
           </dl>
-          <p className="mt-md font-sans text-body-sm text-muted">
+          <p className="mt-sp-3 font-sans text-body-sm text-muted">
             All prices in INR, inclusive of duties and GST.
           </p>
         </aside>

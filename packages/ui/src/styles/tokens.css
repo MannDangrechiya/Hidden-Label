@@ -79,11 +79,20 @@
   --text-label-tag--font-weight: 600;
 
   /* --- Space & grid ---------------------------------------------------- */
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 40px;
+  /* Named "sp-1".."sp-5" rather than xs/sm/md/lg/xl: this Tailwind build resolves a named
+     utility (e.g. `max-w-sm`) from whichever theme namespace defines that exact key first, and
+     a `--spacing-sm` here silently hijacked `max-w-sm`/`max-w-md`/`max-w-xl` (and would hijack
+     `text-sm` etc. too) to return an 8px/16px/40px spacing value instead of Tailwind's own
+     24rem/28rem/36rem container defaults — a real, reproduced bug in this engine, not a
+     one-off typo. Keeping this scale on non-reserved key names avoids the collision entirely
+     rather than chasing it namespace by namespace.
+     `--sp-1` = spacing-xs, `--sp-2` = spacing-sm, `--sp-3` = spacing-md, `--sp-4` = spacing-lg,
+     `--sp-5` = spacing-xl. Usages renamed accordingly, e.g. `gap-sm` → `gap-sp-2`. */
+  --spacing-sp-1: 4px;
+  --spacing-sp-2: 8px;
+  --spacing-sp-3: 16px;
+  --spacing-sp-4: 24px;
+  --spacing-sp-5: 40px;
   --spacing-gutter: 20px;
   --spacing-gutter-tablet: 24px;
   --spacing-gutter-desktop: 32px;

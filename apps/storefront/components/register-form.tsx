@@ -22,8 +22,8 @@ export function RegisterForm() {
   }
 
   return (
-    <form action={submit} className="flex flex-col gap-md" noValidate>
-      <div className="grid grid-cols-2 gap-md">
+    <form action={submit} className="flex flex-col gap-sp-3" noValidate>
+      <div className="grid grid-cols-2 gap-sp-3">
         <Input label="First name" name="first_name" autoComplete="given-name" required error={fields.first_name} />
         <Input label="Last name" name="last_name" autoComplete="family-name" required error={fields.last_name} />
       </div>

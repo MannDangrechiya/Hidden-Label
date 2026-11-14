@@ -15,7 +15,7 @@ const SILHOUETTES = [
 
 export default function FitStudioPage() {
   return (
-    <main className="mx-auto w-full max-w-4xl px-margin py-xl sm:px-margin-tablet lg:px-margin-desktop">
+    <main className="mx-auto w-full max-w-4xl px-margin py-sp-5 sm:px-margin-tablet lg:px-margin-desktop">
       <div className="mb-8 border-b border-line pb-6">
         <span className="font-mono text-label-caps uppercase text-muted">AI-04 Architecture</span>
         <h1 className="mt-1 font-display text-headline-xl uppercase text-ink">

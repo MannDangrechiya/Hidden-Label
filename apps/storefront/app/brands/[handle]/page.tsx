@@ -50,8 +50,8 @@ export default async function BrandPage({ params, searchParams }: PageProps) {
   if (!error && !data) notFound();
 
   return (
-    <main className="mx-auto w-full max-w-page px-margin py-lg sm:px-margin-tablet lg:px-margin-desktop">
-      <nav aria-label="Breadcrumb" className="mb-md">
+    <main className="mx-auto w-full max-w-page px-margin py-sp-4 sm:px-margin-tablet lg:px-margin-desktop">
+      <nav aria-label="Breadcrumb" className="mb-sp-3">
         <Breadcrumb
           items={[
             { label: "Home", href: "/" },
@@ -70,9 +70,9 @@ export default async function BrandPage({ params, searchParams }: PageProps) {
         <ErrorState title="Could not load this brand" message={error} />
       ) : data ? (
         <>
-          <header className="relative mb-lg flex flex-col gap-3 border-b border-line pb-lg">
+          <header className="relative mb-sp-4 flex flex-col gap-3 border-b border-line pb-sp-4">
             {data.brand.hero_url ? (
-              <div className="relative mb-md aspect-[21/9] w-full overflow-hidden bg-surface-container">
+              <div className="relative mb-sp-3 aspect-[21/9] w-full overflow-hidden bg-surface-container">
                 <img
                   src={data.brand.hero_url}
                   alt={data.brand.name}

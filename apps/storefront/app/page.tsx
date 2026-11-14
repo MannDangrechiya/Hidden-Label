@@ -102,7 +102,7 @@ export default async function HomePage() {
 
       {/* Trending Drops & Market Movers Grid */}
       <section className="mx-auto w-full max-w-page px-margin sm:px-margin-tablet lg:px-margin-desktop">
-        <div className="mb-6 flex items-end justify-between gap-md border-b border-line pb-3">
+        <div className="mb-6 flex items-end justify-between gap-sp-3 border-b border-line pb-3">
           <div>
             <span className="font-mono text-[11px] uppercase text-muted">Secondary Orderbook</span>
             <h2 className="font-display text-headline-md uppercase text-ink">Trending Vault Drops</h2>

@@ -47,7 +47,7 @@ export function VerifyForm({ destination, purpose, redirectTo }: VerifyFormProps
   }
 
   return (
-    <div className="flex flex-col gap-md">
+    <div className="flex flex-col gap-sp-3">
       <p className="font-sans text-body-sm text-on-surface-variant">
         We send a six-digit code to <strong>{destination}</strong>.
       </p>
@@ -68,7 +68,7 @@ export function VerifyForm({ destination, purpose, redirectTo }: VerifyFormProps
           if (!challengeId && !codeFromForm) return;
           submit(formData);
         }}
-        className="flex flex-col gap-md"
+        className="flex flex-col gap-sp-3"
       >
         <input type="hidden" name="challenge_id" value={challengeId ?? ""} />
         <Input

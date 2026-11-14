@@ -19,7 +19,7 @@ const WIDTHS = [
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="mb-xl flex flex-col gap-md">
+    <section className="mb-sp-5 flex flex-col gap-sp-3">
       <h2 className="border-b border-line pb-2 font-mono text-label-caps uppercase text-muted">
         {title}
       </h2>
@@ -30,8 +30,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function DesignPage() {
   return (
-    <main className="mx-auto w-full max-w-page px-margin py-lg sm:px-margin-tablet lg:px-margin-desktop">
-      <header className="mb-xl flex flex-col gap-2 border-b border-ink pb-md">
+    <main className="mx-auto w-full max-w-page px-margin py-sp-4 sm:px-margin-tablet lg:px-margin-desktop">
+      <header className="mb-sp-5 flex flex-col gap-2 border-b border-ink pb-sp-3">
         <h1 className="font-display type-display-hero uppercase">The Hidden Label</h1>
         <p className="font-mono text-label-caps uppercase text-muted">
           Design system · tokens from docs/DESIGN_TOKENS.md
@@ -54,7 +54,7 @@ export default function DesignPage() {
       </Section>
 
       <Section title="Colour">
-        <div className="grid grid-cols-2 gap-sm sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-sp-2 sm:grid-cols-4">
           {[
             ["canvas", "bg-canvas border border-line"],
             ["surface-container", "bg-surface-container"],
@@ -74,7 +74,7 @@ export default function DesignPage() {
       </Section>
 
       <Section title="Buttons">
-        <div className="flex flex-wrap items-center gap-md">
+        <div className="flex flex-wrap items-center gap-sp-3">
           <Button>Add to bag</Button>
           <Button variant="secondary">Select size</Button>
           <Button disabled>Sold out</Button>
@@ -83,14 +83,14 @@ export default function DesignPage() {
       </Section>
 
       <Section title="Inputs">
-        <div className="grid gap-md sm:grid-cols-2">
+        <div className="grid gap-sp-3 sm:grid-cols-2">
           <Input label="Email" placeholder="you@example.com" hint="Order updates go here." />
           <Input label="Pincode" placeholder="400001" error="Not serviceable yet." />
         </div>
       </Section>
 
       <Section title="Price & badges">
-        <div className="flex flex-wrap items-center gap-md">
+        <div className="flex flex-wrap items-center gap-sp-3">
           <Price value={moneyFromRupees(38990)} size="lg" />
           <Price value={money(12345)} />
           <Price value={null} />
@@ -102,7 +102,7 @@ export default function DesignPage() {
       </Section>
 
       <Section title="Responsive product grid">
-        <div className="flex flex-col gap-lg">
+        <div className="flex flex-col gap-sp-4">
           {WIDTHS.map(({ label, width }) => (
             <div key={label} className="flex flex-col gap-2">
               <span className="font-mono text-label-caps uppercase text-muted">{label}</span>
@@ -137,7 +137,7 @@ export default function DesignPage() {
       </Section>
 
       <Section title="Empty & error states">
-        <div className="grid gap-md lg:grid-cols-2">
+        <div className="grid gap-sp-3 lg:grid-cols-2">
           <EmptyState
             title="No products match"
             description="Try removing a filter or browsing all brands."

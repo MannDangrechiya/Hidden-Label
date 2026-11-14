@@ -25,7 +25,7 @@ export default async function InspectionCertificatePage({ params }: PageProps) {
   }
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-margin py-xl sm:px-margin-tablet lg:px-margin-desktop">
+    <main className="mx-auto w-full max-w-4xl px-margin py-sp-5 sm:px-margin-tablet lg:px-margin-desktop">
       {/* Top Banner */}
       <div className="mb-6 flex flex-wrap items-center justify-between border-b border-line pb-4">
         <div>

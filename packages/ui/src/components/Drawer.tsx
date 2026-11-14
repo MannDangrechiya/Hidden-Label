@@ -38,11 +38,11 @@ export function Drawer({ open, onClose, title, children, side = "right" }: Drawe
         aria-label={title}
         onClick={(event) => event.stopPropagation()}
         className={[
-          "absolute top-0 flex h-full w-full max-w-md flex-col overflow-y-auto border-ink bg-white p-lg",
+          "absolute top-0 flex h-full w-full max-w-md flex-col overflow-y-auto border-ink bg-white p-sp-4",
           side === "right" ? "right-0 border-l" : "left-0 border-r",
         ].join(" ")}
       >
-        <div className="mb-md flex items-center justify-between gap-4 border-b border-line pb-md">
+        <div className="mb-sp-3 flex items-center justify-between gap-4 border-b border-line pb-sp-3">
           <h2 className="font-display text-headline-sm uppercase">{title}</h2>
           <button
             type="button"

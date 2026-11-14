@@ -38,7 +38,7 @@ export function ReturnForm({ orderId, items }: { orderId: string; items: Returna
   const selected = items.find((item) => item.id === itemId);
 
   return (
-    <form action={submit} className="flex flex-col gap-md">
+    <form action={submit} className="flex flex-col gap-sp-3">
       <Select label="Item" name="order_item_id" value={itemId} onChange={(event) => setItemId(event.target.value)}>
         {items.map((item) => (
           <option key={item.id} value={item.id}>
