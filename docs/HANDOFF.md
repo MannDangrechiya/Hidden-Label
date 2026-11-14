@@ -2,17 +2,40 @@
 
 **Written:** 2026-11-14, after stopping two in-flight background builds (storefront journey +
 admin app) to free up agent capacity. This doc is the source of truth for "what's actually true
-right now" — it supersedes the "Known gaps" section at the bottom of `docs/BUILD_LOG.md`, which is
-stale (written before this round of work). Read this file first, then `docs/PROJECT_PLAN.md`,
-`docs/SCREEN_MAP.md`, `docs/API_PLAN.md`, `agent/RULES.md` for architecture/scope/rules.
+right now". Read this file first, then `docs/PROJECT_PLAN.md`, `docs/SCREEN_MAP.md`,
+`docs/API_PLAN.md`, `docs/BUILD_LOG.md`, `agent/RULES.md` for architecture/scope/rules.
+
+## Autonomy contract — read this before anything else
+
+The client has given **full, standing authorization** to work through the entire project to a
+real, live, production-ready end state **without stopping to ask for approval at each step.**
+Whichever agent (human-supervised or not) picks this up should:
+
+- Read `docs/BUILD_LOG.md` "Known gaps" and this file's "Immediate next steps", then just keep
+  working down the list, phase by phase, making reasonable engineering decisions on anything not
+  explicitly decided in `docs/PROJECT_PLAN.md` §8 (the decisions log) — don't pause to confirm
+  things like component naming, file structure, or minor UX choices.
+- Keep `docs/BUILD_LOG.md` and this file honestly updated as you go (what's verified vs. not),
+  commit real progress, and move to the next item. Don't wait for a "go ahead" between phases.
+- **Only stop and surface a question to the client when you are genuinely blocked on one of
+  these, because no agent can substitute for them:**
+  1. A real third-party credential/account: Razorpay key/secret, Shiprocket account, an email
+     provider (Resend) API key, an SMS/OTP provider key, S3/image-storage credentials.
+  2. A hosting/domain/deployment decision: which host, which domain, DNS access, SSL — anything
+     that needs the client's actual accounts or money.
+  3. A genuine business-rule ambiguity that isn't already answered in `docs/PROJECT_PLAN.md` §8
+     or `docs/OPEN_QUESTIONS.md` (e.g. a legal/compliance call, a pricing/refund policy question)
+     — and even then, write it to `docs/OPEN_QUESTIONS.md` and keep working on everything else
+     instead of stalling the whole project on it.
+  Everything else — code structure, which library, how a screen behaves, test coverage, bug
+  fixes, refactors — is the agent's call to make and move on.
 
 ## State of the working tree right now
 
-**Nothing from this round is committed yet.** `git status` shows modified + new files across
-`apps/backend`, `apps/storefront`, `apps/admin` (new), `packages/ui`, `packages/shared`,
-`docs/API_PLAN.md`. The last commit (`463338b`) only contains Phase 1 (DB + backend boot +
-minimal storefront: home/catalog/PDP/cart). Do **not** assume anything beyond that commit is
-tested end-to-end — the two build agents were stopped mid-verification, before they filed their
+Everything described below is **committed** (see `git log`: `463338b` Phase 1, `3c1cf7e` the
+storefront/admin/Razorpay build, `a71a4ce` this doc's status update). Do **not** assume anything
+beyond `463338b` is tested end-to-end though — the two build agents that produced `3c1cf7e` were
+stopped mid-verification, before they filed their
 own completion reports or updated `docs/BUILD_LOG.md`. Treat everything below as "built, partially
 self-checked, not independently verified" until you've actually exercised it.
 
