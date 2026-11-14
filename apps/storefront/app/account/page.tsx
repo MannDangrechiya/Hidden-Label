@@ -83,6 +83,18 @@ export default async function AccountPage() {
 
           <nav aria-label="Account" className="mt-md flex flex-wrap gap-3">
             <Link
+              href="/account/orders"
+              className="border border-ink px-4 py-2 font-mono text-label-caps uppercase text-ink no-underline hover:bg-ink hover:text-white"
+            >
+              Orders
+            </Link>
+            <Link
+              href="/account/bids"
+              className="border border-ink px-4 py-2 font-mono text-label-caps uppercase text-ink no-underline hover:bg-ink hover:text-white"
+            >
+              My Bids
+            </Link>
+            <Link
               href="/account/wishlist"
               className="border border-ink px-4 py-2 font-mono text-label-caps uppercase text-ink no-underline hover:bg-ink hover:text-white"
             >

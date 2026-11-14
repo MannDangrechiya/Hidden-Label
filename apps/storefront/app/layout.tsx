@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { StyleConcierge } from "@/components/style-concierge";
+import { MarketTicker } from "@/components/market-ticker";
 import "./globals.css";
 
 // Self-hosted at build time by next/font — no runtime CDN request, no layout shift.
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       suppressHydrationWarning
     >
       <body className="flex min-h-screen flex-col bg-canvas text-on-surface antialiased">
+        <MarketTicker />
         <SiteHeader />
         <div className="flex-1">{children}</div>
         <SiteFooter />

@@ -7,7 +7,11 @@ import { WishlistButton } from "@/components/wishlist-button";
 import { PriceIndexCard } from "@/components/price-index-card";
 import { InspectionViewer } from "@/components/inspection-viewer";
 import { FitStudioWidget } from "@/components/fit-studio-widget";
-import { fetchResaleProductIndex, fetchInspectionCertificate } from "@/lib/resale";
+import {
+  fetchResaleProductIndex,
+  fetchInspectionCertificate,
+  type VariantResaleData,
+} from "@/lib/resale";
 import {
   fetchProduct,
   fetchWishlist,
@@ -34,18 +38,30 @@ export async function generateMetadata({ params }: PageProps) {
   }
 }
 
-function sizesFor(product: StoreProduct): SizeOption[] {
+function sizesFor(product: StoreProduct, resaleVariants?: VariantResaleData[]): SizeOption[] {
   // The store API does not guarantee variant order; sizes are shown numerically (UK 7 → UK 10).
   const ordered = [...(product.variants ?? [])].sort((a, b) =>
     String(a.title ?? "").localeCompare(String(b.title ?? ""), undefined, { numeric: true }),
   );
 
-  return ordered.map((variant) => ({
-    variantId: variant.id,
-    label: variant.title ?? variant.sku ?? "One size",
-    available: isVariantAvailable(variant),
-    quantity: knownStock(variant),
-  }));
+  const asks = (resaleVariants ?? [])
+    .map((v) => v.lowest_ask)
+    .filter((a): a is number => typeof a === "number" && a > 0);
+  const minAsk = asks.length > 0 ? Math.min(...asks) : null;
+
+  return ordered.map((variant) => {
+    const rv = resaleVariants?.find((v) => v.variant_id === variant.id);
+    const ask = rv?.lowest_ask ?? variant.calculated_price?.calculated_amount ?? null;
+    return {
+      variantId: variant.id,
+      label: variant.title ?? variant.sku ?? "One size",
+      available: isVariantAvailable(variant),
+      quantity: knownStock(variant),
+      lowestAsk: ask,
+      highestBid: rv?.highest_bid ?? null,
+      isLowestPriceInRun: ask !== null && minAsk !== null && ask === minAsk,
+    };
+  });
 }
 
 export default async function ProductPage({ params }: PageProps) {
@@ -76,14 +92,14 @@ export default async function ProductPage({ params }: PageProps) {
 
   if (!product) notFound();
 
-  const sizes = sizesFor(product);
+  const resaleData = await fetchResaleProductIndex(handle).catch(() => null);
+  const sizes = sizesFor(product, resaleData?.variants);
   const firstAvailable = (product.variants ?? []).find(isVariantAvailable);
   const amount = firstAvailable?.calculated_price?.calculated_amount ?? null;
   const brand = typeof product.metadata?.brand === "string" ? product.metadata.brand : null;
   const soldOut = sizes.length > 0 && sizes.every((size) => !size.available);
 
   const session = await getCurrentCustomer().catch(() => null);
-  const resaleData = await fetchResaleProductIndex(handle).catch(() => null);
   const sampleSerial = resaleData?.variants?.find((v) => v.inspection_summary?.unit_serial)
     ?.inspection_summary?.unit_serial;
   const inspection = sampleSerial
