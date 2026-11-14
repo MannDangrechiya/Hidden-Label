@@ -167,6 +167,31 @@ to verify before this is "done" — check `apps/backend/src/lib/admin-auth.ts` /
 5. Only then update `docs/BUILD_LOG.md` with what's actually verified, commit, and move to
    Phase 6 (integrations) using real sandbox credentials once the client provides them.
 
+## Scope change (2026-11-14): AI/resale layer is now in-scope for v1
+
+The client confirmed the product is explicitly modelled on **CultureCircle** (sneaker/streetwear
+resale + authentication marketplace) — "full resale platform", not just a multi-brand catalog.
+This **reverses decision D1**; recorded as **D7** in `docs/PROJECT_PLAN.md` §8. What changes:
+
+- `AI-01` Search by Sight, `AI-02` Price Index (asks/bids/price history per size), `AI-03` 360°
+  Inspection + condition grading, `AI-04` Fit Studio, `AI-05` Style Concierge, and bidding/ask
+  mechanics are **required for v1**, not deferred — see `docs/SCREEN_MAP.md` §3 (rewritten) for
+  the per-screen target behaviour and the new data-model requirements.
+- This is planned as its **own phase, P5.5**, done after P4 (storefront journey) and P5 (admin)
+  are verified — do not bolt resale/bidding logic onto pages that currently assume one sell price
+  per variant without first designing the data model (asks, bids, price history, condition
+  grades) the same way P3 designed the core commerce model.
+- D2 (no unsubstantiated claims) still fully applies: a "verified"/"deadstock"/authentication
+  badge must be backed by a real grading record before it renders. Feature flags
+  (`NEXT_PUBLIC_FEATURE_AI_LAYER`/`_INSPECTION`/`_FIT_STUDIO`/`_BIDDING`) stay as the per-feature
+  rollout gate — default off, flipped on only once each sub-feature actually works.
+- Two of the five AI screens need an external provider decision + credential before they can go
+  live for real (same category as Razorpay/Shiprocket, not something an agent can substitute
+  for): `AI-01` needs a vision/image-search API or a trained similarity index; `AI-05` needs an
+  LLM provider/API key for the concierge chat.
+- This materially increases total scope/timeline beyond the original v1 estimate — treat P5.5 as
+  genuinely new work, not something that fits inside the already-planned P6-P9 time.
+
 ## Standing instruction from the client (for context, don't re-ask)
 
 The client has given blanket authorization to proceed through the full project end-to-end without

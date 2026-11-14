@@ -72,37 +72,44 @@ Separate app, separate auth, separate deploy. Every route enforces RBAC server-s
 
 ---
 
-## 3. AI retention layer — **preserved, deferred to V2** (approved D1, 2026-11-14)
+## 3. AI / resale layer — **IN SCOPE for v1, as Phase 5.5** (D1 reversed by D7, 2026-11-14)
 
-**None of these screens is removed.** Each keeps its Stitch frame, its route and its place in
-this map. They are disabled behind feature flags in v1, with entry points not rendered so no
-customer ever sees a promise the platform does not keep.
+**Status changed.** D1 (2026-11-14) originally deferred this to V2. D7 (2026-11-14) reversed
+that: the client confirmed the product is explicitly a CultureCircle-style resale/authentication
+marketplace, so these screens are required for v1, not optional polish. They are still built as
+their **own planned phase (P5.5)**, after the core storefront/admin (P4/P5) are verified — not
+retrofitted ad hoc into pages that assume a single sell price.
 
-| Code | Screen | Implied capability | Flag (default off) | v1 behaviour |
+| Code | Screen | Implied capability | Flag (rollout gate, default off until built) | v1 target behaviour |
 |---|---|---|---|---|
-| AI-01 | Search by Sight | vision model + visual similarity index | `NEXT_PUBLIC_FEATURE_AI_LAYER` | nav entry hidden; route 404s |
-| AI-02 | The Price Index | per-size price history, asks/valuation feed | `NEXT_PUBLIC_FEATURE_AI_LAYER` | nav entry hidden; route 404s |
-| AI-03 | 360° Inspection Viewer | turntable media + graded condition report | `NEXT_PUBLIC_FEATURE_INSPECTION` | PDP shows static gallery only |
-| AI-04 | Fit Studio | sizing recommendation engine | `NEXT_PUBLIC_FEATURE_FIT_STUDIO` | `U-25` size guide only |
-| AI-05 | Style Concierge (Aura-7) | LLM chat + shoppable outfits | `NEXT_PUBLIC_FEATURE_AI_LAYER` | nav entry hidden; route 404s |
+| AI-01 | Search by Sight | vision model + visual similarity index | `NEXT_PUBLIC_FEATURE_AI_LAYER` | real visual search once a vision API/model is chosen |
+| AI-02 | The Price Index | per-size price history, asks/valuation feed | `NEXT_PUBLIC_FEATURE_AI_LAYER` | real ask/bid price history per variant |
+| AI-03 | 360° Inspection Viewer | turntable media + graded condition report | `NEXT_PUBLIC_FEATURE_INSPECTION` | real condition-grading workflow + photos, per D2 |
+| AI-04 | Fit Studio | sizing recommendation engine | `NEXT_PUBLIC_FEATURE_FIT_STUDIO` | real sizing recommendation, not a static chart |
+| AI-05 | Style Concierge (Aura-7) | LLM chat + shoppable outfits | `NEXT_PUBLIC_FEATURE_AI_LAYER` | real chat backed by catalogue data |
 
 Bid / ask / valuation CTAs inside `U-02`, `U-04`, `U-08` and `U-13` are gated by
-`NEXT_PUBLIC_FEATURE_BIDDING`; with it off, the PDP presents **one sell price per variant** and
-no aftermarket language.
+`NEXT_PUBLIC_FEATURE_BIDDING`. Each flag flips on only once its backing data model and workflow
+are actually built and tested — never render the UI ahead of the real data (D2 still applies in
+full: no "verified"/"deadstock"/authentication claim without a real backend record behind it).
 
-### V2 backlog (preserved, not scheduled)
+### Phase 5.5 scope (new data model required, not frontend-only)
 
-- AI-01 … AI-05 as designed, including their data dependencies
-- Resale mechanics: asks, bids, per-size price history, condition grading, valuation feed
-- RFID / serialisation authentication — **only** once a real physical process is approved (D2)
-- Concierge personalisation, fit engine training data, visual search index
+- Resale mechanics: **asks, bids**, per-size/variant **price history**, valuation feed
+- **Condition grading**: a real authentication/inspection workflow + photo capture, admin review
+  queue, grade stored per unit — this is what AI-03's "360° Inspection" and any "verified" badge
+  must be backed by
+- `AI-01` Search by Sight: a visual-similarity/image-search capability (third-party vision
+  API or a trained index) — needs a provider decision and cost estimate, same category as
+  Razorpay/Shiprocket (external credential needed before it can go live)
+- `AI-05` Style Concierge: an LLM-backed chat with real catalogue grounding — needs an LLM
+  provider/API key decision
+- RFID / physical serialisation authentication stays **deferred** per D2 until a real
+  serialisation process is approved — condition grading does not require RFID to start
 
-Each V2 item needs its own data model, cost estimate and approval before implementation. None
-is implied by the v1 UI.
-
-If D1 = build, this becomes a separate approved phase with its own data model (asks, bids,
-price history per variant, condition grades) and third-party AI spend. It is **not** a
-frontend-only feature.
+Each of the above needs its own mini design pass (data model, admin workflow, third-party
+cost/provider) before implementation — treat P5.5 as its own `docs/`-style plan, not a quick
+add-on, same rigor as P3's commerce model.
 
 ---
 

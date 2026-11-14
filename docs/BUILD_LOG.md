@@ -4,7 +4,17 @@ Last updated: 2026-11-14. This file records what actually runs, what was checked
 separately what exists as code but has **not** been independently verified end-to-end yet. See
 `docs/HANDOFF.md` for the detailed file-by-file breakdown and next-agent instructions.
 
-## Overall status: ~40-45% of the full v1 scope
+## Scope change (2026-11-14): resale/authentication layer now required for v1
+
+Client confirmed the product is explicitly CultureCircle-style (resale + authentication
+marketplace), which **reverses decision D1** (recorded as **D7** in `docs/PROJECT_PLAN.md` §8).
+`AI-01`–`AI-05` (visual search, price index/bidding, 360° inspection + condition grading, fit
+studio, style concierge) are now in-scope for v1, planned as a new **Phase 5.5** after P4/P5 are
+verified — see `docs/SCREEN_MAP.md` §3 and `docs/HANDOFF.md` for details. This is a real scope
+increase, not something that fits inside the original estimate below; the % below is against the
+*original* v1 scope (P0-P10) and does not yet include P5.5's work.
+
+## Overall status: ~40-45% of the original v1 scope (P0-P10, excluding the new P5.5)
 
 Rough honest split, against the 10-phase plan in `docs/PROJECT_PLAN.md`:
 
