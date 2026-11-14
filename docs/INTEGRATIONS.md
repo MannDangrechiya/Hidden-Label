@@ -48,6 +48,20 @@ payment for an order whose stock vanished (auto-refund + admin flag).
 
 ## 2. Shiprocket (shipping)
 
+### Implementation status (2026-11-14)
+- **Built:** `apps/backend/src/lib/shiprocket.ts` (real auth + create-order API client, unit
+  tested against a mocked fetch — never exercised against Shiprocket's live API, no sandbox
+  credentials available here), wired into `POST /admin/shipments` (only labels a shipment
+  `provider: "shiprocket"` when the API call actually returns a real shipment id/AWB; falls back
+  to `manual` honestly on any failure), and a real webhook receiver `POST /webhooks/shiprocket`
+  (shared-token auth via `SHIPROCKET_WEBHOOK_TOKEN`, idempotent via the same
+  `applyShipmentUpdate` helper the admin manual-update route uses).
+- **Not built yet:** the 30-minute polling backstop for shipments with no webhook coverage, the
+  pincode serviceability check at checkout, and RTO auto-handling beyond the basic status mapper.
+  Verify Shiprocket's current webhook auth mechanism against https://apidocs.shiprocket.in/
+  before activating in production — this was built from their documented shapes without a live
+  test.
+
 ### Flow
 1. Admin (or auto on `paid`) creates a shipment: pickup location, weight/dimensions from the
    product record, order items, declared value.

@@ -3,6 +3,7 @@ import { ContainerRegistrationKeys, generateEntityId } from "@medusajs/framework
 import { requestMeta, writeAudit } from "../../../lib/audit";
 import { requireRole } from "../../../lib/admin-auth";
 import { customerStatus, isStale } from "../../../lib/shipment-status";
+import { createShiprocketOrder, isConfigured as shiprocketConfigured } from "../../../lib/shiprocket";
 import { THL_MODULE } from "../../../modules/thl";
 import type ThlModuleService from "../../../modules/thl/service";
 
@@ -70,17 +71,97 @@ export async function POST(req: MedusaRequest<Body>, res: MedusaResponse) {
     return;
   }
 
-  const providerConfigured = Boolean(
-    process.env.SHIPROCKET_EMAIL && process.env.SHIPROCKET_PASSWORD,
-  );
+  // D2/P6: only label a shipment "shiprocket" when Shiprocket's API actually returned a real
+  // shipment — never on credential-presence alone (that was the previous bug: a shipment could
+  // be recorded as `provider: "shiprocket"` with no AWB because the API was never called).
+  let providerResult: {
+    provider: "shiprocket" | "manual";
+    providerShipmentId: string | null;
+    awb: string | null;
+    courier: string | null;
+    labelUrl: string | null;
+    note: string | null;
+  } = {
+    provider: "manual",
+    providerShipmentId: null,
+    awb: null,
+    courier: req.body?.courier ?? null,
+    labelUrl: null,
+    note: null,
+  };
+
+  if (shiprocketConfigured()) {
+    try {
+      const address = (await pg("order_address")
+        .where({ id: order.shipping_address_id })
+        .first()) as Record<string, unknown> | undefined;
+      const lineItems = (await pg("order_line_item as oli")
+        .join("order_item as oi", "oi.item_id", "oli.id")
+        .where("oi.order_id", order.id)
+        .whereNull("oli.deleted_at")
+        .select("oli.product_title", "oli.variant_sku", "oi.quantity", "oli.unit_price")) as Record<
+        string,
+        unknown
+      >[];
+
+      if (!address) throw new Error("Order has no shipping address on file.");
+      if (lineItems.length === 0) throw new Error("Order has no line items.");
+
+      const result = await createShiprocketOrder({
+        orderId: order.id,
+        orderDisplayId: String(order.display_id),
+        orderDate: new Date(order.created_at as string).toISOString().slice(0, 10),
+        customerName: `${address.first_name ?? ""} ${address.last_name ?? ""}`.trim() || "Customer",
+        addressLine1: String(address.address_1 ?? ""),
+        addressLine2: address.address_2 ? String(address.address_2) : undefined,
+        city: String(address.city ?? ""),
+        state: String(address.province ?? ""),
+        pincode: String(address.postal_code ?? ""),
+        phone: String(address.phone ?? ""),
+        email: String(order.email ?? ""),
+        items: lineItems.map((item) => ({
+          name: String(item.product_title ?? "Item"),
+          sku: String(item.variant_sku ?? item.product_title ?? "SKU"),
+          units: Number(item.quantity ?? 1),
+          selling_price: Number(item.unit_price ?? 0),
+        })),
+        subTotalRupees: lineItems.reduce(
+          (sum, item) => sum + Number(item.unit_price ?? 0) * Number(item.quantity ?? 1),
+          0,
+        ),
+        paymentMethod: "COD",
+      });
+
+      providerResult = {
+        provider: "shiprocket",
+        providerShipmentId: result.shipmentId,
+        awb: result.awb,
+        courier: result.courierName ?? providerResult.courier,
+        labelUrl: result.labelUrl,
+        note: null,
+      };
+    } catch (error) {
+      const logger = req.scope.resolve(ContainerRegistrationKeys.LOGGER);
+      logger.warn(
+        `Shiprocket order creation failed for order ${order.display_id}, falling back to manual: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      providerResult.note =
+        "Shiprocket API call failed — recorded as a manual dispatch. See server logs for the cause.";
+    }
+  }
 
   const shipment = await pg.transaction(async (trx) => {
     const [row] = await trx("shipment")
       .insert({
         id: generateEntityId(undefined, "shp"),
         order_id: orderId,
-        provider: providerConfigured ? "shiprocket" : "manual",
-        courier: req.body?.courier ?? null,
+        provider: providerResult.provider,
+        provider_shipment_id: providerResult.providerShipmentId,
+        awb: providerResult.awb,
+        courier: providerResult.courier,
+        label_url: providerResult.labelUrl,
         status: "created",
         last_synced_at: new Date(),
       })
@@ -93,12 +174,12 @@ export async function POST(req: MedusaRequest<Body>, res: MedusaResponse) {
       entityType: "shipment",
       entityId: row.id,
       summary: `Shipment created for order ${order.display_id}`,
-      changes: { provider: row.provider, courier: row.courier },
+      changes: { provider: row.provider, courier: row.courier, awb: row.awb },
       ...meta,
     });
 
     return row;
   });
 
-  res.status(201).json({ shipment });
+  res.status(201).json({ shipment, note: providerResult.note });
 }

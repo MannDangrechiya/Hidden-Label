@@ -1,8 +1,8 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
-import { ContainerRegistrationKeys, generateEntityId } from "@medusajs/framework/utils";
+import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import { requestMeta, writeAudit } from "../../../../lib/audit";
 import { requireRole } from "../../../../lib/admin-auth";
-import { customerStatus, isStale, mapProviderStatus } from "../../../../lib/shipment-status";
+import { applyShipmentUpdate, customerStatus, isStale } from "../../../../lib/shipment-status";
 import { THL_MODULE } from "../../../../modules/thl";
 import type ThlModuleService from "../../../../modules/thl/service";
 
@@ -46,8 +46,10 @@ export async function GET(
 }
 
 /**
- * POST /admin/shipments/:id — record an AWB and/or a tracking event.
- * Used both by the Shiprocket webhook path and by an operator entering a manual dispatch.
+ * POST /admin/shipments/:id — record an AWB and/or a tracking event for an operator's manual
+ * dispatch. A real Shiprocket webhook cannot call this route (it requires an admin session) —
+ * see `/webhooks/shiprocket`, which shares the same `applyShipmentUpdate` logic so the two paths
+ * can never disagree and both are idempotent on (shipment_id, event_key).
  */
 export async function POST(
   req: MedusaRequest<Body> & { params: { id: string } },
@@ -66,38 +68,15 @@ export async function POST(
     return;
   }
 
-  const status = req.body?.status ? mapProviderStatus(req.body.status) : shipment.status;
-  const eventKey =
-    req.body?.event_key ?? `${status}-${new Date().toISOString().slice(0, 19)}`;
-
   const updated = await pg.transaction(async (trx) => {
-    const [row] = await trx("shipment")
-      .where({ id: shipment.id })
-      .update({
-        status,
-        awb: req.body?.awb ?? shipment.awb,
-        courier: req.body?.courier ?? shipment.courier,
-        last_synced_at: new Date(),
-        shipped_at:
-          status === "picked_up" || status === "in_transit"
-            ? (shipment.shipped_at ?? new Date())
-            : shipment.shipped_at,
-        delivered_at: status === "delivered" ? new Date() : shipment.delivered_at,
-        updated_at: new Date(),
-      })
-      .returning("*");
-
-    await trx("shipment_event")
-      .insert({
-        id: generateEntityId(undefined, "shpe"),
-        shipment_id: shipment.id,
-        event_key: eventKey,
-        status,
-        occurred_at: new Date(),
-        payload: JSON.stringify({ source: "admin", note: req.body?.note ?? null }),
-      })
-      .onConflict(["shipment_id", "event_key"])
-      .ignore();
+    const { shipment: row, status } = await applyShipmentUpdate(trx, shipment, {
+      status: req.body?.status,
+      awb: req.body?.awb,
+      courier: req.body?.courier,
+      eventKey: req.body?.event_key,
+      source: "admin",
+      note: req.body?.note,
+    });
 
     await writeAudit(trx, {
       actorType: "admin",
