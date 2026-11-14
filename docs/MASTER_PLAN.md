@@ -100,13 +100,30 @@ sell price per variant. Full detail: `docs/SCREEN_MAP.md` §3.
 - `AI-04` Fit Studio — sizing recommendation; can ship as a simpler rules-based version first
   (based on brand + size chart data already in `DATABASE_PLAN.md`) before a trained model.
 
-### 2.4 The two externally-blocked sub-features — flag these to the client early, don't wait
-- `AI-01` Search by Sight: needs a vision/image-search API or a trained similarity index. Pick a
-  provider (e.g. a hosted vision-embedding API), get an API key from the client, scaffold behind
-  `NEXT_PUBLIC_FEATURE_AI_LAYER` same as Razorpay — code the integration now, activate when the
-  key arrives.
-- `AI-05` Style Concierge: needs an LLM provider/API key for a catalogue-grounded chat. Same
-  pattern — scaffold now, activate with a real key.
+### 2.4 The two externally-blocked sub-features (2026-11-14: now wired, needs a key to activate)
+Client chose "whichever is best and free" — implemented against **Google Gemini**
+(`apps/backend/src/lib/gemini.ts`), the only mainstream provider with a genuinely free API tier
+(no card required as of this writing; re-verify current terms before production volume) that
+also does both text and vision in one API, so one key covers both sub-features:
+- `AI-01` Search by Sight: `analyzeSneakerImage()` sends a supplied `image_url` to Gemini's vision
+  model for real keyword extraction, then matches those keywords against the real catalogue in
+  `POST /store/sight-search` — the model never picks a product itself, only describes what it
+  sees, so it can't fabricate a catalogue item. Falls back to the old honest keyword/tag matching
+  (clearly labelled `mode: "keyword_tag_matching_fallback"` vs `"gemini_vision_analysis"`) when no
+  key is set or the call fails.
+- `AI-05` Style Concierge: `generateConciergeReply()` sends the real catalogue + the user's
+  message to Gemini with an explicit instruction to never invent a product or claim an
+  authentication status (D2) — see `POST /store/concierge/chat`. Falls back to the old templated
+  reply on failure/no key.
+- **To activate:** get a free key at https://aistudio.google.com/apikey, set `GEMINI_API_KEY`
+  (and optionally `GEMINI_MODEL`, default `gemini-2.0-flash`) in `apps/backend`'s env, and set
+  `NEXT_PUBLIC_FEATURE_AI_LAYER=true` in `apps/storefront`'s env to show the UI entry points.
+  Neither has been exercised against a live Gemini call in this environment — unit tests mock
+  `fetch` (`apps/backend/src/lib/gemini.test.ts`). Verify a real call once the key is in place
+  before telling the client it's live.
+- `image_data` (a client-uploaded photo, as opposed to a URL) is accepted by the route but not
+  yet analysed — only `image_url` goes through Gemini for now. Wiring a real upload-and-analyse
+  path is the next step once image storage (S3, still blocked — see §9) is in place.
 
 **Exit criterion:** price history and bidding work end-to-end on at least the seeded products
 with real stored data (no mock numbers); a condition grade can be submitted and reviewed through
@@ -226,10 +243,11 @@ production readiness.
 3. Email provider (Resend) API key + sending domain.
 4. SMS/OTP provider choice + API key.
 5. S3-compatible storage credentials (or confirm using Medusa's local file storage short-term).
-6. Vision/image-search provider choice + key (for `AI-01`).
-7. LLM provider choice + key (for `AI-05`).
-8. Hosting provider, domain name, DNS access.
-9. Legal page content: privacy policy, terms, shipping policy, cancellation/returns policy.
-10. The ask/bid matching rule for P5.5 if it's not obvious once the design pass starts (§2.1).
+6. **Gemini API key** (`GEMINI_API_KEY`) — covers both `AI-01` and `AI-05` (client chose
+   "whichever is best and free"; code is wired and tested, just needs the key — see §2.4). Free
+   at https://aistudio.google.com/apikey.
+7. Hosting provider, domain name, DNS access.
+8. Legal page content: privacy policy, terms, shipping policy, cancellation/returns policy.
+9. The ask/bid matching rule for P5.5 if it's not obvious once the design pass starts (§2.1).
 
 Everything else in this plan, an agent executes without asking.

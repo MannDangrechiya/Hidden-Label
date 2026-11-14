@@ -1,6 +1,7 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { ContainerRegistrationKeys, generateEntityId } from "@medusajs/framework/utils";
 import { actorId } from "../../../../lib/auth";
+import { generateConciergeReply, isConfigured as geminiConfigured } from "../../../../lib/gemini";
 
 interface ChatBody {
   thread_id?: string;
@@ -21,15 +22,14 @@ interface ProductItem {
 /**
  * POST /store/concierge/chat
  *
- * Aura-7 Style Concierge (AI-05) — FALLBACK MODE ONLY.
- *
- * D2/D7: this is NOT a real LLM yet — replies are keyword-matched templates grounded only in
- * catalogue text, with no model call. Reply text must never claim "verified"/"authenticated"/
- * "deadstock" condition for a product unless that specific unit actually has an approved
- * `condition_inspection` record (see /store/resale/products/:handle/index, which does check
- * this correctly) — this route does not look up inspection records, so it must not make any
- * authentication claim at all. The storefront must keep this entry point hidden behind
- * `NEXT_PUBLIC_FEATURE_AI_LAYER` until a real LLM provider is wired (docs/MASTER_PLAN.md §2.4).
+ * Aura-7 Style Concierge (AI-05). Real LLM reply via Gemini when `GEMINI_API_KEY` is configured
+ * — the model only ever sees the real catalogue (see `lib/gemini.ts`'s prompt) and is explicitly
+ * told never to invent a product or claim an authentication status it can't know (D2). Falls
+ * back to the keyword-matched template below when Gemini isn't configured or the call fails, so
+ * the feature degrades to "still useful, still honest" rather than erroring. Either way, no
+ * authentication claim is made here — that only ever comes from a real `condition_inspection`
+ * record shown on the product's own page. Keep this entry point hidden behind
+ * `NEXT_PUBLIC_FEATURE_AI_LAYER` until you're ready to show it (docs/MASTER_PLAN.md §2.4).
  */
 export async function POST(req: MedusaRequest<ChatBody>, res: MedusaResponse) {
   const customerId = actorId(req) ?? null;
@@ -111,12 +111,30 @@ export async function POST(req: MedusaRequest<ChatBody>, res: MedusaResponse) {
   const first = matchedProducts[0];
   const second = matchedProducts[1];
 
-  if (first && second) {
-    replyText = `Based on your preference for "${message.trim()}", I'd point you toward the ${first.title}. Its archive profile pairs effortlessly with relaxed denim or tailored trousers. For an alternative rotation piece, the ${second.title} brings balanced proportions. Check each product's authenticity report for the specific unit's inspection status before you buy.`;
-  } else if (first) {
-    replyText = `For "${message.trim()}", the standout silhouette in our catalogue is the ${first.title}. It features iconic heritage lines and premium leather tooling. Pair it with neutral streetwear layers to let the silhouette take center stage — its listing page shows the real inspection status for the unit you'd be buying.`;
-  } else {
-    replyText = `Welcome to The Hidden Label. Our catalogue spans Nike, Jordan, Adidas, New Balance, and Salomon. Tell me about your preferred color palette, aesthetic, or daily rotation, and I'll tailor a selection from what's currently listed.`;
+  if (geminiConfigured()) {
+    try {
+      replyText = await generateConciergeReply(
+        message.trim(),
+        catalogProducts.map((p) => ({ title: p.title, handle: p.handle, brand: p.brand_name })),
+      );
+    } catch (error) {
+      const logger = req.scope.resolve(ContainerRegistrationKeys.LOGGER);
+      logger.warn(
+        `Gemini concierge call failed, falling back to template reply: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  }
+
+  if (!replyText) {
+    if (first && second) {
+      replyText = `Based on your preference for "${message.trim()}", I'd point you toward the ${first.title}. Its archive profile pairs effortlessly with relaxed denim or tailored trousers. For an alternative rotation piece, the ${second.title} brings balanced proportions. Check each product's authenticity report for the specific unit's inspection status before you buy.`;
+    } else if (first) {
+      replyText = `For "${message.trim()}", the standout silhouette in our catalogue is the ${first.title}. It features iconic heritage lines and premium leather tooling. Pair it with neutral streetwear layers to let the silhouette take center stage — its listing page shows the real inspection status for the unit you'd be buying.`;
+    } else {
+      replyText = `Welcome to The Hidden Label. Our catalogue spans Nike, Jordan, Adidas, New Balance, and Salomon. Tell me about your preferred color palette, aesthetic, or daily rotation, and I'll tailor a selection from what's currently listed.`;
+    }
   }
 
   // 5. Record assistant response
