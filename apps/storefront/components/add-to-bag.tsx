@@ -157,7 +157,7 @@ export function AddToBag({ sizes, productHandle, onOpenBidModal }: AddToBagProps
               : "Add to Bag"}
           </span>
           <span className="text-[10px] text-surface/70 tracking-normal normal-case font-sans">
-            Instant Dispatch · 100% Authentic Guarantee
+            Instant Dispatch
           </span>
         </button>
 
@@ -203,17 +203,20 @@ export function AddToBag({ sizes, productHandle, onOpenBidModal }: AddToBagProps
           fabricated price (currentPrice * 1.38, not a real fetched quote) labelled as their
           actual pricing. Re-add only if a real, sourced comparison price is available. */}
 
-      {/* CultureCircle Authenticity Guarantee Seal */}
+      {/* D2: removed "100% Authentic or 200% Money Back" — an absolute, specific-numeric
+          financial guarantee with no enforced inspect-before-ship workflow or refund mechanism
+          behind it. Replaced with an honest description of the real, optional process; a unit
+          with a real inspection record shows its actual report via InspectionViewer above. */}
       <div className="border border-line bg-surface-container/30 p-3 flex items-center gap-3">
         <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-ink text-surface font-mono text-xs">
           🛡️
         </div>
         <div className="text-xs">
-          <span className="font-mono uppercase font-bold text-ink block">
-            100% Authentic or 200% Money Back
-          </span>
+          <span className="font-mono uppercase font-bold text-ink block">Return policy</span>
           <p className="font-sans text-[11px] text-muted">
-            Every pair is physically inspected in-hand by our authentication laboratory before being shipped to you.
+            If something&rsquo;s wrong with your order, contact support within 7 days of delivery
+            — see the authentication report above (when available) for this unit&rsquo;s real
+            inspection status.
           </p>
         </div>
       </div>

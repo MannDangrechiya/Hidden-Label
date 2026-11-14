@@ -35,9 +35,9 @@ export default async function InspectionCertificatePage({ params }: PageProps) {
           <h1 className="mt-1 font-display text-headline-lg uppercase text-ink">
             Certificate of Authenticity
           </h1>
-          <span className="font-mono text-xs text-muted">
-            Permanent Ledger Hash: {inspection.unit_serial}
-          </span>
+          {/* D2: no "ledger"/"hash" language — this is a plain serial, not a cryptographic
+              record. D2 explicitly forbids implying a Merkle/tamper-evident ledger exists. */}
+          <span className="font-mono text-xs text-muted">Unit Serial: {inspection.unit_serial}</span>
         </div>
         <Link
           href={`/products/${inspection.product.handle}`}
@@ -50,28 +50,32 @@ export default async function InspectionCertificatePage({ params }: PageProps) {
       {/* Main Inspection Component */}
       <InspectionViewer inspection={inspection} />
 
-      {/* Certificate Authenticity Guarantees */}
+      {/* D2: this is the real certificate for a unit with an approved condition_inspection
+          record — but the claims on it still must be real. Removed: naming real competitors
+          (CultureCircle/StockX) as if this platform uses or is affiliated with their grading
+          standard (false affiliation risk), and a fabricated lab-test list ("365nm UV spectral
+          reaction", "factory scent adhesive") that doesn't match the actual recorded process
+          (box labelling, size tags, stitching, sole tooling, material feel — see the seeded
+          Authenticity CMS page). */}
       <div className="mt-8 border border-line bg-surface p-6 space-y-4">
         <h3 className="font-mono text-xs uppercase tracking-wider text-ink font-semibold">
-          The Hidden Label 100% Authentication Promise
+          Inspection Report
         </h3>
         <p className="font-sans text-xs text-on-surface-variant leading-relaxed">
-          Every item bearing this unique serial number has passed our multi-point physical verification protocol. Our authentication lab tests material grain density, stitch tension, 365nm UV spectral reaction, factory scent adhesive, packaging typography, and barcode metadata. Any pair failing even a single criterion is permanently excluded from our marketplace.
+          This unit was reviewed against box labelling, size tags, stitching, sole tooling and
+          material feel, compared to the brand&rsquo;s own reference. The grade and notes below
+          are this unit&rsquo;s real, recorded result.
         </p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 pt-2 border-t border-line text-xs font-mono">
           <div>
-            <span className="block text-muted uppercase text-[10px]">Standard</span>
-            <span className="font-semibold text-ink">CultureCircle / StockX Grade A</span>
+            <span className="block text-muted uppercase text-[10px]">Condition grade</span>
+            <span className="font-semibold text-ink">{inspection.condition_grade}</span>
           </div>
           <div>
-            <span className="block text-muted uppercase text-[10px]">Verification Date</span>
+            <span className="block text-muted uppercase text-[10px]">Inspection Date</span>
             <span className="font-semibold text-ink">
-              {inspection.inspected_at ? new Date(inspection.inspected_at).toLocaleDateString("en-IN") : "Verified"}
+              {inspection.inspected_at ? new Date(inspection.inspected_at).toLocaleDateString("en-IN") : "Pending"}
             </span>
-          </div>
-          <div>
-            <span className="block text-muted uppercase text-[10px]">Jurisdiction</span>
-            <span className="font-semibold text-ink">India (INR duties included)</span>
           </div>
         </div>
       </div>

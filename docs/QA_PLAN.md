@@ -113,13 +113,26 @@ make a run green.
 4. **State audit** — every data-driven component demonstrates loading, empty, error, success,
    disabled, unavailable.
 5. **Copy honesty** — per approved D2, v1 may only state what the platform substantiates. For
-   every claim on screen (tier, "only N left", delivery estimate, coupon terms, order status),
-   name the backend field or service that makes it true. The following must **not appear
-   anywhere in v1**, including alt text, meta descriptions and emails: escrow / "held in escrow",
-   RFID, "Merkle", "tamper-evident ledger", KYC, "verified authentic" product badges,
-   aftermarket / ask / bid / valuation language. If a component only makes sense with one of
-   those claims, the component is removed from v1 — not softened, footnoted or asterisked.
-   Release blocker.
+   every claim on screen (tier, "only N left", delivery estimate, coupon terms, order status,
+   price-history/bid/ask figures), name the backend field or service that makes it true. The
+   following must **not appear anywhere in v1**, including alt text, meta descriptions and
+   emails: escrow / "held in escrow", RFID, "Merkle", "tamper-evident ledger", KYC, a "verified"/
+   "authenticated"/"guaranteed" claim on any screen that is not conditioned on a real, approved
+   `condition_inspection` record for that specific unit, a fabricated/placeholder price or trend
+   number shown in place of a missing real value, and any price/activity comparison against a
+   named competitor or market that is not backed by a real fetched quote. (D7, 2026-11-14,
+   reversed D1's blanket ban on ask/bid/valuation/resale language — that mechanism is now
+   in-scope for v1 as Phase 5.5 — but every individual claim it renders must still independently
+   satisfy this rule; D7 did not grant a pass on fabricated numbers or unconditional
+   authentication claims.) If a component only makes sense with an unsubstantiated claim, the
+   component is removed or rewritten — not softened, footnoted or asterisked. Release blocker.
+   **Run this as a literal grep, not a one-time read-through** — search storefront
+   `app/`+`components/` for `verified|authenticated|guarantee|escrow|Merkle|KYC|StockX|FlightClub`
+   (case-insensitive) before every release and manually judge every hit against the rule above.
+   A 2026-11-14 audit found and fixed exactly this class of defect after a prior pass had reported
+   "all checks passed" based only on typecheck/lint/test/walkthrough — those tools cannot catch
+   dishonest copy, so this grep is a mandatory, separate, standing step, not optional once
+   automated tests are green.
 6. **Typography check** — money renders in JetBrains Mono with tabular figures everywhere
    (including admin tables and emails); `label-caps` is uppercase and 0.12em tracked everywhere.
 

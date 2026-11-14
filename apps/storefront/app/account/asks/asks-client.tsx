@@ -37,8 +37,11 @@ export function CustomerAsksClient({
       {asks.length === 0 ? (
         <div className="border border-line bg-surface p-8 text-center">
           <p className="font-mono text-xs uppercase text-muted mb-2">No active seller consignments</p>
+          {/* D2: no "guarantees your payout" / blanket "verifies every pair" claim —
+              payout and inspection both depend on the real review process completing. */}
           <p className="font-sans text-xs text-on-surface-variant max-w-md mx-auto mb-4">
-            Turn your kicks into cash. List in 60 seconds with 0 listing fees. Our authentication team verifies every pair before dispatch and guarantees your payout.
+            Turn your kicks into cash. List in 60 seconds with 0 listing fees. Your listing goes
+            through our review process before it pays out.
           </p>
           <Link
             href="/sell"

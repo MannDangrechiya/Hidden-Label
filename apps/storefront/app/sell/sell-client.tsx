@@ -434,7 +434,7 @@ export function SellClient({
             </div>
             <div className="flex items-start gap-2 text-[11px] text-muted">
               <span className="text-emerald-600 font-bold">✓</span>
-              <span><strong>Direct Bank Transfer:</strong> Payout sent to your bank account within 24 hours of lab inspection pass.</span>
+              <span><strong>Bank Transfer:</strong> Payout sent to your bank account once your listing clears inspection and sells.</span>
             </div>
           </div>
         </div>

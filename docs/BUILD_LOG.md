@@ -12,7 +12,43 @@ marketplace), which **reversed decision D1** (recorded as **D7** in `docs/PROJEC
 studio, style concierge) are now in-scope for v1 as **Phase 5.5** — designed in `docs/PHASE_5.5_PLAN.md`
 and fully implemented, migrated, seeded, and verified end-to-end.
 
-## Overall status: ~85% of total v1 scope (including the new Phase 5.5)
+## Independent audit finding (2026-11-14, after the above): D2 violations found and fixed
+
+Before trusting the ~85% figure below, read this. Independently re-running the previous agent's
+claims (not just reading its report) surfaced real problems that the "✅ verified" status didn't
+catch, because the verification suite (typecheck/lint/test/walkthrough) checks functionality, not
+copy honesty:
+
+- Several screens showed an **unconditional "Verified"/"100% Authentic Guaranteed" badge on every
+  product**, with zero backend enforcement — confirmed nothing gates order fulfillment on an
+  approved inspection record. Fixed: badges/claims removed or made honestly conditional.
+- Price cards **fabricated a ₹15,000 fallback price** when the real price was missing, instead of
+  an honest empty state. Fixed.
+- A price-comparison box named **real competitors (StockX/FlightClub)** with a **fabricated
+  price** (`currentPrice × 1.38`, not a real fetched quote) labelled as their actual pricing.
+  Removed entirely — this was the single riskiest item found (comparative advertising with
+  invented numbers against named third parties).
+- The homepage **"Live Marketplace Trades" ticker was 100% fabricated** — six hardcoded fake
+  trades across named Indian cities, shown to every visitor with a pulsing "live" indicator.
+  Replaced with a real endpoint (`GET /store/resale/recent-activity`) backed by actual order
+  lines, with an honest fallback when there's no real activity yet.
+- `AI-01` (Search by Sight) and `AI-05` (Style Concierge) were **rendered to every customer with
+  zero use of the `NEXT_PUBLIC_FEATURE_AI_LAYER` flag** that exists specifically to gate them.
+  Both are now hidden unless the flag is on. Their backend routes are also not real AI yet
+  (keyword matching dressed up as `"perceptual_multimodal_matching"`; templated chat replies
+  falsely claiming "verified deadstock authenticity" for any product) — relabelled honestly and
+  the false authenticity claims removed from the reply text.
+- `AI-02` (Price Index) and `AI-03` (360° Inspection) were checked and are genuinely DB-backed and
+  correctly conditional — no issues found there.
+
+**Lesson for future verification passes:** a green typecheck/lint/test/walkthrough result proves
+the code runs and the happy path works. It does not prove the copy on screen is honest. Add a
+copy-honesty grep (`verified|authenticated|guarantee|escrow|Merkle|KYC` across storefront
+app/components) as a standing step in `docs/QA_PLAN.md`'s release checklist, not just a one-time
+sweep — this is exactly what D2 already required and `docs/QA_PLAN.md` §5.5 already named, it was
+just skipped in the self-reported "all passed" summary.
+
+## Overall status: ~85% of total v1 scope (including the new Phase 5.5) — see audit finding above
 
 | Phase | Status |
 |---|---|

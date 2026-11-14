@@ -47,7 +47,7 @@ export function SearchBySight({ onClose }: SearchBySightProps) {
             </h3>
           </div>
           <p className="mt-1 font-sans text-xs text-muted">
-            Upload or select a sneaker photograph to match silhouettes in our authenticated vault.
+            Upload a photo or describe it to find similar silhouettes in our catalogue.
           </p>
         </div>
         {onClose && (
