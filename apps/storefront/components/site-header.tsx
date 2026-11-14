@@ -32,7 +32,7 @@ export async function SiteHeader() {
       <div className="mx-auto flex w-full max-w-page items-center justify-between gap-md px-margin py-4 sm:px-margin-tablet lg:px-margin-desktop">
         <Link
           href="/"
-          className="font-display text-headline-sm uppercase tracking-[-0.02em] text-ink no-underline"
+          className="shrink-0 whitespace-nowrap font-display text-[15px] uppercase tracking-[-0.02em] text-ink no-underline sm:text-headline-sm"
         >
           The Hidden Label
         </Link>
@@ -49,7 +49,7 @@ export async function SiteHeader() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-md">
+        <div className="flex items-center gap-3 sm:gap-md">
           <SearchOverlay />
           <Link
             href={session ? "/account/wishlist" : "/login"}
