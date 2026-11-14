@@ -271,16 +271,20 @@ export default async function seedPhase55({ container }: ExecArgs) {
       const detailPhotos = [
         { label: "Toe Box & Perforations", url: `${thumb}&macro=toebox` },
         { label: "Medial & Lateral Stitching", url: `${thumb}&macro=stitching` },
-        { label: "Outsole Traction Pattern", url: `${thumb}&macro=outsole` },
-        { label: "Inner Size Tag & UV Matrix", url: `${thumb}&macro=sizetag` },
+        { label: "Outsole Tooling", url: `${thumb}&macro=outsole` },
+        { label: "Inner Size Tag", url: `${thumb}&macro=sizetag` },
       ];
 
+      // D2: the checklist and notes must describe the real recorded inspection process — box
+      // labelling, size tags, stitching, sole tooling, material feel (matching the seeded
+      // Authenticity CMS page) — never an invented lab procedure ("365nm UV spectrum", "scent
+      // profile", "40x magnification") that no equipment on this platform actually performs.
       const checklist = {
-        box_label_qr_match: "verified_authentic",
-        uv_light_stitching: "verified_authentic",
+        box_label_and_size_tag: "matches_brand_reference",
+        stitching: "even_no_loose_threads",
+        sole_tooling: "no_wear_no_adhesive_residue",
         insole_stamping: "intact_unworn",
-        outsole_traction: "factory_deadstock_zero_wear",
-        scent_profile: "factory_deadstock_adhesive",
+        material_feel: "matches_brand_reference",
         accessories_complete: true,
       };
 
@@ -294,7 +298,8 @@ export default async function seedPhase55({ container }: ExecArgs) {
         turntable_media: JSON.stringify(turntableMedia),
         detail_photos: JSON.stringify(detailPhotos),
         checklist: JSON.stringify(checklist),
-        notes: "Factory deadstock condition. Verified under 40x magnification and 365nm UV spectrum. Zero sole oxidation, clean stitches, intact packaging.",
+        notes:
+          "Factory deadstock condition. Box labelling, size tags, stitching, sole tooling and material feel checked against the brand's own reference. No wear, clean stitches, intact packaging.",
         inspected_at: new Date(),
       });
       totalInspections++;
