@@ -11,6 +11,11 @@ interface Suggestion {
 
 const EMPTY: Suggestion = { products: [], brands: [] };
 
+// D2/D7: Search by Sight is not yet backed by a real vision model — until
+// NEXT_PUBLIC_FEATURE_AI_LAYER is on (a real provider key is wired, see
+// docs/MASTER_PLAN.md §2.4), the entry point must not be shown to customers.
+const AI_LAYER_ENABLED = process.env.NEXT_PUBLIC_FEATURE_AI_LAYER === "true";
+
 /**
  * U-06 Search Overlay — keyboard-navigable typeahead over `/api/search` (itself a same-origin
  * proxy for the custom `/store/search/suggest` route). Enter submits to the full results page
@@ -104,15 +109,17 @@ export function SearchOverlay() {
                 className="w-full bg-transparent px-4 py-4 font-sans text-body-md text-ink outline-none placeholder:text-muted"
                 aria-label="Search query"
               />
-              <button
-                type="button"
-                onClick={() => setSightSearchOpen(true)}
-                title="Search by Sight (AI-01)"
-                className="flex items-center gap-1 border-l border-line px-3 py-2 font-mono text-[11px] uppercase tracking-wider text-muted hover:text-ink hover:bg-surface-container/50 whitespace-nowrap"
-              >
-                <span>📷</span>
-                <span className="hidden sm:inline">Sight</span>
-              </button>
+              {AI_LAYER_ENABLED ? (
+                <button
+                  type="button"
+                  onClick={() => setSightSearchOpen(true)}
+                  title="Search by Sight (AI-01)"
+                  className="flex items-center gap-1 border-l border-line px-3 py-2 font-mono text-[11px] uppercase tracking-wider text-muted hover:text-ink hover:bg-surface-container/50 whitespace-nowrap"
+                >
+                  <span>📷</span>
+                  <span className="hidden sm:inline">Sight</span>
+                </button>
+              ) : null}
               <button
                 type="submit"
                 className="px-4 font-mono text-label-caps uppercase text-muted hover:text-ink"
@@ -121,7 +128,7 @@ export function SearchOverlay() {
               </button>
             </form>
 
-            {sightSearchOpen ? (
+            {AI_LAYER_ENABLED && sightSearchOpen ? (
               <div className="p-4 border-t border-line">
                 <SearchBySight
                   onClose={() => {

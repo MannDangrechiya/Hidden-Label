@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "The Vault Catalogue — Curated Footwear & Streetwear | The Hidden Label",
-  description: "Browse authenticated deadstock silhouettes with real-time size valuation in INR.",
+  description: "Browse multi-brand footwear and streetwear with real-time size valuation in INR.",
 };
 
 interface PageProps {
@@ -39,7 +39,10 @@ export default async function CatalogPage({ searchParams }: PageProps) {
         </div>
         <h1 className="font-display text-headline-xl uppercase text-ink">The Vault Catalogue</h1>
         <p className="font-sans text-xs text-muted max-w-2xl">
-          Every pair listed is physically verified, graded, and authenticated by our lab. Buy immediately at the lowest ask, or place a size-specific bid.
+          {/* D2: no blanket authentication claim — only a unit with a real, approved inspection
+              record shows an authentication badge on its own product page. */}
+          Buy immediately at the lowest ask, or place a size-specific bid. Units with a completed
+          lab inspection show their authentication report on the product page.
         </p>
       </header>
 

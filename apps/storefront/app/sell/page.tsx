@@ -5,8 +5,8 @@ import { SellClient } from "./sell-client";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Sell & Consign Authenticated Sneakers | The Hidden Label",
-  description: "Turn your sneaker collection into cash. List in 60 seconds with 0 upfront fees. Every pair is authenticated in our lab with guaranteed payouts.",
+  title: "Sell & Consign Sneakers | The Hidden Label",
+  description: "List your sneakers for sale or consignment. 0 upfront listing fees.",
 };
 
 export default async function SellPage({
@@ -28,8 +28,11 @@ export default async function SellPage({
         <h1 className="font-display text-headline-xl sm:text-headline-2xl uppercase tracking-tight text-ink mb-3">
           Sell on The Hidden Label
         </h1>
+        {/* D2: no unverifiable superlative ("largest") and no "guaranteed"/blanket
+            authentication claim without an enforced workflow behind it. */}
         <p className="font-sans text-sm text-on-surface-variant">
-          Connect with India&rsquo;s largest verified sneaker audience. 0 upfront listing fees. Fast payouts upon physical lab authentication.
+          Reach buyers on The Hidden Label. 0 upfront listing fees — your listing goes through a
+          real inspection and review before it pays out.
         </p>
       </div>
 

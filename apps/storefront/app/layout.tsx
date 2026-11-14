@@ -35,6 +35,11 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+// D2/D7: the concierge chat is not yet backed by a real LLM — until
+// NEXT_PUBLIC_FEATURE_AI_LAYER is on (a real provider key is wired, see
+// docs/MASTER_PLAN.md §2.4), it must not be shown to customers.
+const AI_LAYER_ENABLED = process.env.NEXT_PUBLIC_FEATURE_AI_LAYER === "true";
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
@@ -47,7 +52,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <SiteHeader />
         <div className="flex-1">{children}</div>
         <SiteFooter />
-        <StyleConcierge />
+        {AI_LAYER_ENABLED ? <StyleConcierge /> : null}
       </body>
     </html>
   );

@@ -20,8 +20,14 @@ interface ProductMatchRow {
 /**
  * POST /store/sight-search
  *
- * Search by Sight (AI-01).
- * Visual silhouette and colorway matching for sneaker photographs and screenshots.
+ * Search by Sight (AI-01) — FALLBACK MODE ONLY.
+ *
+ * D2/D7: this is NOT a real computer-vision search yet. There is no vision model or image
+ * embedding here — `image_data`/`image_url` are accepted for forward compatibility but are not
+ * analysed; matching is plain keyword/tag/text matching against the catalogue. The storefront
+ * must keep this entry point hidden behind `NEXT_PUBLIC_FEATURE_AI_LAYER` until a real vision
+ * provider is wired (see docs/MASTER_PLAN.md §2.4) — never present this response as if a photo
+ * was actually inspected.
  */
 export async function POST(req: MedusaRequest<SightSearchBody>, res: MedusaResponse) {
   const { image_url, image_data, tags = [], silhouette_hint } = req.body ?? {};
@@ -93,7 +99,10 @@ export async function POST(req: MedusaRequest<SightSearchBody>, res: MedusaRespo
     detected_features: {
       silhouette: silhouette_hint ?? "Sneaker Low/High Top",
       matched_count: topMatches.length,
-      mode: "perceptual_multimodal_matching",
+      // Honest label — see the route doc comment. Never rename this to imply real image
+      // analysis without actually wiring a vision provider first.
+      mode: "keyword_tag_matching_fallback",
+      image_analysed: false,
     },
   });
 }

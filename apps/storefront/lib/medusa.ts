@@ -470,6 +470,22 @@ export async function fetchHomeBanners(): Promise<BannerSlot[]> {
   return body.banners;
 }
 
+export interface ResaleActivityItem {
+  product_title: string;
+  variant_title: string | null;
+  unit_price: number;
+  created_at: string;
+}
+
+/** Real recent order lines only — see docs/BUILD_LOG.md on the D2 fix that removed the
+ * previous hardcoded "Live Marketplace Trades" ticker. No mock fallback. */
+export async function fetchRecentActivity(): Promise<ResaleActivityItem[]> {
+  const body = await request<{ activity: ResaleActivityItem[] }>("/store/resale/recent-activity", {
+    revalidate: 30,
+  });
+  return body.activity;
+}
+
 export interface CmsPage {
   slug: string;
   kind: string;

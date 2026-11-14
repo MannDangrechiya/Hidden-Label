@@ -109,7 +109,7 @@ export function CatalogClient({ initialProducts, initialSizeFilter }: CatalogCli
 
       {/* Product Results Count */}
       <div className="flex items-center justify-between text-xs font-mono text-muted">
-        <span>Showing {filtered.length} verified silhouettes</span>
+        <span>Showing {filtered.length} silhouettes</span>
         {(selectedBrand !== "all" || selectedSize !== "all") && (
           <button
             type="button"
@@ -135,7 +135,8 @@ export function CatalogClient({ initialProducts, initialSizeFilter }: CatalogCli
             const amount = product.variants?.[0]?.calculated_price?.calculated_amount;
             const price = amount !== null && amount !== undefined ? moneyFromRupees(amount) : null;
             const brand = typeof product.metadata?.brand === "string" ? product.metadata.brand : "Sneaker Vault";
-            const formattedPrice = price ? formatINR(price) : "₹15,000";
+            // D2: never fabricate a price when the real calculated price is missing.
+            const formattedPrice = price ? formatINR(price) : "Price unavailable";
             const variantCount = product.variants?.length ?? 1;
 
             return (
@@ -156,12 +157,9 @@ export function CatalogClient({ initialProducts, initialSizeFilter }: CatalogCli
                       No image
                     </div>
                   )}
-                  <span className="absolute top-2 left-2 border border-line bg-surface/90 px-1.5 py-0.5 font-mono text-[9px] uppercase font-bold text-ink">
-                    Verified
-                  </span>
-                  <span className="absolute bottom-2 right-2 rounded-xs bg-emerald-600 px-1.5 py-0.5 font-mono text-[9px] uppercase font-bold text-white">
-                    ▲ +8.7%
-                  </span>
+                  {/* D2: no blanket "Verified" claim or fabricated trend % here — the real
+                      per-unit authentication status lives on the product page and only
+                      renders when a real approved inspection record exists. */}
                 </div>
 
                 <span className="font-mono text-[10px] uppercase text-muted truncate">
@@ -173,7 +171,7 @@ export function CatalogClient({ initialProducts, initialSizeFilter }: CatalogCli
 
                 <div className="mt-2 pt-2 border-t border-line/60 flex items-baseline justify-between">
                   <div>
-                    <span className="block font-mono text-[9px] uppercase text-muted">Lowest Ask</span>
+                    <span className="block font-mono text-[9px] uppercase text-muted">Price</span>
                     <span className="font-sans text-sm font-bold text-ink">{formattedPrice}</span>
                   </div>
                   <span className="font-mono text-[10px] uppercase text-muted">

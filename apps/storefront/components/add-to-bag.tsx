@@ -79,10 +79,6 @@ export function AddToBag({ sizes, productHandle, onOpenBidModal }: AddToBagProps
     );
   }
 
-  // Calculate market savings compared to overseas customs / retail resale markups
-  const estimatedImportPrice = currentPrice ? Math.round(currentPrice * 1.38) : null;
-  const savings = currentPrice && estimatedImportPrice ? estimatedImportPrice - currentPrice : null;
-
   return (
     <div className="flex flex-col gap-5">
       {/* CultureCircle Size-Wise Pricing Selector */}
@@ -91,7 +87,9 @@ export function AddToBag({ sizes, productHandle, onOpenBidModal }: AddToBagProps
           <legend className="font-mono text-label-caps uppercase text-ink font-semibold">
             Select Size &amp; Instant Market Value:
           </legend>
-          <span className="font-mono text-[11px] text-muted">All sizes verified authentic</span>
+          {/* D2: dropped the blanket "verified authentic" claim — the real per-unit
+              authentication report (when one exists) renders separately below via
+              InspectionViewer, gated on an actual approved inspection record. */}
         </div>
 
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -183,7 +181,8 @@ export function AddToBag({ sizes, productHandle, onOpenBidModal }: AddToBagProps
           href={`/sell?product=${encodeURIComponent(productHandle ?? "")}&size=${encodeURIComponent(chosen?.label ?? "")}`}
           className="font-bold text-ink hover:underline uppercase inline-flex items-center gap-1"
         >
-          Sell from {currentPrice ? formatPrice(currentPrice) : "₹15,000"} →
+          {/* D2: never fabricate a price when the real current price is missing. */}
+          {currentPrice ? `Sell from ${formatPrice(currentPrice)} →` : "List this pair →"}
         </a>
       </div>
 
@@ -200,25 +199,9 @@ export function AddToBag({ sizes, productHandle, onOpenBidModal }: AddToBagProps
         </p>
       )}
 
-      {/* Market Price Comparison Box (CultureCircle Savings Callout) */}
-      {currentPrice && estimatedImportPrice && savings && savings > 0 && (
-        <div className="border border-emerald-300 bg-emerald-50/50 p-3.5 space-y-2">
-          <div className="flex items-center justify-between text-xs font-mono">
-            <span className="text-emerald-900 font-semibold uppercase">
-              The Hidden Label Direct Price:
-            </span>
-            <span className="font-bold text-emerald-900">{formatPrice(currentPrice)}</span>
-          </div>
-          <div className="flex items-center justify-between text-xs font-mono text-muted">
-            <span>StockX / FlightClub (with 45% Customs):</span>
-            <span className="line-through">{formatPrice(estimatedImportPrice)}</span>
-          </div>
-          <div className="pt-1.5 border-t border-emerald-200 flex items-center justify-between text-xs font-mono">
-            <span className="text-emerald-800 font-medium">Estimated Domestic Savings:</span>
-            <span className="text-emerald-700 font-bold">Save {formatPrice(savings)} (zero customs delay)</span>
-          </div>
-        </div>
-      )}
+      {/* D2: removed — this box compared against named competitors (StockX/FlightClub) using a
+          fabricated price (currentPrice * 1.38, not a real fetched quote) labelled as their
+          actual pricing. Re-add only if a real, sourced comparison price is available. */}
 
       {/* CultureCircle Authenticity Guarantee Seal */}
       <div className="border border-line bg-surface-container/30 p-3 flex items-center gap-3">

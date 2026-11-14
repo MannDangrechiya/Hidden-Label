@@ -41,22 +41,22 @@ export default async function HomePage() {
       <section className="border-b border-line bg-surface">
         <div className="mx-auto flex w-full max-w-page flex-col gap-6 px-margin py-12 sm:px-margin-tablet lg:px-margin-desktop lg:py-20">
           <div className="flex flex-wrap items-center gap-2">
+            {/* D2: no blanket "100% authentic guaranteed" claim without a real enforced
+                inspection-before-fulfillment workflow backing it. */}
             <span className="inline-flex items-center gap-1.5 border border-emerald-500 bg-emerald-50 px-2.5 py-1 font-mono text-[11px] font-bold uppercase text-emerald-800">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
-              CultureCircle-Inspired Verified Resale Platform
-            </span>
-            <span className="border border-line bg-surface-container px-2.5 py-1 font-mono text-[11px] uppercase text-muted">
-              100% Authentic Guaranteed
+              Resale Marketplace
             </span>
           </div>
 
           <h1 className="font-display text-headline-xl sm:text-5xl uppercase tracking-tight text-ink max-w-3xl leading-[1.08]">
-            India&rsquo;s Verified Marketplace for Sneakers &amp; Streetwear.
+            India&rsquo;s Marketplace for Sneakers &amp; Streetwear.
           </h1>
 
           <p className="max-w-2xl font-sans text-body-md text-on-surface-variant leading-relaxed">
-            Trade authentic pairs with size-specific market pricing, 360° physical lab inspection records,
-            instant buy now or custom bidding, and express domestic delivery with zero import surprises.
+            Trade pairs with size-specific market pricing, physical lab inspection records on
+            inspected units, instant buy now or custom bidding, and express domestic delivery
+            with zero import surprises.
           </p>
 
           <div className="flex flex-wrap items-center gap-3 pt-2">
@@ -129,7 +129,8 @@ export default async function HomePage() {
             {products.map((product) => {
               const price = priceOf(product);
               const brand = typeof product.metadata?.brand === "string" ? product.metadata.brand : "Sneaker Vault";
-              const formattedPrice = price ? formatINR(price) : "₹15,000";
+              // D2: never fabricate a price when the real calculated price is missing.
+              const formattedPrice = price ? formatINR(price) : "Price unavailable";
 
               return (
                 <Link
@@ -149,12 +150,8 @@ export default async function HomePage() {
                         No image
                       </div>
                     )}
-                    <span className="absolute top-2 left-2 border border-line bg-surface/90 px-1.5 py-0.5 font-mono text-[9px] uppercase font-bold text-ink">
-                      Verified
-                    </span>
-                    <span className="absolute bottom-2 right-2 rounded-xs bg-emerald-600 px-1.5 py-0.5 font-mono text-[9px] uppercase font-bold text-white">
-                      ▲ +8.7%
-                    </span>
+                    {/* D2: no blanket "Verified" claim or fabricated trend % — real
+                        per-unit authentication status lives on the product page. */}
                   </div>
 
                   <span className="font-mono text-[10px] uppercase text-muted truncate">
@@ -205,18 +202,21 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* The 4-Pillar Verification Matrix (CultureCircle Standard) */}
+      {/* D2: no absolute "100% guarantee" / "every unit must" claim without an enforced
+          inspect-before-fulfilment workflow backing it (not built yet — see
+          docs/MASTER_PLAN.md §2). This section describes the capability honestly instead. */}
       <section className="border-t border-b border-line bg-surface-container/20 py-16">
         <div className="mx-auto w-full max-w-page px-margin sm:px-margin-tablet lg:px-margin-desktop space-y-8">
           <div className="text-center max-w-xl mx-auto">
             <span className="font-mono text-xs uppercase text-emerald-700 font-bold tracking-wider">
-              100% Authentication Guarantee
+              Physical Inspection Programme
             </span>
             <h2 className="mt-1 font-display text-headline-lg uppercase text-ink">
               The Physical Verification Standard
             </h2>
             <p className="mt-2 font-sans text-xs text-muted leading-relaxed">
-              Every unit listed on The Hidden Label must undergo physical laboratory verification before shipment.
+              Units that complete our lab inspection carry a real, viewable authentication report
+              on their product page — look for it before you buy.
             </p>
           </div>
 
@@ -227,7 +227,9 @@ export default async function HomePage() {
                 360° Physical Lab Inspection (AI-03)
               </h3>
               <p className="font-sans text-xs text-muted leading-relaxed">
-                Multi-angle turntable inspection, 365nm UV spectral reaction tests, stitch tension audits, and factory adhesive scent verification.
+                Multi-angle turntable photography and a manual review of box labelling, size
+                tags, stitching, sole tooling and material feel against the brand's own
+                reference — recorded as a real inspection record per unit.
               </p>
             </div>
 
@@ -257,7 +259,7 @@ export default async function HomePage() {
                 Aura-7 Style Concierge (AI-05)
               </h3>
               <p className="font-sans text-xs text-muted leading-relaxed">
-                Conversational AI stylist assembling complete streetwear rotations grounded in real-time verified vault inventory.
+                Conversational stylist assembling streetwear rotations grounded in real-time catalogue inventory.
               </p>
             </div>
           </div>
