@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ErrorState, StatusChip, Table } from "@thl/ui";
-import { formatINR, money } from "@thl/shared";
+import { formatINR, moneyFromRupees } from "@thl/shared";
 import { fetchDashboardSummary } from "../../lib/api/dashboard";
 import { BackendError } from "../../lib/backend";
 
@@ -48,8 +48,8 @@ export default async function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Orders" value={String(totalOrders)} hint="All statuses" />
-        <KpiCard label="Revenue captured" value={formatINR(money(summary.revenue_captured))} />
-        <KpiCard label="Revenue refunded" value={formatINR(money(summary.revenue_refunded))} />
+        <KpiCard label="Revenue captured" value={formatINR(moneyFromRupees(summary.revenue_captured))} />
+        <KpiCard label="Revenue refunded" value={formatINR(moneyFromRupees(summary.revenue_refunded))} />
         <KpiCard
           label="Low stock"
           value={String(summary.low_stock_count)}

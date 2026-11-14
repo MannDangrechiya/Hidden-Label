@@ -25,12 +25,23 @@ export async function orderActionHandler(
   try {
     await runOrderAction(orderId, action, {
       reason,
-      amount: amountRupees ? Math.round(Number(amountRupees) * 100) : undefined,
+      // Money is a plain rupee integer everywhere in this project (docs/DATABASE_PLAN.md §13) —
+      // never multiply by 100 here. The backend's own default (no amount given) refunds
+      // Number(payment.amount) unmultiplied; sending a *100 amount for a custom partial refund
+      // would refund 100x the intended value.
+      amount: amountRupees ? Math.round(Number(amountRupees)) : undefined,
     });
   } catch (error) {
     return { error: error instanceof BackendError ? error.message : `Could not ${action} the order.` };
   }
   revalidatePath(`/orders/${orderId}`);
   revalidatePath("/orders");
-  return { success: `Order ${action}ed.` };
+
+  const PAST_TENSE: Record<OrderAction, string> = {
+    capture: "captured",
+    fulfill: "fulfilled",
+    cancel: "canceled",
+    refund: "refunded",
+  };
+  return { success: `Order ${PAST_TENSE[action]}.` };
 }

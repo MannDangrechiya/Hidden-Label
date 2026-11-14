@@ -106,10 +106,16 @@ export default async function seedPhase55({ container }: ExecArgs) {
   logger.info(`Silhouette fit rules seeded: ${fitRules.length}`);
 
   /* --- 2. Customers for Asks & Bids ---------------------------------------- */
-  const customers = await pg("customer").select("id", "email").limit(2);
-  let sellerId = customers[0]?.id;
-  let buyerId = customers[1]?.id ?? customers[0]?.id;
-
+  // D2/data-integrity: this used to pick the first 1-2 rows of the REAL `customer` table
+  // (`.select("id", "email").limit(2)`), so a genuine signed-up customer could end up as the
+  // attributed buyer/seller for every seeded demo ask/bid the moment they registered before
+  // this script next ran — confirmed live: a real test account accumulated 50+ fake bids this
+  // way. Always look up these two dedicated, clearly-fake seed accounts by their fixed email
+  // instead, creating them if missing, and never fall back to an arbitrary real customer.
+  const existingSeller = await pg("customer")
+    .where({ email: "consignment.seller@thehiddenlabel.com" })
+    .first();
+  let sellerId = existingSeller?.id;
   if (!sellerId) {
     sellerId = generateEntityId(undefined, "cus");
     await pg("customer").insert({
@@ -119,6 +125,11 @@ export default async function seedPhase55({ container }: ExecArgs) {
       last_name: "Consignor",
     });
   }
+
+  const existingBuyer = await pg("customer")
+    .where({ email: "sneaker.bidder@thehiddenlabel.com" })
+    .first();
+  let buyerId = existingBuyer?.id;
   if (!buyerId) {
     buyerId = generateEntityId(undefined, "cus");
     await pg("customer").insert({

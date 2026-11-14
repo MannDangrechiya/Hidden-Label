@@ -173,7 +173,11 @@ export async function POST(req: MedusaRequest<Body>, res: MedusaResponse) {
         reason_code: body.reason_code,
         reason_note: body.note ?? null,
         resolution: "refund",
-        refund_amount: (refundAmount / 100).toFixed(2),
+        // Money is a plain rupee integer everywhere in this project (docs/DATABASE_PLAN.md §13,
+        // unit_price above is already rupees) — do not divide by 100 here. This previously
+        // stored every return's refund_amount 100x too small (confirmed live: ₹21,999 became
+        // "219.99").
+        refund_amount: refundAmount.toFixed(2),
         requested_at: new Date(),
       })
       .returning("*");

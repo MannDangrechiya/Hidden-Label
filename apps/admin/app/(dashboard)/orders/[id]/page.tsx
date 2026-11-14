@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ErrorState, StatusChip, Table } from "@thl/ui";
-import { formatINR, money } from "@thl/shared";
+import { formatINR, moneyFromRupees } from "@thl/shared";
 import { fetchOrder } from "../../../../lib/api/orders";
 import { fetchCurrentAdmin, roleAtLeast } from "../../../../lib/api/auth";
 import { BackendError } from "../../../../lib/backend";
@@ -53,17 +53,17 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             { key: "title", header: "Item", sticky: true, render: (i) => i.title },
             { key: "qty", header: "Qty", render: (i) => i.quantity, align: "right" },
             { key: "fulfilled", header: "Fulfilled", render: (i) => i.fulfilled_quantity ?? 0, align: "right" },
-            { key: "unit", header: "Unit price", render: (i) => formatINR(money(i.unit_price)), align: "right" },
-            { key: "total", header: "Total", render: (i) => formatINR(money(i.total)), align: "right" },
+            { key: "unit", header: "Unit price", render: (i) => formatINR(moneyFromRupees(i.unit_price)), align: "right" },
+            { key: "total", header: "Total", render: (i) => formatINR(moneyFromRupees(i.total)), align: "right" },
           ]}
           rows={order.items}
           rowKey={(i) => i.id}
         />
         <div className="mt-3 flex flex-col items-end gap-1 font-sans text-body-sm">
-          <p>Subtotal: {formatINR(money(order.subtotal))}</p>
-          <p>Shipping: {formatINR(money(order.shipping_total))}</p>
-          <p>Tax: {formatINR(money(order.tax_total))}</p>
-          <p className="font-mono text-currency-md">Total: {formatINR(money(order.total))}</p>
+          <p>Subtotal: {formatINR(moneyFromRupees(order.subtotal))}</p>
+          <p>Shipping: {formatINR(moneyFromRupees(order.shipping_total))}</p>
+          <p>Tax: {formatINR(moneyFromRupees(order.tax_total))}</p>
+          <p className="font-mono text-currency-md">Total: {formatINR(moneyFromRupees(order.total))}</p>
         </div>
       </section>
 
@@ -106,12 +106,12 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                       {payment.captured_at ? "Captured" : payment.canceled_at ? "Canceled" : "Pending"}
                     </StatusChip>
                   </div>
-                  <p className="mt-1 font-mono text-currency-md">{formatINR(money(payment.amount))}</p>
+                  <p className="mt-1 font-mono text-currency-md">{formatINR(moneyFromRupees(payment.amount))}</p>
                   {payment.refunds && payment.refunds.length > 0 ? (
                     <ul className="mt-2 flex flex-col gap-1 border-t border-line pt-2">
                       {payment.refunds.map((refund) => (
                         <li key={refund.id} className="font-sans text-body-sm text-on-surface-variant">
-                          Refunded {formatINR(money(refund.amount))} on{" "}
+                          Refunded {formatINR(moneyFromRupees(refund.amount))} on{" "}
                           {new Date(refund.created_at).toLocaleDateString("en-IN")}
                           {refund.note ? ` — ${refund.note}` : ""}
                         </li>

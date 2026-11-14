@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Button, EmptyState, ErrorState, StatusChip, Table } from "@thl/ui";
-import { formatINR, money } from "@thl/shared";
+import { formatINR, moneyFromRupees } from "@thl/shared";
 import { fetchOrders } from "../../../lib/api/orders";
 import { BackendError } from "../../../lib/backend";
 
@@ -106,7 +106,7 @@ export default async function OrdersPage({
                 key: "total",
                 header: "Total",
                 align: "right",
-                render: (o) => formatINR(money(o.total)),
+                render: (o) => formatINR(moneyFromRupees(o.total)),
               },
               {
                 key: "created_at",

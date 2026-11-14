@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ErrorState, StatusChip } from "@thl/ui";
-import { formatINR, money } from "@thl/shared";
+import { formatINR, moneyFromRupees } from "@thl/shared";
 import { fetchDashboardSummary } from "../../../lib/api/dashboard";
 import { fetchReturns } from "../../../lib/api/returns";
 import { BackendError } from "../../../lib/backend";
@@ -33,11 +33,11 @@ export default async function ReportsPage() {
         <div className="flex flex-wrap gap-6 border border-line bg-surface p-5">
           <div>
             <p className="font-mono text-label-caps uppercase text-muted">Revenue captured</p>
-            <p className="font-display text-headline-md">{formatINR(money(summary.revenue_captured))}</p>
+            <p className="font-display text-headline-md">{formatINR(moneyFromRupees(summary.revenue_captured))}</p>
           </div>
           <div>
             <p className="font-mono text-label-caps uppercase text-muted">Revenue refunded</p>
-            <p className="font-display text-headline-md">{formatINR(money(summary.revenue_refunded))}</p>
+            <p className="font-display text-headline-md">{formatINR(moneyFromRupees(summary.revenue_refunded))}</p>
           </div>
           <div>
             <p className="font-mono text-label-caps uppercase text-muted">Orders</p>

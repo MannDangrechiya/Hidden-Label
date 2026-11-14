@@ -40,7 +40,10 @@ export async function createProductAction(
     .filter(Boolean);
   if (sizes.length === 0) return { error: "At least one size is required." };
 
-  const amount = Math.round(priceRupees * 100);
+  // Money is a plain rupee integer everywhere in this project (docs/DATABASE_PLAN.md §13) —
+  // do not multiply by 100. Confirmed live: entering "999" here previously stored 99900,
+  // making the product display as ₹99,900 instead of ₹999 everywhere it's shown.
+  const amount = Math.round(priceRupees);
 
   try {
     const channel = await fetchDefaultSalesChannel();
@@ -114,7 +117,7 @@ export async function updateVariantPriceAction(
       update: [
         {
           id: variantId,
-          prices: [{ id: priceId, currency_code: "inr", amount: Math.round(priceRupees * 100) }],
+          prices: [{ id: priceId, currency_code: "inr", amount: Math.round(priceRupees) }],
         },
       ],
     });

@@ -19,7 +19,8 @@ export async function GET() {
         order.status,
         order.fulfillment_status,
         order.payment_status,
-        (order.total / 100).toFixed(2),
+        // Money is a plain rupee integer everywhere in this project — do not divide by 100.
+        order.total,
         order.currency_code,
         order.created_at,
       ]);

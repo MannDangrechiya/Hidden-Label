@@ -143,6 +143,12 @@ just skipped in the self-reported "all passed" summary.
 5. **Phase 5.5 DML chaining** — Medusa DML requires `.unique().nullable()`, not `.nullable().unique()`.
 6. **Audit event property naming** — Fixed `actorId` / `entityType` camelCase in admin inspection & fit-rule handlers.
 
+7. **Rupee integer money formatting across admin screens** — Project stores all money as plain rupee integers (docs/DATABASE_PLAN.md §13), but admin screens previously used `money(val)` (which divides by 100 expecting paise), displaying amounts like ₹219.99 instead of ₹21,999. Switched to `moneyFromRupees(val)` across orders, payments, reports, dashboard, returns, and customers screens.
+8. **Refund calculation factor of 100** — Fixed a `* 100` and `/ 100` discrepancy on refund requests and admin capture/refund actions where refund amounts were calculated 100x too large or too small.
+9. **Orders CSV export currency scaling** — Removed spurious `/ 100` divisor in the CSV export stream (`reports/export/orders/route.ts`).
+10. **Product price entry / default value** — Fixed product creation and edit forms multiplying entered rupee amounts by 100 before storing in the database.
+11. **Seed script demo customer attribution** — Fixed `seed-phase5-5.ts` dynamically selecting the first real registered customer rows for asks/bids, which wrongly attributed ~50 demo bids to a live test user. Now uses dedicated test seed emails.
+
 ## Known gaps (next work, in order)
 
 1. Real Razorpay / Shiprocket / email (Resend) / SMS-OTP provider credentials — needed from the client before live payment/shipping APIs can be switched from simulated/dev mode.

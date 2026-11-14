@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { EmptyState, ErrorState, StatusChip, Table } from "@thl/ui";
-import { formatINR, money } from "@thl/shared";
+import { formatINR, moneyFromRupees } from "@thl/shared";
 import { fetchPayments } from "../../../lib/api/payments";
 import { BackendError } from "../../../lib/backend";
 
@@ -52,7 +52,7 @@ export default async function PaymentsPage({
                   ),
               },
               { key: "provider", header: "Provider", render: (p) => p.provider_id },
-              { key: "amount", header: "Amount", align: "right", render: (p) => formatINR(money(p.amount)) },
+              { key: "amount", header: "Amount", align: "right", render: (p) => formatINR(moneyFromRupees(p.amount)) },
               {
                 key: "status",
                 header: "Status",

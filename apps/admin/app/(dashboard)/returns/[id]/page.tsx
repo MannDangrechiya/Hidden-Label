@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ErrorState, StatusChip } from "@thl/ui";
+import { formatINR, moneyFromRupees } from "@thl/shared";
 import { fetchReturns } from "../../../../lib/api/returns";
 import { fetchCurrentAdmin, roleAtLeast } from "../../../../lib/api/auth";
 import { BackendError } from "../../../../lib/backend";
@@ -70,7 +71,7 @@ export default async function ReturnDetailPage({ params }: { params: Promise<{ i
           {request.refund_amount ? (
             <p>
               <span className="text-muted">Refund amount: </span>
-              {request.refund_amount}
+              {formatINR(moneyFromRupees(request.refund_amount))}
             </p>
           ) : null}
           <p>

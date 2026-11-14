@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { Button, Input, Table } from "@thl/ui";
-import { formatINR, money } from "@thl/shared";
+import { formatINR, moneyFromRupees } from "@thl/shared";
 import type { AdminVariant } from "../../../../lib/api/products";
 import { updateVariantPriceAction, type VariantPriceFormState } from "../actions";
 
@@ -24,7 +24,7 @@ function VariantPriceForm({ productId, variant }: { productId: string; variant: 
         type="number"
         step="0.01"
         min="0"
-        defaultValue={price ? price.amount / 100 : ""}
+        defaultValue={price ? price.amount : ""}
         className="w-28"
       />
       <Button type="submit" variant="secondary" loading={pending}>
@@ -59,7 +59,7 @@ export function VariantsTable({
           header: "Price (₹)",
           render: (v) => {
             const price = v.prices?.find((p) => p.currency_code === "inr");
-            if (!canWrite) return price ? formatINR(money(price.amount)) : "—";
+            if (!canWrite) return price ? formatINR(moneyFromRupees(price.amount)) : "—";
             return <VariantPriceForm productId={productId} variant={v} />;
           },
         },

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ErrorState, StatusChip, Table } from "@thl/ui";
-import { formatINR, money } from "@thl/shared";
+import { formatINR, moneyFromRupees } from "@thl/shared";
 import { fetchCustomer } from "../../../../lib/api/customers";
 import { fetchCurrentAdmin, roleAtLeast } from "../../../../lib/api/auth";
 import { BackendError } from "../../../../lib/backend";
@@ -73,7 +73,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                 ),
               },
               { key: "status", header: "Status", render: (o) => <StatusChip tone="neutral">{o.status}</StatusChip> },
-              { key: "total", header: "Total", align: "right", render: (o) => formatINR(money(o.total)) },
+              { key: "total", header: "Total", align: "right", render: (o) => formatINR(moneyFromRupees(o.total)) },
               {
                 key: "created_at",
                 header: "Placed",
