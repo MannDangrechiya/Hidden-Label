@@ -364,7 +364,7 @@ async function run() {
   console.log(`Admin identity: ${adminMe.user.email}, role: ${adminMe.user.metadata?.role}`);
 
   // Admin list orders: check our placed order is present
-  const adminOrdersRes = await fetch(`${BACKEND_URL}/admin/orders?limit=10`, {
+  const adminOrdersRes = await fetch(`${BACKEND_URL}/admin/orders?limit=10&order=-created_at`, {
     headers: adminHeaders(adminToken),
   });
   if (!adminOrdersRes.ok) throw new Error(`Admin list orders failed: ${adminOrdersRes.status}`);
