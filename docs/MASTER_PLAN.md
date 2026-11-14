@@ -28,16 +28,16 @@ wording. Everything else in this plan is the agent's call to execute.
 | P1 | Repo, DB, backend boot, minimal storefront | ✅ Done, verified (G1 closed) |
 | P2 | Design system (`packages/ui`) | ✅ Mostly done, verified |
 | P3 | Commerce model (brand/cms/returns/shipment modules) | ✅ Built, verified at API level |
-| P4 | Storefront customer journey (auth/search/checkout/orders/returns) | 🟡 Code written, re-verification pending |
-| P5 | Admin dashboard (`apps/admin`) | 🟡 Code written, re-verification pending |
-| **P5.5 (new, D7)** | Resale/authentication layer (CultureCircle-style) | 🔴 Not started — data model design first |
-| P6 | External integrations (Razorpay/Shiprocket/email/OTP/storage) | 🔴 Scaffolded only, needs real credentials |
-| P7 | Business rules / edge cases / concurrency | 🔴 Not started |
-| P8 | QA, security, automated tests | 🔴 Not started (zero new tests since P3) |
+| P4 | Storefront customer journey (auth/search/checkout/orders/returns) | ✅ Built and independently re-verified end-to-end (real walkthrough script) |
+| P5 | Admin dashboard (`apps/admin`) | ✅ Built and independently re-verified (RBAC 401/403, CRUD, audit log) |
+| **P5.5 (new, D7)** | Resale/authentication layer (CultureCircle-style) | 🟡 Built (asks/bids/price-index/inspection/sell/fit-studio/AI-01/AI-05), but a full independent audit found and fixed real D2 copy-honesty violations — see `docs/BUILD_LOG.md`. `AI-01`/`AI-05` now correctly hidden behind `NEXT_PUBLIC_FEATURE_AI_LAYER` (were previously shown to every visitor). Condition-grading data model and inspection workflow are real and DB-backed. |
+| P6 | External integrations (Razorpay/Shiprocket/email/OTP/storage) | 🟡 Razorpay module real (untested against live sandbox, no keys available). Shiprocket: real client + webhook now built and wired (was previously a label-only stub — see `docs/BUILD_LOG.md`); not yet exercised against Shiprocket's live API. Email (Resend) and OTP send are real, honestly gated on missing keys (no mock sends). SMS provider adapter, S3 storage, vision/LLM provider keys for AI-01/AI-05: still blocked on the client supplying a provider choice + key — see §9. |
+| P7 | Business rules / edge cases / concurrency | 🟡 Stock-concurrency/overselling protection verified live (`scripts/test-concurrency.mjs`); shipment webhook idempotency unit-tested. Still open: coupon-abuse rules, partial-refund flow, cancellation flow, a broader webhook-replay test for Razorpay. |
+| P8 | QA, security, automated tests | 🟡 Started: a real copy-honesty audit (the exact §5.5 QA_PLAN.md step) run and all findings fixed; 61 automated tests now exist (was 8). Still open: the full screen-by-screen Stitch/token-diff pass, mobile/responsive pass, accessibility/performance targets, Playwright suite. |
 | P9 | Production deployment | 🔴 Not started, needs hosting/domain decisions |
 | P10 | Launch, handover, maintenance | 🔴 Not started |
 
-Detail on exactly what's built vs. verified for P1-P5: `docs/BUILD_LOG.md`.
+Detail on exactly what's built vs. verified for P1-P8: `docs/BUILD_LOG.md`.
 
 ---
 
