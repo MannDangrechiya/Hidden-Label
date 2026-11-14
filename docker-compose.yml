@@ -1,0 +1,46 @@
+# Local development services — the documented default path.
+#
+#   docker compose up -d
+#   pnpm db:migrate
+#
+# Ports intentionally avoid 5432/6379 so a system-wide Postgres or Redis can keep running.
+# On machines without Docker, `pnpm db:start` boots an equivalent PostgreSQL 18 cluster from
+# project-local binaries (see scripts/dev-db.mjs). Use one or the other, not both.
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: thl-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: the_hidden_label
+    ports:
+      - "5437:5432"
+    volumes:
+      - thl-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d the_hidden_label"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: thl-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6380:6379"
+    volumes:
+      - thl-redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  thl-pgdata:
+  thl-redisdata:

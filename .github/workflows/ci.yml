@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22.22.0"
+
+jobs:
+  checks:
+    name: typecheck · lint · unit tests · build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Unit tests
+        run: pnpm test
+
+      # The storefront is dynamic, so the build must not require a running backend.
+      - name: Build storefront
+        run: pnpm --filter @thl/storefront build
+
+  migrations:
+    name: migrations from an empty database
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: the_hidden_label
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/the_hidden_label
+      MEDUSA_JWT_SECRET: ci_jwt_secret_0123456789abcdef
+      MEDUSA_COOKIE_SECRET: ci_cookie_secret_0123456789abcdef
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Proves the schema builds from nothing — the G2 requirement, enforced on every PR.
+      - name: Run Medusa migrations
+        working-directory: apps/backend
+        run: pnpm exec medusa db:migrate
+
+      - name: Assert core tables exist
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d the_hidden_label -tAc \
+            "select count(*) from information_schema.tables where table_schema='public'" \
+            | awk '{ if ($1 < 50) { print "expected the Medusa schema, found "$1" tables"; exit 1 } }'

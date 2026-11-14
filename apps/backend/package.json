@@ -1,0 +1,29 @@
+{
+  "name": "@thl/backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The Hidden Label commerce backend (Medusa 2.22.7)",
+  "license": "UNLICENSED",
+  "scripts": {
+    "dev": "medusa develop --port 9000",
+    "build": "medusa build",
+    "start": "medusa start --port 9000",
+    "typecheck": "tsc --noEmit",
+    "seed": "medusa exec ./src/scripts/seed.ts",
+    "user": "medusa user"
+  },
+  "dependencies": {
+    "@medusajs/admin-sdk": "2.22.7",
+    "@medusajs/cli": "2.22.7",
+    "@medusajs/framework": "2.22.7",
+    "@medusajs/medusa": "2.22.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "ts-node": "10.9.2",
+    "typescript": "5.9.3"
+  },
+  "engines": {
+    "node": ">=22.22.0"
+  }
+}

@@ -1,0 +1,5 @@
+@import "tailwindcss";
+@import "@thl/ui/styles.css";
+
+/* Content sources: Tailwind must scan the shared UI package or its classes are purged. */
+@source "../../../packages/ui/src/**/*.{ts,tsx}";
