@@ -11,7 +11,14 @@
  * this environment — unit tests mock `fetch`.
  */
 
-const DEFAULT_MODEL = "gemini-2.0-flash";
+// Checked live against a real key on 2026-11-14. "gemini-2.0-flash" is fully retired;
+// "gemini-2.5-flash" is retired for new accounts specifically; pinned "gemini-3.8-flash"
+// intermittently 503s under free-tier demand. "gemini-flash-latest" is Google's own rolling
+// alias for their current fast model, not a version number that goes stale — use it instead of
+// guessing a pinned name. If it ever errors, call the models.list endpoint with the real key
+// (GET https://generativelanguage.googleapis.com/v1beta/models?key=...) to see what this
+// specific account can actually use before picking a replacement.
+const DEFAULT_MODEL = "gemini-flash-latest";
 
 export function isConfigured(): boolean {
   return Boolean(process.env.GEMINI_API_KEY);
@@ -31,18 +38,40 @@ interface GeminiResponse {
   candidates?: { content?: { parts?: { text?: string }[] } }[];
 }
 
+/**
+ * Google's free tier is flaky — confirmed live on 2026-11-14 (same key, same model, back-to-back
+ * calls): sometimes a fast real response, sometimes a 503 "high demand", sometimes the request
+ * just hangs past a 30s client timeout with no HTTP response at all. One retry after a short
+ * delay, covering BOTH a 503 response and a thrown timeout/network error, turns most of those
+ * into a real answer instead of an immediate fallback to the keyword-matched template.
+ */
+async function callOnce(model: string, parts: GeminiPart[]): Promise<Response> {
+  return fetch(apiUrl(model), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ contents: [{ parts }] }),
+    signal: AbortSignal.timeout(30_000),
+  });
+}
+
+async function callWithRetry(model: string, parts: GeminiPart[]): Promise<Response> {
+  try {
+    const response = await callOnce(model, parts);
+    if (response.ok || response.status !== 503) return response;
+  } catch {
+    // fall through to the retry below — covers a thrown timeout/network error, not just a 503
+  }
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+  return callOnce(model, parts);
+}
+
 async function generateContent(parts: GeminiPart[]): Promise<string> {
   if (!isConfigured()) {
     throw new Error("Gemini is not configured (GEMINI_API_KEY missing).");
   }
   const model = process.env.GEMINI_MODEL ?? DEFAULT_MODEL;
 
-  const response = await fetch(apiUrl(model), {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ contents: [{ parts }] }),
-    signal: AbortSignal.timeout(15_000),
-  });
+  const response = await callWithRetry(model, parts);
 
   if (!response.ok) {
     throw new Error(`Gemini API error: ${response.status} ${await response.text()}`);
