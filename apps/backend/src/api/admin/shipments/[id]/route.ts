@@ -1,5 +1,5 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
+import { ContainerRegistrationKeys, generateEntityId } from "@medusajs/framework/utils";
 import { requestMeta, writeAudit } from "../../../../lib/audit";
 import { requireRole } from "../../../../lib/admin-auth";
 import { customerStatus, isStale, mapProviderStatus } from "../../../../lib/shipment-status";
@@ -89,6 +89,7 @@ export async function POST(
 
     await trx("shipment_event")
       .insert({
+        id: generateEntityId(undefined, "shpe"),
         shipment_id: shipment.id,
         event_key: eventKey,
         status,

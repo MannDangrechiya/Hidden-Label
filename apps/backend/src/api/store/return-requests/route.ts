@@ -72,7 +72,7 @@ export async function POST(req: MedusaRequest<Body>, res: MedusaResponse) {
   const order = await pg("order")
     .where({ id: body.order_id, customer_id: customerId })
     .whereNull("deleted_at")
-    .first("id", "display_id", "status", "fulfillment_status", "email");
+    .first("id", "display_id", "status", "email");
 
   if (!order) {
     // 404 for another customer's order: never leak existence.
@@ -90,6 +90,7 @@ export async function POST(req: MedusaRequest<Body>, res: MedusaResponse) {
     .first();
 
   const deliveredAt = delivered?.delivered_at ?? null;
+  const fulfillmentStatus = deliveredAt ? "delivered" : "not_fulfilled";
 
   const lines: { id: string; quantity: number; unit_price: number }[] = [];
   for (const item of body.items) {
@@ -129,7 +130,7 @@ export async function POST(req: MedusaRequest<Body>, res: MedusaResponse) {
     // checking order.status here meant no return could ever become eligible. See
     // docs/BUILD_LOG.md.
     const eligibility = checkReturnEligibility({
-      orderStatus: order.fulfillment_status,
+      orderStatus: fulfillmentStatus,
       deliveredAt,
       itemQuantity: rowQuantity,
       alreadyReturned: Number(already?.total ?? 0),

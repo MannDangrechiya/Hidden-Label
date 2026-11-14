@@ -1,5 +1,5 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
+import { ContainerRegistrationKeys, generateEntityId } from "@medusajs/framework/utils";
 import { requestMeta, writeAudit } from "../../../lib/audit";
 import { canWrite, requireRole } from "../../../lib/admin-auth";
 
@@ -51,6 +51,7 @@ export async function POST(req: MedusaRequest<Body>, res: MedusaResponse) {
     const page = await pg.transaction(async (trx) => {
       const [row] = await trx("cms_page")
         .insert({
+          id: generateEntityId(undefined, "cms"),
           slug,
           kind: body.kind,
           title: body.title?.trim(),

@@ -9,6 +9,7 @@
     "build": "medusa build",
     "start": "medusa start --port 9000",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "seed": "medusa exec ./src/scripts/seed.ts",
     "user": "medusa user"
   },

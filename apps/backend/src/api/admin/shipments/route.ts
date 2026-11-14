@@ -1,5 +1,5 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
+import { ContainerRegistrationKeys, generateEntityId } from "@medusajs/framework/utils";
 import { requestMeta, writeAudit } from "../../../lib/audit";
 import { requireRole } from "../../../lib/admin-auth";
 import { customerStatus, isStale } from "../../../lib/shipment-status";
@@ -77,6 +77,7 @@ export async function POST(req: MedusaRequest<Body>, res: MedusaResponse) {
   const shipment = await pg.transaction(async (trx) => {
     const [row] = await trx("shipment")
       .insert({
+        id: generateEntityId(undefined, "shp"),
         order_id: orderId,
         provider: providerConfigured ? "shiprocket" : "manual",
         courier: req.body?.courier ?? null,

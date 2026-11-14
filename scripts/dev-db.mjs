@@ -12,7 +12,7 @@
  * with a minimal Windows environment fixes it (see docs/PHASE_1_REPORT.md §4). Do not "simplify"
  * this by spreading `process.env` into the child env.
  */
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { connect } from "node:net";
 import { resolve } from "node:path";
@@ -61,11 +61,12 @@ function tool(name) {
   return file;
 }
 
-function run(name, args) {
+function run(name, args, options = {}) {
   return execFileSync(tool(name), args, {
     stdio: "pipe",
     encoding: "utf8",
     env: childEnv(),
+    ...options,
   });
 }
 
@@ -137,18 +138,22 @@ async function start() {
   forceTrustAuth();
 
   console.log("○ starting PostgreSQL 18 …");
-  run("pg_ctl", [
-    "-D",
-    DATA_DIR,
-    "-l",
-    LOG_FILE,
-    "-o",
-    `-p ${PORT} -h ${HOST}`,
-    "-w",
-    "-t",
-    "60",
-    "start",
-  ]);
+  run(
+    "pg_ctl",
+    [
+      "-D",
+      DATA_DIR,
+      "-l",
+      LOG_FILE,
+      "-o",
+      `-p ${PORT} -h ${HOST}`,
+      "-w",
+      "-t",
+      "60",
+      "start",
+    ],
+    { stdio: "ignore" },
+  );
 
   await ensureDatabase();
   console.log(`● ready: postgres://${USER}@${HOST}:${PORT}/${DATABASE}`);
@@ -178,11 +183,61 @@ async function status() {
   );
 }
 
+async function serve() {
+  mkdirSync(LOG_DIR, { recursive: true });
+
+  if (await probe(PORT)) {
+    console.log(`● PostgreSQL already listening on ${HOST}:${PORT}`);
+    return;
+  }
+
+  if (!existsSync(resolve(DATA_DIR, "PG_VERSION"))) {
+    mkdirSync(DATA_DIR, { recursive: true });
+    console.log("○ initialising cluster in .dev/pgdata …");
+    run("initdb", ["-D", DATA_DIR, "-U", USER, "--auth=trust", "-E", "UTF8", "--locale=C"]);
+  }
+
+  forceTrustAuth();
+
+  console.log("○ starting PostgreSQL 18 in foreground …");
+  const child = spawn(
+    tool("postgres"),
+    ["-D", DATA_DIR, "-p", String(PORT), "-h", HOST],
+    {
+      stdio: "inherit",
+      env: childEnv(),
+    },
+  );
+
+  let ready = false;
+  let attempts = 0;
+  while (!ready && attempts < 30) {
+    await new Promise((r) => setTimeout(r, 1000));
+    try {
+      await ensureDatabase();
+      ready = true;
+    } catch {
+      attempts++;
+    }
+  }
+  if (!ready) {
+    throw new Error("PostgreSQL failed to become ready in 30 seconds");
+  }
+  console.log(`● ready: postgres://${USER}@${HOST}:${PORT}/${DATABASE}`);
+
+  await new Promise((resolvePromise, rejectPromise) => {
+    child.on("exit", (code) => {
+      if (code === 0) resolvePromise();
+      else rejectPromise(new Error(`PostgreSQL exited with code ${code}`));
+    });
+  });
+}
+
 const command = process.argv[2] ?? "status";
-const actions = { start, stop, status };
+const actions = { start, stop, status, serve };
 
 if (!(command in actions)) {
-  console.error(`Unknown command "${command}". Use: start | stop | status`);
+  console.error(`Unknown command "${command}". Use: start | stop | status | serve`);
   process.exit(1);
 }
 

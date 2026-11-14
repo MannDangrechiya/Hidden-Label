@@ -17,7 +17,6 @@ import {
   createServiceZonesWorkflow,
   createShippingOptionsWorkflow,
   createStockLocationsWorkflow,
-  deleteProductsWorkflow,
   linkSalesChannelsToApiKeyWorkflow,
   linkSalesChannelsToStockLocationWorkflow,
 } from "@medusajs/medusa/core-flows";
@@ -561,15 +560,23 @@ export default async function seed({ container }: ExecArgs) {
     { handle: PRODUCTS.map((product) => product.handle) },
     { select: ["id", "handle"] },
   );
+  const existingHandles = new Set(existingProducts.map((p) => p.handle));
+  logger.info(`found ${existingProducts.length} already existing product(s)`);
 
-  if (existingProducts.length > 0) {
-    await deleteProductsWorkflow(container).run({
-      input: { ids: existingProducts.map((product) => product.id) },
-    });
-    logger.info(`removed ${existingProducts.length} previously seeded product(s)`);
+  for (const product of existingProducts) {
+    const pConfig = PRODUCTS.find((p) => p.handle === product.handle);
+    const brandId = pConfig ? brandByHandle.get(pConfig.brand) : null;
+    if (brandId) {
+      await pg("product_brand")
+        .insert({ product_id: product.id, brand_id: brandId })
+        .onConflict(["product_id", "brand_id"])
+        .ignore();
+    }
   }
 
-  for (const product of PRODUCTS) {
+  const productsToCreate = PRODUCTS.filter((p) => !existingHandles.has(p.handle));
+
+  for (const product of productsToCreate) {
     const inventoryLinks: { inventory_item_id: string; required_quantity: number; sku: string }[] =
       [];
 
