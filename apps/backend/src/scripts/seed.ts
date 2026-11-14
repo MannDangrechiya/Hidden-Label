@@ -1,10 +1,12 @@
 import type { ExecArgs } from "@medusajs/framework/types";
 import {
   ContainerRegistrationKeys,
+  generateEntityId,
   Modules,
   ProductStatus,
 } from "@medusajs/framework/utils";
 import {
+  batchLinksWorkflow,
   createApiKeysWorkflow,
   createInventoryItemsWorkflow,
   createInventoryLevelsWorkflow,
@@ -314,6 +316,14 @@ export default async function seed({ container }: ExecArgs) {
     ).result[0];
 
   /* --- Region ----------------------------------------------------------- */
+  // pp_system_default powers Cash on Delivery today (it always authorizes; capture happens
+  // when the admin confirms cash was collected). pp_razorpay_razorpay is linked only once real
+  // test/live keys exist, so an unconfigured environment never offers a payment method it
+  // cannot actually process.
+  const regionPaymentProviders = process.env.RAZORPAY_KEY_ID
+    ? ["pp_system_default", "pp_razorpay_razorpay"]
+    : ["pp_system_default"];
+
   const existingRegions = await regionService.listRegions({ currency_code: "inr" });
   if (existingRegions.length === 0) {
     await createRegionsWorkflow(container).run({
@@ -323,7 +333,7 @@ export default async function seed({ container }: ExecArgs) {
             name: "India",
             currency_code: "inr",
             countries: ["in"],
-            payment_providers: ["pp_system_default"],
+            payment_providers: regionPaymentProviders,
           },
         ],
       },
@@ -372,6 +382,48 @@ export default async function seed({ container }: ExecArgs) {
     await linkSalesChannelsToStockLocationWorkflow(container).run({
       input: { id: stockLocation.id, add: [salesChannel.id] },
     });
+  }
+
+  // Captured from the fulfillment setup below and reused when creating products: a product
+  // whose variants have no shipping_profile_id cannot be shipped with these options
+  // (`createProductsWorkflow` leaves it unset unless given one explicitly), which surfaces only
+  // at checkout as "cart items require shipping profiles that are not satisfied" — see
+  // docs/BUILD_LOG.md.
+  let shippingProfileId: string | null = null;
+
+  /*
+   * Enable the manual fulfillment provider at the stock location. Medusa 2.22.7 refuses to
+   * create a shipping option for a provider that is not explicitly linked to the location
+   * (`validateFulfillmentProvidersStep`, core-flows) — the same link the admin's
+   * "enable providers" screen (`POST /admin/stock-locations/:id/fulfillment-providers`) creates.
+   * There is no dedicated seed-time workflow for it, so this replicates that route's own
+   * `batchLinksWorkflow` call directly.
+   */
+  if (stockLocation) {
+    const query = container.resolve(ContainerRegistrationKeys.QUERY);
+    const { data: locationsWithProviders } = await query.graph({
+      entity: "stock_location",
+      fields: ["id", "fulfillment_providers.id"],
+      filters: { id: stockLocation.id },
+    });
+    const rawProviders: unknown[] = locationsWithProviders[0]?.fulfillment_providers ?? [];
+    const enabledProviderIds = rawProviders
+      .filter((provider: unknown): provider is { id: string } => Boolean(provider))
+      .map((provider: { id: string }) => provider.id);
+
+    if (!enabledProviderIds.includes("manual_manual")) {
+      await batchLinksWorkflow(container).run({
+        input: {
+          create: [
+            {
+              [Modules.STOCK_LOCATION]: { stock_location_id: stockLocation.id },
+              [Modules.FULFILLMENT]: { fulfillment_provider_id: "manual_manual" },
+            },
+          ],
+        },
+      });
+      logger.info("fulfillment provider enabled: manual_manual");
+    }
   }
 
   /* --- Fulfilment set + service zone + shipping options ----------------- */
@@ -425,6 +477,7 @@ export default async function seed({ container }: ExecArgs) {
       );
 
       const profile = await pg("shipping_profile").first("id");
+      shippingProfileId = profile?.id ?? null;
 
       if (serviceZone && profile) {
         const allOptions = await fulfillmentService.listShippingOptions({}, { take: 50 });
@@ -453,7 +506,10 @@ export default async function seed({ container }: ExecArgs) {
                 provider_id: "manual_manual",
                 price_type: "flat",
                 type: { label: "Express", description: "1–2 working days", code: "express" },
-                prices: [{ currency_code: "inr", amount: 19900 }],
+                // Amounts here are rupees, same convention as product prices (see
+                // `priceRupees` below) — not paise. ₹199 matches the shipping policy copy in
+                // PAGES (docs/BUILD_LOG.md: this was previously 19900, i.e. ₹19,900).
+                prices: [{ currency_code: "inr", amount: 199 }],
                 rules: [
                   { attribute: "enabled_in_store", value: "true", operator: "eq" },
                   { attribute: "is_return", value: "false", operator: "eq" },
@@ -468,9 +524,13 @@ export default async function seed({ container }: ExecArgs) {
   }
 
   /* --- Brands ----------------------------------------------------------- */
+  // Raw knex inserts bypass the DML model's own id generation, so the id is generated here
+  // exactly as Medusa's model factory would (ulid with the model's prefix) — the `brand` table
+  // has no DB-level default for `id`.
   for (const brand of BRANDS) {
     await pg("brand")
       .insert({
+        id: generateEntityId(undefined, "brand"),
         handle: brand.handle,
         name: brand.name,
         tagline: brand.tagline,
@@ -564,6 +624,7 @@ export default async function seed({ container }: ExecArgs) {
             thumbnail: product.image,
             images: [{ url: product.image }],
             metadata: { brand: BRANDS.find((b) => b.handle === product.brand)?.name ?? null },
+            ...(shippingProfileId ? { shipping_profile_id: shippingProfileId } : {}),
             options: [{ title: "Size", values: product.sizes }],
             variants: product.sizes.map((size, index) => ({
               title: size,
@@ -600,6 +661,7 @@ export default async function seed({ container }: ExecArgs) {
   for (const page of PAGES) {
     await pg("cms_page")
       .insert({
+        id: generateEntityId(undefined, "cms"),
         slug: page.slug,
         kind: page.kind,
         title: page.title,
@@ -619,6 +681,7 @@ export default async function seed({ container }: ExecArgs) {
   if (banners.length === 0) {
     await pg("banner_slot").insert([
       {
+        id: generateEntityId(undefined, "ban"),
         placement: "home.hero",
         page_id: homePage?.id ?? null,
         image_url: IMAGES.jordan1,
@@ -631,6 +694,7 @@ export default async function seed({ container }: ExecArgs) {
         sort_order: 0,
       },
       {
+        id: generateEntityId(undefined, "ban"),
         placement: "home.secondary",
         page_id: null,
         image_url: IMAGES.salomon,

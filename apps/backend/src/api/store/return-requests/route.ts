@@ -1,5 +1,5 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
+import { ContainerRegistrationKeys, generateEntityId } from "@medusajs/framework/utils";
 import { sendEmail } from "../../../lib/email";
 import { checkReturnEligibility } from "../../../lib/returns";
 import { THL_MODULE } from "../../../modules/thl";
@@ -18,7 +18,16 @@ interface Body {
   note?: string;
 }
 
-/** GET /store/returns — the signed-in customer's requests only. */
+/**
+ * GET /store/return-requests — the signed-in customer's requests only.
+ *
+ * Not `/store/returns`: Medusa 2.22.7 ships its own `/store/returns` route (order-edit style
+ * returns against a fulfillment), and its core middleware (body validator) still runs even when
+ * an app route overrides the handler at that path — only the handler is replaced, not the core
+ * middleware chain. Colliding here rejected every request with the stock validator's errors
+ * before this handler ever ran. This module's RMA flow (return_request/return_item) lives at
+ * its own path instead. See docs/BUILD_LOG.md.
+ */
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const customerId = actorId(req);
   if (!customerId) {
@@ -37,7 +46,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 }
 
 /**
- * POST /store/returns — create an RMA request.
+ * POST /store/return-requests — create an RMA request.
  *
  * Eligibility is computed now and is re-computed at approval by the admin route; the value
  * stored here is never the authority.
@@ -50,7 +59,6 @@ export async function POST(req: MedusaRequest<Body>, res: MedusaResponse) {
   }
 
   const pg = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION);
-  const thl = req.scope.resolve<ThlModuleService>(THL_MODULE);
   const body = req.body ?? {};
 
   if (!body.order_id || !body.reason_code || !Array.isArray(body.items) || body.items.length === 0) {
@@ -64,7 +72,7 @@ export async function POST(req: MedusaRequest<Body>, res: MedusaResponse) {
   const order = await pg("order")
     .where({ id: body.order_id, customer_id: customerId })
     .whereNull("deleted_at")
-    .first("id", "display_id", "status", "email");
+    .first("id", "display_id", "status", "fulfillment_status", "email");
 
   if (!order) {
     // 404 for another customer's order: never leak existence.
@@ -72,8 +80,10 @@ export async function POST(req: MedusaRequest<Body>, res: MedusaResponse) {
     return;
   }
 
+  // The order<->fulfillment pivot is the module-link table "order_fulfillment"
+  // (@medusajs/link-modules/definitions/order-fulfillment.ts), not "fulfillment_order".
   const delivered = await pg("fulfillment as f")
-    .join("fulfillment_order as fo", "fo.fulfillment_id", "f.id")
+    .join("order_fulfillment as fo", "fo.fulfillment_id", "f.id")
     .where("fo.order_id", order.id)
     .whereNotNull("f.delivered_at")
     .max("f.delivered_at as delivered_at")
@@ -88,9 +98,15 @@ export async function POST(req: MedusaRequest<Body>, res: MedusaResponse) {
       return;
     }
 
-    const row = await pg("order_item")
-      .where({ id: item.order_item_id, order_id: order.id })
-      .first("id", "quantity", "unit_price", "metadata");
+    // `order_item_id` from the storefront is actually the order LINE item id (the `ordli_...`
+    // id Medusa's store API exposes as `items[].id`); the row this route tracks returns against
+    // is `order_item` (the `orditem_...` per-order-version record with quantity/return
+    // counters), found via its `item_id` foreign key. `order_item.unit_price` is null in this
+    // Medusa version — the real price lives on `order_line_item` — so the two are joined.
+    const row = await pg("order_item as oi")
+      .join("order_line_item as oli", "oli.id", "oi.item_id")
+      .where({ "oi.item_id": item.order_item_id, "oi.order_id": order.id })
+      .first("oi.id", "oi.quantity", "oli.unit_price", "oi.metadata");
 
     if (!row) {
       res.status(400).json({ type: "invalid_data", message: "An item does not belong to this order." });
@@ -105,10 +121,17 @@ export async function POST(req: MedusaRequest<Body>, res: MedusaResponse) {
       .sum("ri.quantity as total")
       .first();
 
+    // Medusa's bigNumber columns (order_item.quantity) come back as numeric strings.
+    const rowQuantity = Number(row.quantity);
+
+    // "delivered" is a *fulfillment* status (Medusa's OrderFulfillmentStatus), never a value of
+    // order.status (OrderStatus is pending/completed/draft/archived/canceled/requires_action) —
+    // checking order.status here meant no return could ever become eligible. See
+    // docs/BUILD_LOG.md.
     const eligibility = checkReturnEligibility({
-      orderStatus: order.status,
+      orderStatus: order.fulfillment_status,
       deliveredAt,
-      itemQuantity: row.quantity,
+      itemQuantity: rowQuantity,
       alreadyReturned: Number(already?.total ?? 0),
     });
 
@@ -120,7 +143,7 @@ export async function POST(req: MedusaRequest<Body>, res: MedusaResponse) {
       return;
     }
 
-    if (item.quantity > row.quantity) {
+    if (item.quantity > rowQuantity) {
       res.status(400).json({
         type: "invalid_data",
         message: "The return quantity is higher than the purchased quantity.",
@@ -138,6 +161,10 @@ export async function POST(req: MedusaRequest<Body>, res: MedusaResponse) {
   const created = await pg.transaction(async (trx) => {
     const [request] = await trx("return_request")
       .insert({
+        // The DML model generates ids in application code (model.id({ prefix: "rma" })); a raw
+        // knex insert bypasses that, so it is done explicitly here — the "id" column has no
+        // database-level default.
+        id: generateEntityId(undefined, "rma"),
         display_id: displayId,
         order_id: order.id,
         customer_id: customerId,
@@ -152,6 +179,7 @@ export async function POST(req: MedusaRequest<Body>, res: MedusaResponse) {
 
     for (const line of lines) {
       await trx("return_request_item").insert({
+        id: generateEntityId(undefined, "rmai"),
         return_request_id: request.id,
         order_item_id: line.id,
         quantity: line.quantity,

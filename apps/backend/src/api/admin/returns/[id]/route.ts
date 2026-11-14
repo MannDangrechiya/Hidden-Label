@@ -41,11 +41,15 @@ export async function POST(
     return;
   }
 
-  const order = await pg("order").where({ id: request.order_id }).first("id", "status", "display_id");
+  const order = await pg("order")
+    .where({ id: request.order_id })
+    .first("id", "status", "fulfillment_status", "display_id");
 
   if (action === "approve") {
+    // The order<->fulfillment pivot is the module-link table "order_fulfillment"
+    // (@medusajs/link-modules/definitions/order-fulfillment.ts), not "fulfillment_order".
     const delivered = await pg("fulfillment as f")
-      .join("fulfillment_order as fo", "fo.fulfillment_id", "f.id")
+      .join("order_fulfillment as fo", "fo.fulfillment_id", "f.id")
       .where("fo.order_id", request.order_id)
       .whereNotNull("f.delivered_at")
       .max("f.delivered_at as delivered_at")
@@ -58,8 +62,10 @@ export async function POST(
       itemQuantity += Number(orderItem?.quantity ?? 0);
     }
 
+    // "delivered" is a *fulfillment* status (Medusa's OrderFulfillmentStatus), never a value of
+    // order.status — see docs/BUILD_LOG.md.
     const eligibility = checkReturnEligibility({
-      orderStatus: order?.status ?? "pending",
+      orderStatus: order?.fulfillment_status ?? "not_fulfilled",
       deliveredAt: delivered?.delivered_at ?? null,
       itemQuantity: itemQuantity || 1,
       alreadyReturned: 0,

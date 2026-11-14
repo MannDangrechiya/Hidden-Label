@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { SearchOverlay } from "@/components/search-overlay";
 import { readCartId } from "@/lib/cart-cookie";
 import { fetchCart } from "@/lib/medusa";
+import { getCurrentCustomer } from "@/lib/session";
 
 /**
  * Global header per DESIGN_TOKENS.md §5: wordmark, monospaced utility nav, tabular bag count.
@@ -16,9 +18,11 @@ export async function SiteHeader() {
     count = 0;
   }
 
+  const session = await getCurrentCustomer().catch(() => null);
+
   const nav = [
     { label: "Shop", href: "/collections/all" },
-    { label: "Brands", href: "/collections/all" },
+    { label: "Brands", href: "/brands" },
   ];
 
   return (
@@ -44,6 +48,19 @@ export async function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-md">
+          <SearchOverlay />
+          <Link
+            href={session ? "/account/wishlist" : "/login"}
+            className="hidden font-mono text-label-caps uppercase text-ink no-underline sm:inline"
+          >
+            Wishlist
+          </Link>
+          <Link
+            href={session ? "/account" : "/login"}
+            className="font-mono text-label-caps uppercase text-ink no-underline"
+          >
+            {session ? session.customer.first_name ?? "Account" : "Sign in"}
+          </Link>
           <Link
             href="/cart"
             className="font-mono text-label-caps uppercase text-ink no-underline"

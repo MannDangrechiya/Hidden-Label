@@ -3,13 +3,16 @@ import { Price } from "@thl/ui";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddToBag, type SizeOption } from "@/components/add-to-bag";
+import { WishlistButton } from "@/components/wishlist-button";
 import {
   fetchProduct,
+  fetchWishlist,
   isVariantAvailable,
   knownStock,
   MedusaError,
   type StoreProduct,
 } from "@/lib/medusa";
+import { getCurrentCustomer } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -75,6 +78,17 @@ export default async function ProductPage({ params }: PageProps) {
   const brand = typeof product.metadata?.brand === "string" ? product.metadata.brand : null;
   const soldOut = sizes.length > 0 && sizes.every((size) => !size.available);
 
+  const session = await getCurrentCustomer().catch(() => null);
+  let wishlistVariantIds = new Set<string>();
+  if (session) {
+    try {
+      const items = await fetchWishlist(session.token);
+      wishlistVariantIds = new Set(items.map((item) => item.variant_id));
+    } catch {
+      wishlistVariantIds = new Set();
+    }
+  }
+
   return (
     <main className="mx-auto w-full max-w-page px-margin py-lg sm:px-margin-tablet lg:px-margin-desktop">
       <nav aria-label="Breadcrumb" className="mb-md">
@@ -129,6 +143,22 @@ export default async function ProductPage({ params }: PageProps) {
           </div>
 
           <AddToBag sizes={sizes} />
+
+          {firstAvailable ? (
+            session ? (
+              <WishlistButton
+                variantId={firstAvailable.id}
+                initialSaved={wishlistVariantIds.has(firstAvailable.id)}
+              />
+            ) : (
+              <Link
+                href="/login"
+                className="inline-flex min-h-12 w-fit items-center justify-center border border-line px-6 py-3 font-mono text-label-caps uppercase tracking-[0.12em] text-muted no-underline transition-colors hover:border-ink hover:text-ink"
+              >
+                Sign in to save
+              </Link>
+            )
+          ) : null}
 
           {product.description ? (
             <div className="border-t border-line pt-md">

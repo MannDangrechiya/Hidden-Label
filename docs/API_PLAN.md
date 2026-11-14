@@ -91,19 +91,31 @@ redirect happened.
 
 ### Account
 
+Customer auth is Medusa's own emailpass flow, not bespoke endpoints — verified against the
+installed 2.22.7 package (docs/BUILD_LOG.md): `POST /auth/customer/emailpass/register` (actorless
+token) → `POST /store/customers` (create the customer, same bearer) → `POST
+/auth/customer/emailpass` (login, token with the customer attached) → `POST
+/auth/customer/emailpass/reset-password` + `POST /auth/customer/emailpass/update` for password
+reset. The storefront stores that JWT in an httpOnly cookie exactly like the cart id and sends it
+as `Authorization: Bearer` on every authenticated call — never a token in client-readable storage.
+
 ```
-POST /store/auth/register | login | logout | refresh
-POST /store/auth/password/forgot | reset
+POST /auth/customer/emailpass/register | (login) | /reset-password | /update
+POST /store/customers                             create the customer record
 POST /store/otp/send      { destination, purpose }  (rate-limited)
 POST /store/otp/verify    { challenge_id, code }    → marks phone/email verified
 GET  /store/customers/me
-PATCH /store/customers/me
-GET  /store/customers/me/addresses        POST/PATCH/DELETE
-GET  /store/customers/me/wishlist         POST/DELETE :variant_id
-GET  /store/customers/me/returns          POST (create return request)
+POST /store/customers/me
+GET  /store/customers/me/addresses        POST; POST/DELETE :address_id
+GET  /store/wishlist                      POST/DELETE :variant_id
+GET  /store/return-requests               POST (create return request)
 GET  /store/orders/:id/shipment           tracking timeline
-POST /store/support/tickets               contact form → email + record
 ```
+
+`/store/return-requests` — **not** `/store/returns`: Medusa 2.22.7 ships its own `/store/returns`
+route (order-edit-style returns) whose core body-validator middleware still runs at that path even
+when an app route overrides the handler, so this module's RMA flow (`return_request`/`return_item`)
+lives at its own path to avoid the collision.
 
 Ownership is enforced by joining on `customer_id` from the session — a route that accepts an
 `order_id` from the client must verify the order belongs to the session before returning data.

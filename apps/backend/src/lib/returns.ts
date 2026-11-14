@@ -5,6 +5,8 @@
 export const RETURN_WINDOW_DAYS = 7;
 
 export interface ReturnEligibilityInput {
+  /** The order's *fulfillment* status (Medusa's OrderFulfillmentStatus) — "delivered" lives
+   * here, never on `order.status` (OrderStatus has no such value). */
   orderStatus: string;
   deliveredAt: string | Date | null;
   itemQuantity: number;

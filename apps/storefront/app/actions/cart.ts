@@ -2,9 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { readAuthToken } from "@/lib/auth-cookie";
 import { readCartId, writeCartId } from "@/lib/cart-cookie";
 import {
   addLineItem,
+  attachCustomerToCart,
   createCart,
   fetchCart,
   MedusaError,
@@ -34,6 +36,12 @@ export async function addToCart(variantId: string, quantity = 1): Promise<CartAc
       const created = await createCart();
       cartId = created.id;
       await writeCartId(cartId);
+    }
+
+    const token = await readAuthToken();
+    if (token) {
+      // Best-effort: an expired token should never block adding to the bag.
+      await attachCustomerToCart(cartId, token).catch(() => undefined);
     }
 
     await addLineItem(cartId, variantId, quantity);

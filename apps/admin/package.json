@@ -1,0 +1,27 @@
+{
+  "name": "@thl/admin",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 7001",
+    "build": "next build",
+    "start": "next start -p 7001",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@thl/shared": "workspace:*",
+    "@thl/ui": "workspace:*",
+    "next": "16.4.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.5",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "postcss": "^8.4.47",
+    "tailwindcss": "4.3.5",
+    "typescript": "5.9.3"
+  }
+}

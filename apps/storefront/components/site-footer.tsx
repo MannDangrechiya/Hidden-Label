@@ -14,14 +14,17 @@ export function SiteFooter() {
           <a href="/collections/all" className="font-sans text-body-sm text-white no-underline">
             All products
           </a>
+          <a href="/brands" className="font-sans text-body-sm text-white no-underline">
+            Brands
+          </a>
         </nav>
 
-        <nav aria-label="Support" className="flex flex-col gap-2">
-          <span className="font-mono text-label-caps uppercase text-white/60">Support</span>
-          <a href="/policies/shipping" className="font-sans text-body-sm text-white no-underline">
-            Shipping
+        <nav aria-label="Account" className="flex flex-col gap-2">
+          <span className="font-mono text-label-caps uppercase text-white/60">Account</span>
+          <a href="/account/orders" className="font-sans text-body-sm text-white no-underline">
+            Track an order
           </a>
-          <a href="/policies/returns" className="font-sans text-body-sm text-white no-underline">
+          <a href="/account/orders" className="font-sans text-body-sm text-white no-underline">
             Returns
           </a>
         </nav>

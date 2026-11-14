@@ -146,17 +146,15 @@ export default async function CartPage() {
               </div>
             </dl>
 
-            <button
-              type="button"
-              disabled
-              aria-describedby="checkout-reason"
-              className="mt-md flex min-h-12 w-full cursor-not-allowed items-center justify-center bg-line px-6 py-3 font-mono text-label-caps uppercase tracking-[0.12em] text-muted"
+            <Link
+              href="/checkout"
+              className="mt-md flex min-h-12 w-full items-center justify-center bg-ink px-6 py-3 font-mono text-label-caps uppercase tracking-[0.12em] text-white no-underline transition-colors hover:bg-accent hover:text-ink"
             >
               Checkout
-            </button>
-            <p id="checkout-reason" className="mt-2 font-sans text-body-sm text-muted">
-              Online payment is not enabled yet — it is wired up with Razorpay in the payments
-              phase.
+            </Link>
+            <p className="mt-2 font-sans text-body-sm text-muted">
+              Cash on Delivery is available today; online payment unlocks automatically once
+              Razorpay test keys are configured.
             </p>
 
             <p className="mt-md font-sans text-body-sm text-muted">
