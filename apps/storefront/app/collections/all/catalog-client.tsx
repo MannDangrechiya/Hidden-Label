@@ -22,6 +22,7 @@ import {
 interface CatalogClientProps {
   initialProducts: StoreProduct[];
   initialSizeFilter?: string;
+  initialCategory?: CategoryKey;
 }
 
 function initialSizeTokens(filter?: string): string[] {
@@ -33,8 +34,12 @@ function toggle(list: string[], value: string): string[] {
   return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
 }
 
-export function CatalogClient({ initialProducts, initialSizeFilter }: CatalogClientProps) {
-  const [category, setCategory] = useState<CategoryKey>("all");
+export function CatalogClient({
+  initialProducts,
+  initialSizeFilter,
+  initialCategory = "all",
+}: CatalogClientProps) {
+  const [category, setCategory] = useState<CategoryKey>(initialCategory);
   const [brands, setBrands] = useState<string[]>([]);
   const [priceBuckets, setPriceBuckets] = useState<string[]>([]);
   const [sizes, setSizes] = useState<string[]>(initialSizeTokens(initialSizeFilter));
