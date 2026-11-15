@@ -48,6 +48,8 @@ export interface OrderItemLine {
   unit_price: number;
   total: number;
   fulfilled_quantity: number | null;
+  /** Bespoke orders carry `{ is_custom, garment_type, custom_measurements }` here. */
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface OrderPayment {
@@ -87,10 +89,12 @@ export interface OrderDetail {
   } | null;
   customer?: { id: string; email: string | null; first_name?: string | null; last_name?: string | null } | null;
   payment_collections?: { id: string; status: string; payments?: OrderPayment[] }[];
+  /** Order-level facts: `fulfilment_mode`, and the bespoke tailoring stage. */
+  metadata?: Record<string, unknown> | null;
 }
 
 const DETAIL_FIELDS =
-  "*items,*shipping_address,*customer,*payment_collections,*payment_collections.payments,*payment_collections.payments.refunds";
+  "*items,*items.metadata,*shipping_address,*customer,*payment_collections,*payment_collections.payments,*payment_collections.payments.refunds,metadata";
 
 export async function fetchOrder(id: string): Promise<OrderDetail> {
   const { order } = await backendFetch<{ order: OrderDetail }>(
@@ -100,6 +104,23 @@ export async function fetchOrder(id: string): Promise<OrderDetail> {
 }
 
 export type OrderAction = "capture" | "fulfill" | "cancel" | "refund";
+
+/**
+ * Merges `metadata` into the order. Medusa's update-order flow replaces the metadata object
+ * wholesale, so the merge happens here after reading the current values.
+ */
+export async function updateOrderMetadata(
+  id: string,
+  patch: Record<string, unknown>,
+): Promise<OrderDetail> {
+  const current = await fetchOrder(id);
+  const merged = { ...(current.metadata ?? {}), ...patch };
+  const { order } = await backendFetch<{ order: OrderDetail }>(`/admin/orders/${id}`, {
+    method: "POST",
+    body: { metadata: merged },
+  });
+  return order;
+}
 
 /** POST /admin/orders/:id/actions — the project's own action bar wrapper (A-08). */
 export async function runOrderAction(

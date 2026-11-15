@@ -23,7 +23,11 @@ export interface CartActionResult {
  * Cart mutations run on the server so the cart id stays in an httpOnly cookie and money is never
  * computed in the browser (docs/ORDER_STATE_MACHINE.md §4).
  */
-export async function addToCart(variantId: string, quantity = 1): Promise<CartActionResult> {
+export async function addToCart(
+  variantId: string,
+  quantity = 1,
+  metadata?: Record<string, unknown>,
+): Promise<CartActionResult> {
   try {
     let cartId = await readCartId();
 
@@ -44,7 +48,9 @@ export async function addToCart(variantId: string, quantity = 1): Promise<CartAc
       await attachCustomerToCart(cartId, token).catch(() => undefined);
     }
 
-    await addLineItem(cartId, variantId, quantity);
+    // `metadata` carries bespoke made-to-measure data (`custom_measurements`) onto the line
+    // item so the master tailor sees it on the admin order sheet.
+    await addLineItem(cartId, variantId, quantity, metadata);
     revalidatePath("/cart");
     revalidatePath("/");
     return { ok: true };

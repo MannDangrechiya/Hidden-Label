@@ -6,6 +6,7 @@ import { CheckoutAddressForm } from "@/components/checkout-address-form";
 import { CheckoutShippingForm } from "@/components/checkout-shipping-form";
 import { CheckoutPaymentForm } from "@/components/checkout-payment-form";
 import { readCartId } from "@/lib/cart-cookie";
+import { isFulfilmentMode, PICKUP_LOCATION, type FulfilmentMode } from "@/lib/fulfilment";
 import {
   fetchCart,
   listRegionPaymentProviders,
@@ -38,6 +39,9 @@ export default async function CheckoutPage({ searchParams }: PageProps) {
   const hasAddress = Boolean(cart.shipping_address?.address_1);
   const hasShipping = Boolean(cart.shipping_methods && cart.shipping_methods.length > 0);
   const step = stepParam ?? (hasAddress ? (hasShipping ? "payment" : "shipping") : "address");
+  const fulfilmentMode: FulfilmentMode = isFulfilmentMode(cart.metadata?.["fulfilment_mode"])
+    ? cart.metadata["fulfilment_mode"]
+    : "home_delivery";
 
   let shippingOptions: ShippingOption[] = [];
   let paymentProviderIds: string[] = [];
@@ -82,9 +86,19 @@ export default async function CheckoutPage({ searchParams }: PageProps) {
               defaultValues={cart.shipping_address ?? undefined}
             />
           ) : step === "shipping" ? (
-            <CheckoutShippingForm options={shippingOptions} selectedId={cart.shipping_methods?.[0]?.shipping_option_id} />
+            <CheckoutShippingForm
+              options={shippingOptions}
+              selectedId={cart.shipping_methods?.[0]?.shipping_option_id}
+              initialMode={fulfilmentMode}
+            />
           ) : (
-            <CheckoutPaymentForm availableProviderIds={paymentProviderIds} />
+            <CheckoutPaymentForm
+              availableProviderIds={paymentProviderIds}
+              email={session?.customer.email ?? cart.email ?? ""}
+              phone={cart.shipping_address?.phone ?? ""}
+              totalRupees={cart.total ?? 0}
+              fulfilmentMode={fulfilmentMode}
+            />
           )}
 
           {step !== "address" ? (
@@ -117,7 +131,9 @@ export default async function CheckoutPage({ searchParams }: PageProps) {
               </dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-on-surface-variant">Shipping</dt>
+              <dt className="text-on-surface-variant">
+                {fulfilmentMode === "store_pickup" ? "Collection (boutique)" : "Shipping"}
+              </dt>
               <dd className="m-0">
                 <Price value={moneyFromRupees(cart.shipping_total ?? 0)} />
               </dd>
@@ -129,6 +145,16 @@ export default async function CheckoutPage({ searchParams }: PageProps) {
               </dd>
             </div>
           </dl>
+          {fulfilmentMode === "store_pickup" ? (
+            <div className="mt-sp-3 border border-ink p-3">
+              <p className="font-mono text-label-caps uppercase text-ink">Collect in boutique</p>
+              <p className="mt-1 font-sans text-body-sm text-on-surface-variant">{PICKUP_LOCATION.address}</p>
+              <p className="mt-1 font-mono text-label-caps uppercase text-muted">
+                {PICKUP_LOCATION.hours}
+              </p>
+            </div>
+          ) : null}
+
           <p className="mt-sp-3 font-sans text-body-sm text-muted">
             All prices in INR, inclusive of duties and GST.
           </p>

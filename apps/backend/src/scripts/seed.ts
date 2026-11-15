@@ -50,6 +50,11 @@ interface SeedProduct {
   skuPrefix: string;
   image: string;
   description: string;
+  /** Drives the storefront category tabs and the made-to-measure drawer. */
+  category?: "ready_to_wear" | "bespoke_custom" | "footwear" | "accessory";
+  gender?: "men" | "women" | "unisex";
+  /** True for pieces the atelier cuts to the client's own measurements. */
+  bespoke?: boolean;
 }
 
 const BRANDS: SeedBrand[] = [
@@ -113,6 +118,66 @@ const BRANDS: SeedBrand[] = [
     country: "France",
     sortOrder: 6,
   },
+  {
+    handle: "the-hidden-label",
+    name: "The Hidden Label / Harvi Fashion",
+    tagline: "Cut to measure on Sindhu Bhavan Road.",
+    description:
+      "The in-house atelier: bespoke shirting, suits, co-ords and made-to-measure streetwear, cut and finished by our own tailors in Ahmedabad.",
+    tier: "flagship",
+    country: "India",
+    sortOrder: 7,
+  },
+  {
+    handle: "represent",
+    name: "Represent",
+    tagline: "British streetwear, heavyweight cotton.",
+    description:
+      "Manchester-born label built on heavyweight fleece, hand-finished distressing and a monochrome palette.",
+    tier: "core",
+    country: "United Kingdom",
+    sortOrder: 8,
+  },
+  {
+    handle: "fear-of-god",
+    name: "Fear of God",
+    tagline: "Elevated American essentials.",
+    description:
+      "Jerry Lorenzo's Los Angeles label: dropped shoulders, muted tones and luxury-grade fabrics.",
+    tier: "flagship",
+    country: "United States",
+    sortOrder: 9,
+  },
+  {
+    handle: "essentials",
+    name: "Essentials",
+    tagline: "Fear of God, simplified.",
+    description:
+      "The diffusion line from Fear of God — relaxed hoodies, tees and sweatpants in a tight neutral range.",
+    tier: "core",
+    country: "United States",
+    sortOrder: 10,
+  },
+  {
+    handle: "palm-angels",
+    name: "Palm Angels",
+    tagline: "Moncler-backed Milanese skate couture.",
+    description:
+      "Francesco Ragazzi's Milan label: track jackets, wide-leg trousers and the palm logo in bold placements.",
+    tier: "core",
+    country: "Italy",
+    sortOrder: 11,
+  },
+  {
+    handle: "off-white",
+    name: "Off-White",
+    tagline: "The arrow, the quotation marks, the tape.",
+    description:
+      "Virgil Abloh's Milan house — industrial belts, arrow motifs and sunglasses that read as instantly as a logo.",
+    tier: "flagship",
+    country: "Italy",
+    sortOrder: 12,
+  },
 ];
 
 const IMAGES = {
@@ -130,6 +195,16 @@ const IMAGES = {
     "https://images.unsplash.com/photo-1560769629-975ec94e6a86?auto=format&fit=crop&w=1200&q=80",
   jordan4:
     "https://images.unsplash.com/photo-1512374382149-233c42b6a83b?auto=format&fit=crop&w=1200&q=80",
+  shirt:
+    "https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&w=1200&q=80",
+  suit: "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&w=1200&q=80",
+  coord:
+    "https://images.unsplash.com/photo-1626497764746-6dc36546b388?auto=format&fit=crop&w=1200&q=80",
+  hoodie:
+    "https://images.unsplash.com/photo-1617127365659-c47fa864d8bc?auto=format&fit=crop&w=1200&q=80",
+  jacket:
+    "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?auto=format&fit=crop&w=1200&q=80",
+  tee: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1200&q=80",
 };
 
 const PRODUCTS: SeedProduct[] = [
@@ -220,11 +295,134 @@ const PRODUCTS: SeedProduct[] = [
     image: IMAGES.jordan4,
     description:
       "The 1989 design in black and fire red, rebuilt with a premium leather upper and visible Air unit.",
+    category: "footwear",
+    gender: "unisex",
+  },
+  {
+    title: "Ivory Linen Bespoke Shirt",
+    handle: "bespoke-ivory-linen-shirt",
+    brand: "the-hidden-label",
+    priceRupees: 8490,
+    sizes: ["XS", "S", "M", "L", "XL", "XXL"],
+    skuPrefix: "THL-BS-LINEN",
+    image: IMAGES.shirt,
+    description:
+      "Irish linen cut to your own chest, waist and shoulder measurements, with a hand-finished collar and mother-of-pearl buttons. Made in the Sindhu Bhavan Road atelier in 10–14 days.",
+    category: "bespoke_custom",
+    gender: "men",
+    bespoke: true,
+  },
+  {
+    title: "Charcoal Wool Made-to-Measure Suit",
+    handle: "bespoke-charcoal-wool-suit",
+    brand: "the-hidden-label",
+    priceRupees: 38990,
+    sizes: ["S", "M", "L", "XL"],
+    skuPrefix: "THL-BS-SUIT",
+    image: IMAGES.suit,
+    description:
+      "Half-canvassed two-piece in Super 120s wool, cut to measure with a working cuff and your choice of lapel. Two fittings at the boutique are included.",
+    category: "bespoke_custom",
+    gender: "men",
+    bespoke: true,
+  },
+  {
+    title: "Silk Co-ord Set 'Bone'",
+    handle: "silk-coord-set-bone",
+    brand: "the-hidden-label",
+    priceRupees: 24990,
+    sizes: ["XS", "S", "M", "L"],
+    skuPrefix: "THL-RTW-COORD",
+    image: IMAGES.coord,
+    description:
+      "Mulberry silk shirt and wide-leg trouser in warm bone, finished with covered buttons. Also available made-to-measure in the atelier.",
+    category: "ready_to_wear",
+    gender: "women",
+  },
+  {
+    title: "Owners Club Hoodie",
+    handle: "represent-owners-club-hoodie",
+    brand: "represent",
+    priceRupees: 18990,
+    sizes: ["S", "M", "L", "XL"],
+    skuPrefix: "REP-OCH",
+    image: IMAGES.hoodie,
+    description:
+      "Heavyweight loopback cotton hoodie with a boxy body, ribbed cuffs and the Owners Club print at the chest.",
+    category: "ready_to_wear",
+    gender: "men",
+  },
+  {
+    title: "Essentials Pullover Hoodie",
+    handle: "essentials-pullover-hoodie",
+    brand: "essentials",
+    priceRupees: 12990,
+    sizes: ["XS", "S", "M", "L", "XL"],
+    skuPrefix: "FOG-ESS-HOOD",
+    image: IMAGES.hoodie,
+    description:
+      "Brushed-back fleece hoodie from the Fear of God diffusion line, in the house's muted neutral palette with a rubberised logo.",
+    category: "ready_to_wear",
+    gender: "unisex",
+  },
+  {
+    title: "Palm Angels Track Jacket",
+    handle: "palm-angels-track-jacket",
+    brand: "palm-angels",
+    priceRupees: 34990,
+    sizes: ["S", "M", "L"],
+    skuPrefix: "PA-TRK-JKT",
+    image: IMAGES.jacket,
+    description:
+      "Technical track jacket with contrast taping down the sleeves and the palm logo at the chest, cut for a relaxed shoulder.",
+    category: "ready_to_wear",
+    gender: "men",
+  },
+  {
+    title: "Arrows Oversized Tee",
+    handle: "off-white-arrows-oversized-tee",
+    brand: "off-white",
+    priceRupees: 21990,
+    sizes: ["XS", "S", "M", "L"],
+    skuPrefix: "OW-ARR-TEE",
+    image: IMAGES.tee,
+    description:
+      "Oversized cotton jersey tee with the diagonal arrows print across the back and the house logo at the chest.",
+    category: "ready_to_wear",
+    gender: "unisex",
+  },
+  {
+    title: "Cathedral Sunglasses",
+    handle: "off-white-cathedral-sunglasses",
+    brand: "off-white",
+    priceRupees: 21999,
+    sizes: ["Standard"],
+    skuPrefix: "OW-SUN-CATH",
+    image: IMAGES.jacket,
+    description:
+      "Acetate frames with the arrow motif at the temple and category-3 lenses. Supplied with the house case and cloth.",
+    category: "accessory",
+    gender: "unisex",
+  },
+  {
+    title: "Oud No. 1 Eau de Parfum",
+    handle: "thl-oud-no-1",
+    brand: "the-hidden-label",
+    priceRupees: 12990,
+    sizes: ["50 ml", "100 ml"],
+    skuPrefix: "THL-FRG-OUD",
+    image: IMAGES.coord,
+    description:
+      "An in-house oud blended with saffron and cedar, bottled in Ahmedabad. Launched alongside the boutique's bespoke service.",
+    category: "accessory",
+    gender: "unisex",
   },
 ];
 
 /** Stocked quantity per size index; the final size of each product is deliberately empty. */
 function stockForSize(index: number, total: number): number {
+  // A single-size product (sunglasses, one-size accessories) must still be purchasable.
+  if (total === 1) return 3;
   if (index === total - 1) return 0;
   return [4, 6, 2, 3, 5][index % 5] ?? 3;
 }
@@ -630,7 +828,12 @@ export default async function seed({ container }: ExecArgs) {
             weight: 900,
             thumbnail: product.image,
             images: [{ url: product.image }],
-            metadata: { brand: BRANDS.find((b) => b.handle === product.brand)?.name ?? null },
+            metadata: {
+              brand: BRANDS.find((b) => b.handle === product.brand)?.name ?? null,
+              category: product.category ?? "footwear",
+              ...(product.gender ? { gender: product.gender } : {}),
+              ...(product.bespoke ? { bespoke: true } : {}),
+            },
             ...(shippingProfileId ? { shipping_profile_id: shippingProfileId } : {}),
             options: [{ title: "Size", values: product.sizes }],
             variants: product.sizes.map((size, index) => ({

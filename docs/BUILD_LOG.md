@@ -148,6 +148,8 @@ just skipped in the self-reported "all passed" summary.
 9. **Orders CSV export currency scaling** — Removed spurious `/ 100` divisor in the CSV export stream (`reports/export/orders/route.ts`).
 10. **Product price entry / default value** — Fixed product creation and edit forms multiplying entered rupee amounts by 100 before storing in the database.
 11. **Seed script demo customer attribution** — Fixed `seed-phase5-5.ts` dynamically selecting the first real registered customer rows for asks/bids, which wrongly attributed ~50 demo bids to a live test user. Now uses dedicated test seed emails.
+12. **Omnichannel luxury fashion pivot** — Integrated custom bespoke apparel studio (Chest, Waist, Shoulder, Sleeve, Inseam in inches with fit preferences), multi-brand streetwear catalog (Harvi Fashion, Represent, Fear of God, Essentials, Palm Angels, Off-White), Indian payment rails (UPI Intent/QR, Cards, EMI, COD OTP), in-store boutique pickup at Sindhu Bhavan Road (Bodakdev, Ahmedabad), and admin master tailor sheet pipeline.
+13. **Admin order detail tax_total undefined guard** — Fixed crash (`MoneyError: invalid rupee amount: undefined`) when orders omit `tax_total` or item subtotal.
 
 ## Known gaps (next work, in order)
 

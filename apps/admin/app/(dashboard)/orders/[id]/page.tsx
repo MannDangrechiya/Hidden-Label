@@ -4,6 +4,8 @@ import { formatINR, moneyFromRupees } from "@thl/shared";
 import { fetchOrder } from "../../../../lib/api/orders";
 import { fetchCurrentAdmin, roleAtLeast } from "../../../../lib/api/auth";
 import { BackendError } from "../../../../lib/backend";
+import { bespokeItemsOf, isBespokeStage } from "../../../../lib/bespoke";
+import { BespokePipeline } from "./bespoke-pipeline";
 import { OrderActionBar } from "./order-action-bar";
 
 export const metadata: Metadata = { title: "Order detail" };
@@ -26,6 +28,11 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
   const payments = (order.payment_collections ?? []).flatMap((pc) => pc.payments ?? []);
   const address = order.shipping_address;
+  const bespokeItems = bespokeItemsOf(order.items);
+  const rawStage = order.metadata?.["bespoke_stage"];
+  const bespokeStage = isBespokeStage(rawStage) ? rawStage : null;
+  const fulfilmentMode =
+    order.metadata?.["fulfilment_mode"] === "store_pickup" ? "store_pickup" : "home_delivery";
 
   return (
     <div className="flex flex-col gap-8">
@@ -35,6 +42,11 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <p className="font-sans text-body-sm text-on-surface-variant">
             {order.email ?? order.customer?.email ?? "Guest"} ·{" "}
             {new Date(order.created_at).toLocaleString("en-IN")}
+          </p>
+          <p className="mt-1 font-mono text-label-caps uppercase text-muted">
+            {fulfilmentMode === "store_pickup"
+              ? "Collect in boutique · Steller, Sindhu Bhavan Road, Bodakdev"
+              : "Home delivery · courier dispatch"}
           </p>
         </div>
         <div className="flex gap-3">
@@ -46,6 +58,15 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
       {canAct ? <OrderActionBar orderId={order.id} /> : null}
 
+      {bespokeItems.length > 0 ? (
+        <BespokePipeline
+          orderId={order.id}
+          items={bespokeItems}
+          currentStage={bespokeStage}
+          canAct={canAct}
+        />
+      ) : null}
+
       <section>
         <h2 className="mb-3 font-display text-headline-sm">Items</h2>
         <Table
@@ -53,17 +74,26 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             { key: "title", header: "Item", sticky: true, render: (i) => i.title },
             { key: "qty", header: "Qty", render: (i) => i.quantity, align: "right" },
             { key: "fulfilled", header: "Fulfilled", render: (i) => i.fulfilled_quantity ?? 0, align: "right" },
-            { key: "unit", header: "Unit price", render: (i) => formatINR(moneyFromRupees(i.unit_price)), align: "right" },
-            { key: "total", header: "Total", render: (i) => formatINR(moneyFromRupees(i.total)), align: "right" },
+            { key: "unit", header: "Unit price", render: (i) => formatINR(moneyFromRupees(i.unit_price ?? 0)), align: "right" },
+            {
+              key: "total",
+              header: "Total",
+              align: "right",
+              // Item totals can be omitted on orders created without tax lines; unit × qty is
+              // the same figure Medusa would compute.
+              render: (i) => formatINR(moneyFromRupees(i.total ?? (i.unit_price ?? 0) * i.quantity)),
+            },
           ]}
           rows={order.items}
           rowKey={(i) => i.id}
         />
         <div className="mt-3 flex flex-col items-end gap-1 font-sans text-body-sm">
-          <p>Subtotal: {formatINR(moneyFromRupees(order.subtotal))}</p>
-          <p>Shipping: {formatINR(moneyFromRupees(order.shipping_total))}</p>
-          <p>Tax: {formatINR(moneyFromRupees(order.tax_total))}</p>
-          <p className="font-mono text-currency-md">Total: {formatINR(moneyFromRupees(order.total))}</p>
+          {/* Medusa omits zero-value totals on some drafts/orders, so default to 0 rather than
+              throwing on an undefined amount. */}
+          <p>Subtotal: {formatINR(moneyFromRupees(order.subtotal ?? 0))}</p>
+          <p>Shipping: {formatINR(moneyFromRupees(order.shipping_total ?? 0))}</p>
+          <p>Tax: {formatINR(moneyFromRupees(order.tax_total ?? 0))}</p>
+          <p className="font-mono text-currency-md">Total: {formatINR(moneyFromRupees(order.total ?? 0))}</p>
         </div>
       </section>
 
@@ -106,12 +136,12 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                       {payment.captured_at ? "Captured" : payment.canceled_at ? "Canceled" : "Pending"}
                     </StatusChip>
                   </div>
-                  <p className="mt-1 font-mono text-currency-md">{formatINR(moneyFromRupees(payment.amount))}</p>
+                  <p className="mt-1 font-mono text-currency-md">{formatINR(moneyFromRupees(payment.amount ?? 0))}</p>
                   {payment.refunds && payment.refunds.length > 0 ? (
                     <ul className="mt-2 flex flex-col gap-1 border-t border-line pt-2">
                       {payment.refunds.map((refund) => (
                         <li key={refund.id} className="font-sans text-body-sm text-on-surface-variant">
-                          Refunded {formatINR(moneyFromRupees(refund.amount))} on{" "}
+                          Refunded {formatINR(moneyFromRupees(refund.amount ?? 0))} on{" "}
                           {new Date(refund.created_at).toLocaleDateString("en-IN")}
                           {refund.note ? ` — ${refund.note}` : ""}
                         </li>

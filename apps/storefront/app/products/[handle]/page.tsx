@@ -2,7 +2,9 @@ import { moneyFromRupees } from "@thl/shared";
 import { Price } from "@thl/ui";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AddToBag, type SizeOption } from "@/components/add-to-bag";
+import type { SizeOption } from "@/components/add-to-bag";
+import { ProductBuyPanel } from "@/components/product-buy-panel";
+import { isApparelProduct } from "@/lib/catalog";
 import { WishlistButton } from "@/components/wishlist-button";
 import { PriceIndexCard } from "@/components/price-index-card";
 import { InspectionViewer } from "@/components/inspection-viewer";
@@ -94,6 +96,7 @@ export default async function ProductPage({ params }: PageProps) {
 
   const resaleData = await fetchResaleProductIndex(handle).catch(() => null);
   const sizes = sizesFor(product, resaleData?.variants);
+  const bespokeEnabled = isApparelProduct(product);
   const firstAvailable = (product.variants ?? []).find(isVariantAvailable);
   const amount = firstAvailable?.calculated_price?.calculated_amount ?? null;
   const brand = typeof product.metadata?.brand === "string" ? product.metadata.brand : null;
@@ -182,7 +185,13 @@ export default async function ProductPage({ params }: PageProps) {
             productHandle={product.handle}
           />
 
-          <AddToBag sizes={sizes} productHandle={product.handle} />
+          <ProductBuyPanel
+            sizes={sizes}
+            productHandle={product.handle}
+            productTitle={product.title}
+            bespokeEnabled={bespokeEnabled}
+            signedIn={Boolean(session)}
+          />
 
           {/* Secondary Market Orderbook & The Price Index (AI-02) */}
           {resaleData && resaleData.variants.length > 0 ? (

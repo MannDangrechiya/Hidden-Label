@@ -229,6 +229,47 @@ export interface SellerAskRecord {
   };
 }
 
+export interface SubmittedBid {
+  id: string;
+  variant_id: string;
+  bid_price: number;
+  status: string;
+  expires_at: string;
+}
+
+/**
+ * Server-side variant of `placeResaleBid`: the customer bearer token lives in an httpOnly cookie
+ * and is never read by the browser, so the PDP bid modal goes through a Server Action that calls
+ * this instead of fetching the backend from the client.
+ */
+export async function submitResaleBid(
+  token: string,
+  input: { variant_id: string; bid_price: number; expires_in_days?: number },
+): Promise<{ success: boolean; error?: string; bid?: SubmittedBid }> {
+  try {
+    const res = await fetch(`${MEDUSA_URL}/store/resale/bids`, {
+      method: "POST",
+      headers: headers(token),
+      body: JSON.stringify(input),
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as { message?: string };
+      return { success: false, error: err.message ?? "Could not place that bid." };
+    }
+    const data = (await res.json()) as { bid: SubmittedBid };
+    return { success: true, bid: data.bid };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? `Could not reach the marketplace: ${error.message}`
+          : "Could not reach the marketplace.",
+    };
+  }
+}
+
 export async function placeResaleBid(
   variantId: string,
   bidPrice: number,

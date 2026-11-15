@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition, type MutableRefObject } from "react";
 import { addToCart } from "@/app/actions/cart";
 import { formatINR, moneyFromRupees } from "@thl/shared";
 
@@ -19,6 +19,10 @@ interface AddToBagProps {
   sizes: SizeOption[];
   productHandle?: string;
   onOpenBidModal?: (variantId: string, sizeLabel: string, suggestedBid: number) => void;
+  /** Lets the mobile sticky bar mirror the currently selected size and price. */
+  onSelectionChange?: (size: SizeOption | null) => void;
+  /** Registers the buy handler so the sticky bar can trigger the same server action. */
+  buyActionRef?: MutableRefObject<(() => void) | null>;
 }
 
 function formatPrice(amount: number): string {
@@ -29,7 +33,13 @@ function formatPrice(amount: number): string {
   }
 }
 
-export function AddToBag({ sizes, productHandle, onOpenBidModal }: AddToBagProps) {
+export function AddToBag({
+  sizes,
+  productHandle,
+  onOpenBidModal,
+  onSelectionChange,
+  buyActionRef,
+}: AddToBagProps) {
   const router = useRouter();
 
   // Find lowest price available variant as default
@@ -46,6 +56,14 @@ export function AddToBag({ sizes, productHandle, onOpenBidModal }: AddToBagProps
   const chosen = sizes.find((size) => size.variantId === selected) ?? null;
   const currentPrice = chosen?.lowestAsk ?? null;
   const currentBid = chosen?.highestBid ?? null;
+
+  // Keep the callback in a ref so a re-render of the parent cannot re-trigger this effect (an
+  // inline arrow prop would otherwise change identity every render and loop through setState).
+  const selectionCallback = useRef(onSelectionChange);
+  selectionCallback.current = onSelectionChange;
+  useEffect(() => {
+    selectionCallback.current?.(chosen);
+  }, [selected]);
 
   function submit() {
     if (!selected) {
@@ -64,6 +82,10 @@ export function AddToBag({ sizes, productHandle, onOpenBidModal }: AddToBagProps
       }
     });
   }
+
+  useEffect(() => {
+    if (buyActionRef) buyActionRef.current = submit;
+  });
 
   function handleBidClick() {
     if (!chosen) return;

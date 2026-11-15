@@ -4,178 +4,375 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { formatINR, moneyFromRupees } from "@thl/shared";
 import type { StoreProduct } from "@/lib/medusa";
+import {
+  APPAREL_SIZES,
+  CATEGORIES,
+  PRICE_BUCKETS,
+  brandOf,
+  isShoeSize,
+  matchesCategory,
+  matchesPriceBucket,
+  normaliseSize,
+  productHasAnySize,
+  productPriceRupees,
+  productSizes,
+  type CategoryKey,
+} from "@/lib/catalog";
 
 interface CatalogClientProps {
   initialProducts: StoreProduct[];
   initialSizeFilter?: string;
 }
 
+function initialSizeTokens(filter?: string): string[] {
+  const token = normaliseSize(filter);
+  return token && token !== "ALL" ? [token] : [];
+}
+
+function toggle(list: string[], value: string): string[] {
+  return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
+}
+
 export function CatalogClient({ initialProducts, initialSizeFilter }: CatalogClientProps) {
-  const [selectedBrand, setSelectedBrand] = useState<string>("all");
-  const [selectedSize, setSelectedSize] = useState<string>(initialSizeFilter ?? "all");
+  const [category, setCategory] = useState<CategoryKey>("all");
+  const [brands, setBrands] = useState<string[]>([]);
+  const [priceBuckets, setPriceBuckets] = useState<string[]>([]);
+  const [sizes, setSizes] = useState<string[]>(initialSizeTokens(initialSizeFilter));
   const [sortBy, setSortBy] = useState<"trending" | "price_asc" | "price_desc">("trending");
 
-  const brands = useMemo(() => {
-    const set = new Set<string>();
-    initialProducts.forEach((p) => {
-      const b = typeof p.metadata?.brand === "string" ? p.metadata.brand : null;
-      if (b) set.add(b);
-    });
-    return ["all", ...Array.from(set)];
+  /**
+   * Option lists come from the catalogue itself: a size or brand filter is only offered when at
+   * least one product actually carries it, so a tab can never filter to an empty result set by
+   * construction of the UI.
+   */
+  const { apparelSizes, shoeSizes, otherSizes, brandOptions } = useMemo(() => {
+    const apparel = new Set<string>();
+    const shoes = new Set<string>();
+    const other = new Set<string>();
+    const brandSet = new Set<string>();
+
+    for (const product of initialProducts) {
+      for (const size of productSizes(product)) {
+        if (isShoeSize(size)) shoes.add(size);
+        else if ((APPAREL_SIZES as readonly string[]).includes(size)) apparel.add(size);
+        else other.add(size);
+      }
+      const brand = brandOf(product);
+      if (brand) brandSet.add(brand);
+    }
+
+    const sortSizes = (values: Set<string>, order?: readonly string[]) =>
+      Array.from(values).sort((a, b) => {
+        if (order) {
+          const indexA = order.indexOf(a.toUpperCase());
+          const indexB = order.indexOf(b.toUpperCase());
+          if (indexA !== -1 || indexB !== -1) return indexA - indexB;
+        }
+        return a.localeCompare(b, undefined, { numeric: true });
+      });
+
+    return {
+      apparelSizes: sortSizes(apparel, APPAREL_SIZES),
+      shoeSizes: sortSizes(shoes),
+      otherSizes: sortSizes(other),
+      brandOptions: Array.from(brandSet).sort((a, b) => a.localeCompare(b)),
+    };
   }, [initialProducts]);
 
-  const sizes = ["all", "UK 7.0", "UK 8.0", "UK 8.5", "UK 9.0", "UK 9.5", "UK 10.0", "UK 11.0"];
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<CategoryKey, number>();
+    for (const entry of CATEGORIES) {
+      counts.set(
+        entry.key,
+        initialProducts.filter((product) => matchesCategory(product, entry.key)).length,
+      );
+    }
+    return counts;
+  }, [initialProducts]);
 
   const filtered = useMemo(() => {
-    return initialProducts
-      .filter((p) => {
-        // Brand filter
-        if (selectedBrand !== "all") {
-          const brand = typeof p.metadata?.brand === "string" ? p.metadata.brand : "";
-          if (brand.toLowerCase() !== selectedBrand.toLowerCase()) return false;
-        }
-        // Size filter
-        if (selectedSize !== "all") {
-          const hasSize = (p.variants ?? []).some((v) =>
-            v.title?.toLowerCase().includes(selectedSize.toLowerCase()),
-          );
-          if (!hasSize) return false;
-        }
-        return true;
-      })
-      .sort((a, b) => {
-        const priceA = a.variants?.[0]?.calculated_price?.calculated_amount ?? 15000;
-        const priceB = b.variants?.[0]?.calculated_price?.calculated_amount ?? 15000;
-        if (sortBy === "price_asc") return priceA - priceB;
-        if (sortBy === "price_desc") return priceB - priceA;
-        return 0; // trending (default)
-      });
-  }, [initialProducts, selectedBrand, selectedSize, sortBy]);
+    const rows = initialProducts.filter((product) => {
+      if (!matchesCategory(product, category)) return false;
+
+      if (brands.length > 0) {
+        const brand = brandOf(product);
+        if (!brand || !brands.includes(brand)) return false;
+      }
+
+      if (priceBuckets.length > 0) {
+        const inAnyBucket = priceBuckets.some((bucket) => matchesPriceBucket(product, bucket));
+        if (!inAnyBucket) return false;
+      }
+
+      if (sizes.length > 0 && !productHasAnySize(product, sizes)) return false;
+
+      return true;
+    });
+
+    return rows.sort((a, b) => {
+      if (sortBy === "trending") return 0;
+      const priceA = productPriceRupees(a);
+      const priceB = productPriceRupees(b);
+      // Products without a real price stay at the end instead of being given a made-up figure.
+      if (priceA === null && priceB === null) return 0;
+      if (priceA === null) return 1;
+      if (priceB === null) return -1;
+      return sortBy === "price_asc" ? priceA - priceB : priceB - priceA;
+    });
+  }, [initialProducts, category, brands, priceBuckets, sizes, sortBy]);
+
+  const activeFilters =
+    (category === "all" ? 0 : 1) + brands.length + priceBuckets.length + sizes.length;
+
+  function reset() {
+    setCategory("all");
+    setBrands([]);
+    setPriceBuckets([]);
+    setSizes([]);
+  }
+
+  const toggleClass = (active: boolean) =>
+    [
+      "min-h-9 border px-3 font-mono text-label-caps uppercase tracking-[0.08em] transition-colors",
+      active
+        ? "border-ink bg-ink text-white"
+        : "border-line bg-surface text-muted hover:border-ink hover:text-ink",
+    ].join(" ");
 
   return (
-    <div className="space-y-6">
-      {/* Filter and Sort Toolbar */}
-      <div className="flex flex-col gap-4 border-b border-line pb-4 lg:flex-row lg:items-center lg:justify-between">
-        {/* Brand Filter Pills */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="font-mono text-xs uppercase text-muted mr-1">Brand:</span>
-          {brands.map((b) => (
-            <button
-              key={b}
-              type="button"
-              onClick={() => setSelectedBrand(b)}
-              className={`px-3 py-1 font-mono text-xs uppercase border transition-colors ${
-                selectedBrand === b
-                  ? "border-ink bg-ink text-surface"
-                  : "border-line text-muted hover:border-ink hover:text-ink"
-              }`}
-            >
-              {b}
-            </button>
-          ))}
-        </div>
+    <div className="flex flex-col gap-sp-4">
+      {/* Category tabs */}
+      <nav aria-label="Product categories" className="-mx-margin border-b border-line px-margin pb-3 sm:mx-0 sm:px-0">
+        <ul className="m-0 flex list-none gap-2 overflow-x-auto p-0 pb-1">
+          {CATEGORIES.map((entry) => {
+            const active = category === entry.key;
+            const count = categoryCounts.get(entry.key) ?? 0;
+            return (
+              <li key={entry.key} className="shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setCategory(entry.key)}
+                  aria-pressed={active}
+                  className={[
+                    "flex min-h-11 items-center gap-2 border px-4 font-mono text-label-caps uppercase tracking-[0.12em] transition-colors",
+                    active
+                      ? "border-ink bg-ink text-white"
+                      : "border-line bg-surface text-on-surface-variant hover:border-ink hover:text-ink",
+                  ].join(" ")}
+                >
+                  {entry.label}
+                  <span className={active ? "text-white/70" : "text-muted"}>{count}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
 
-        {/* Size Filter & Sort Controls */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="font-mono text-xs uppercase text-muted">Size:</span>
-            <select
-              value={selectedSize}
-              onChange={(e) => setSelectedSize(e.target.value)}
-              className="border border-line bg-surface px-2.5 py-1 font-mono text-xs text-ink focus:border-ink focus:outline-none"
-            >
-              {sizes.map((s) => (
-                <option key={s} value={s}>
-                  {s === "all" ? "All Sizes" : s}
-                </option>
-              ))}
-            </select>
+      {/* Facets */}
+      <div className="grid gap-sp-3 border border-line bg-surface p-sp-3 lg:grid-cols-[1fr_1fr_1.1fr]">
+        <div className="flex flex-col gap-2">
+          <span className="font-mono text-label-caps uppercase text-muted">Price</span>
+          <div className="flex flex-wrap gap-2">
+            {PRICE_BUCKETS.map((bucket) => (
+              <button
+                key={bucket.key}
+                type="button"
+                aria-pressed={priceBuckets.includes(bucket.key)}
+                onClick={() => setPriceBuckets((current) => toggle(current, bucket.key))}
+                className={toggleClass(priceBuckets.includes(bucket.key))}
+              >
+                {bucket.label}
+              </button>
+            ))}
           </div>
-
-          <div className="flex items-center gap-1.5">
-            <span className="font-mono text-xs uppercase text-muted">Sort:</span>
+          <label className="mt-1 flex flex-col gap-1">
+            <span className="font-mono text-label-caps uppercase text-muted">Sort</span>
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className="border border-line bg-surface px-2.5 py-1 font-mono text-xs text-ink focus:border-ink focus:outline-none"
+              onChange={(event) => setSortBy(event.target.value as typeof sortBy)}
+              className="h-10 border border-line bg-surface px-2 font-mono text-body-sm text-ink outline-none focus:border-ink"
             >
-              <option value="trending">Trending Market Value</option>
-              <option value="price_asc">Price: Low to High</option>
-              <option value="price_desc">Price: High to Low</option>
+              <option value="trending">Featured order</option>
+              <option value="price_asc">Price: low to high</option>
+              <option value="price_desc">Price: high to low</option>
             </select>
+          </label>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2">
+            <span className="font-mono text-label-caps uppercase text-muted">Apparel sizes</span>
+            <div className="flex flex-wrap gap-1.5">
+              {apparelSizes.length === 0 ? (
+                <span className="font-sans text-body-sm text-muted">No apparel in the catalogue yet.</span>
+              ) : (
+                apparelSizes.map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    aria-pressed={sizes.includes(size)}
+                    onClick={() => setSizes((current) => toggle(current, size))}
+                    className={[toggleClass(sizes.includes(size)), "min-w-11 justify-center"].join(" ")}
+                  >
+                    {size}
+                  </button>
+                ))
+              )}
+            </div>
           </div>
+
+          <div className="flex flex-col gap-2">
+            <span className="font-mono text-label-caps uppercase text-muted">Shoe sizes</span>
+            <div className="flex flex-wrap gap-1.5">
+              {shoeSizes.length === 0 ? (
+                <span className="font-sans text-body-sm text-muted">No footwear in the catalogue yet.</span>
+              ) : (
+                shoeSizes.map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    aria-pressed={sizes.includes(size)}
+                    onClick={() => setSizes((current) => toggle(current, size))}
+                    className={[toggleClass(sizes.includes(size)), "min-w-14 justify-center"].join(" ")}
+                  >
+                    {size}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+
+          {otherSizes.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              <span className="font-mono text-label-caps uppercase text-muted">Other sizes</span>
+              <div className="flex flex-wrap gap-1.5">
+                {otherSizes.map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    aria-pressed={sizes.includes(size)}
+                    onClick={() => setSizes((current) => toggle(current, size))}
+                    className={toggleClass(sizes.includes(size))}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <span className="font-mono text-label-caps uppercase text-muted">
+            Brands ({brands.length === 0 ? "all" : `${brands.length} selected`})
+          </span>
+          <div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto">
+            {brandOptions.map((brand) => (
+              <button
+                key={brand}
+                type="button"
+                aria-pressed={brands.includes(brand)}
+                onClick={() => setBrands((current) => toggle(current, brand))}
+                className={toggleClass(brands.includes(brand))}
+              >
+                {brand}
+              </button>
+            ))}
+          </div>
+          <p className="font-sans text-body-sm text-muted">
+            In-house bespoke sits alongside the imported labels — filter several brands at once.
+          </p>
         </div>
       </div>
 
-      {/* Product Results Count */}
-      <div className="flex items-center justify-between text-xs font-mono text-muted">
-        <span>Showing {filtered.length} silhouettes</span>
-        {(selectedBrand !== "all" || selectedSize !== "all") && (
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedBrand("all");
-              setSelectedSize("all");
-            }}
-            className="underline hover:text-ink"
-          >
-            Reset Filters
+      <div className="flex flex-wrap items-center justify-between gap-2 font-mono text-label-caps uppercase text-muted">
+        <span>
+          {filtered.length} {filtered.length === 1 ? "piece" : "pieces"}
+          {activeFilters > 0 ? ` · ${activeFilters} ${activeFilters === 1 ? "filter" : "filters"}` : ""}
+          {" · "}
+          <span className="text-ink">
+            {CATEGORIES.find((entry) => entry.key === category)?.label ?? "All"}
+          </span>
+        </span>
+        {activeFilters > 0 ? (
+          <button type="button" onClick={reset} className="underline underline-offset-4 hover:text-ink">
+            Reset filters
           </button>
-        )}
+        ) : null}
       </div>
 
-      {/* Grid */}
       {filtered.length === 0 ? (
-        <div className="border border-line p-12 text-center font-mono text-xs text-muted">
-          No silhouettes match your selected filter criteria. Try resetting filters.
+        <div className="flex flex-col items-start gap-3 border border-line px-6 py-12">
+          <p className="font-display text-headline-sm uppercase">Nothing in this edit yet</p>
+          <p className="max-w-[52ch] font-sans text-body-sm text-on-surface-variant">
+            No piece matches this combination of category, price, size and brand. Clear a filter or
+            browse the full catalogue — the boutique can also source sizes on request.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={reset}
+              className="min-h-11 border border-ink bg-ink px-5 font-mono text-label-caps uppercase tracking-[0.12em] text-white transition-colors hover:bg-accent hover:text-ink"
+            >
+              Reset filters
+            </button>
+            <Link
+              href="/brands"
+              className="flex min-h-11 items-center border border-ink px-5 font-mono text-label-caps uppercase tracking-[0.12em] text-ink no-underline transition-colors hover:bg-ink hover:text-white"
+            >
+              Browse brands
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {filtered.map((product) => {
-            const amount = product.variants?.[0]?.calculated_price?.calculated_amount;
-            const price = amount !== null && amount !== undefined ? moneyFromRupees(amount) : null;
-            const brand = typeof product.metadata?.brand === "string" ? product.metadata.brand : "Sneaker Vault";
-            // D2: never fabricate a price when the real calculated price is missing.
-            const formattedPrice = price ? formatINR(price) : "Price unavailable";
-            const variantCount = product.variants?.length ?? 1;
+            const price = productPriceRupees(product);
+            const formattedPrice = price === null ? "Price unavailable" : formatINR(moneyFromRupees(price));
+            const brand = brandOf(product);
+            const variantCount = product.variants?.length ?? 0;
+            const hasBespoke = matchesCategory(product, "bespoke");
 
             return (
               <Link
                 key={product.id}
                 href={`/products/${product.handle}`}
-                className="group flex flex-col border border-line bg-surface p-3 sm:p-4 hover:border-ink transition-all no-underline"
+                className="group flex flex-col border border-line bg-surface p-3 no-underline transition-colors hover:border-ink sm:p-4"
               >
-                <div className="relative aspect-square w-full overflow-hidden bg-surface-container mb-3">
+                <div className="relative mb-3 aspect-[3/4] w-full overflow-hidden bg-surface-container">
                   {product.thumbnail ? (
                     <img
                       src={product.thumbnail}
                       alt={product.title}
-                      className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center font-mono text-xs text-muted">
-                      No image
+                    <div className="flex h-full w-full items-center justify-center font-mono text-label-caps uppercase text-muted">
+                      Image pending
                     </div>
                   )}
-                  {/* D2: no blanket "Verified" claim or fabricated trend % here — the real
-                      per-unit authentication status lives on the product page and only
-                      renders when a real approved inspection record exists. */}
+                  {hasBespoke ? (
+                    <span className="absolute left-0 top-0 border border-ink bg-ink px-2 py-1 font-mono text-[9px] uppercase tracking-[0.12em] text-white">
+                      Made to measure
+                    </span>
+                  ) : null}
                 </div>
 
-                <span className="font-mono text-[10px] uppercase text-muted truncate">
-                  {brand}
-                </span>
-                <h3 className="font-display text-xs sm:text-sm uppercase text-ink font-semibold truncate group-hover:underline">
+                {brand ? (
+                  <span className="truncate font-mono text-label-caps uppercase text-muted">{brand}</span>
+                ) : null}
+                <h3 className="truncate font-display text-headline-sm uppercase text-ink group-hover:underline">
                   {product.title}
                 </h3>
 
-                <div className="mt-2 pt-2 border-t border-line/60 flex items-baseline justify-between">
-                  <div>
-                    <span className="block font-mono text-[9px] uppercase text-muted">Price</span>
-                    <span className="font-sans text-sm font-bold text-ink">{formattedPrice}</span>
+                <div className="mt-2 flex items-baseline justify-between border-t border-line pt-2">
+                  <div className="flex flex-col">
+                    <span className="font-mono text-[9px] uppercase text-muted">Price</span>
+                    <span className="font-mono text-currency-md tabular text-ink">{formattedPrice}</span>
                   </div>
-                  <span className="font-mono text-[10px] uppercase text-muted">
-                    {variantCount} Sizes
+                  <span className="font-mono text-label-caps uppercase text-muted">
+                    {variantCount} {variantCount === 1 ? "size" : "sizes"}
                   </span>
                 </div>
               </Link>

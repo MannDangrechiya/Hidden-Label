@@ -166,6 +166,8 @@ export interface StoreLineItem {
   total: number;
   variant_id: string | null;
   product_handle?: string;
+  /** Custom made-to-measure data lives here as `custom_measurements` (see addToCart). */
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface StoreCart {
@@ -189,6 +191,8 @@ export interface StoreCart {
     country_code: string | null;
   } | null;
   shipping_methods?: { id: string; name: string; shipping_option_id: string }[];
+  /** Set at checkout: fulfilment mode (`home_delivery` / `store_pickup`) and COD OTP proof. */
+  metadata?: Record<string, unknown> | null;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -286,11 +290,36 @@ export async function addLineItem(
   cartId: string,
   variantId: string,
   quantity = 1,
+  metadata?: Record<string, unknown>,
 ): Promise<StoreCart> {
   const body = await request<{ cart: StoreCart }>(`/store/carts/${cartId}/line-items`, {
     method: "POST",
-    body: { variant_id: variantId, quantity },
+    body: { variant_id: variantId, quantity, ...(metadata ? { metadata } : {}) },
   });
+  return body.cart;
+}
+
+/**
+ * Merges `metadata` into the cart. Used for checkout facts that are not product data:
+ * the fulfilment mode chosen (home delivery vs Sindhu Bhavan pickup) and the COD OTP proof.
+ * Medusa's update replaces `metadata` wholesale, so the merge happens here.
+ */
+export async function setCartMetadata(
+  cartId: string,
+  metadata: Record<string, unknown>,
+  token?: string,
+): Promise<StoreCart> {
+  const existing = await fetchCart(cartId);
+  const merged = { ...(existing?.metadata ?? {}), ...metadata };
+  const body = token
+    ? await authRequest<{ cart: StoreCart }>(`/store/carts/${cartId}`, token, {
+        method: "POST",
+        body: { metadata: merged },
+      })
+    : await request<{ cart: StoreCart }>(`/store/carts/${cartId}`, {
+        method: "POST",
+        body: { metadata: merged },
+      });
   return body.cart;
 }
 

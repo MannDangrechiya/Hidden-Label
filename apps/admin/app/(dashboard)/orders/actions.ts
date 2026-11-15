@@ -1,8 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { runOrderAction, type OrderAction } from "../../../lib/api/orders";
+import { runOrderAction, updateOrderMetadata, type OrderAction } from "../../../lib/api/orders";
 import { BackendError } from "../../../lib/backend";
+import { BESPOKE_STAGES, isBespokeStage } from "../../../lib/bespoke";
 
 export interface OrderActionState {
   error?: string;
@@ -44,4 +45,45 @@ export async function orderActionHandler(
     refund: "refunded",
   };
   return { success: `Order ${PAST_TENSE[action]}.` };
+}
+
+export interface BespokeStageState {
+  error?: string;
+  success?: string;
+}
+
+/**
+ * Advances the master tailor's pipeline. The stage is stored on the order's metadata
+ * (`bespoke_stage`) so the storefront/atelier can read it without a new table, and the update
+ * merges rather than replacing the rest of the order metadata.
+ */
+export async function setBespokeStageAction(
+  _prev: BespokeStageState,
+  formData: FormData,
+): Promise<BespokeStageState> {
+  const orderId = String(formData.get("order_id") ?? "");
+  const stage = String(formData.get("stage") ?? "");
+
+  if (!orderId) return { error: "Missing order reference." };
+  if (!isBespokeStage(stage)) return { error: "Unknown tailoring stage." };
+
+  const label = BESPOKE_STAGES.find((entry) => entry.key === stage)?.label ?? stage;
+
+  try {
+    await updateOrderMetadata(orderId, {
+      bespoke_stage: stage,
+      bespoke_stage_updated_at: new Date().toISOString(),
+    });
+  } catch (error) {
+    return {
+      error:
+        error instanceof BackendError
+          ? error.message
+          : "Could not update the tailoring stage.",
+    };
+  }
+
+  revalidatePath(`/orders/${orderId}`);
+  revalidatePath("/audit");
+  return { success: `Tailoring stage set to ${label}.` };
 }
