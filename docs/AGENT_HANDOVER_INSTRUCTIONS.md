@@ -2,7 +2,15 @@
 
 > **MANDATE FOR THE EXECUTING AGENT**:
 > **DO NOT ASK THE USER ANY QUESTIONS.** 
-> You have 100% of the context, requirements, architectural decisions, and constraints in this document and in the repository. Make all design and implementation choices autonomously following the specifications below. Execute the entire scope end-to-end, verify all builds and tests pass cleanly, and present the completed summary.
+> You have 100% of the context, requirements, architectural decisions, and constraints in this document and in `docs/OMNICHANNEL_MASTER_ARCHITECTURE.md`. Make all design and implementation choices autonomously following these specifications. Execute the entire scope end-to-end, verify all builds and tests pass cleanly, and present the completed summary.
+
+---
+
+## 0. Mandatory Foundation Reading
+Before touching any code, you must read:
+1. `docs/OMNICHANNEL_MASTER_ARCHITECTURE.md` — The complete architecture blueprint: sequence diagrams, dual-sided data/storage flows, custom bespoke measurement schemas, Indian payment stack (UPI Intent/QR, Cards, COD OTP), and the Sindhu Bhavan Road omnichannel retail model.
+2. `docs/DESIGN_TOKENS.md` — Strict 0px border-radius, brutalist luxury styling tokens.
+3. `docs/BUILD_LOG.md` — Full engineering history and money-handling fixes.
 
 ---
 
