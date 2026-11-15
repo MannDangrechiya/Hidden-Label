@@ -175,10 +175,20 @@ export interface StoreCart {
   items: StoreLineItem[];
   item_total?: number;
   subtotal?: number;
+  discount_total?: number;
   shipping_total?: number;
   total?: number;
   currency_code: string;
   email?: string | null;
+  promotions?: {
+    id: string;
+    code: string;
+    is_automatic?: boolean;
+    application_method?: {
+      type: string;
+      value: number;
+    } | null;
+  }[];
   shipping_address?: {
     first_name: string | null;
     last_name: string | null;
@@ -337,6 +347,22 @@ export async function updateLineItem(
 
 export async function removeLineItem(cartId: string, lineId: string): Promise<void> {
   await request<unknown>(`/store/carts/${cartId}/line-items/${lineId}`, { method: "DELETE" });
+}
+
+export async function addCartPromotion(cartId: string, promoCode: string): Promise<StoreCart> {
+  const body = await request<{ cart: StoreCart }>(`/store/carts/${cartId}/promotions`, {
+    method: "POST",
+    body: { promo_codes: [promoCode] },
+  });
+  return body.cart;
+}
+
+export async function removeCartPromotion(cartId: string, promoCode: string): Promise<StoreCart> {
+  const body = await request<{ cart: StoreCart }>(`/store/carts/${cartId}/promotions`, {
+    method: "DELETE",
+    body: { promo_codes: [promoCode] },
+  });
+  return body.cart;
 }
 
 /**
@@ -716,6 +742,7 @@ export async function verifyOtp(input: {
 export interface StoreOrderItem {
   id: string;
   title: string;
+  variant_title?: string | null;
   product_title?: string | null;
   thumbnail?: string | null;
   quantity: number;
@@ -773,6 +800,13 @@ export async function fetchOrder(orderId: string): Promise<StoreOrder | null> {
     if (error instanceof MedusaError && (error.status === 404 || error.status === 400)) return null;
     throw error;
   }
+}
+
+export async function cancelMyOrder(token: string, orderId: string, reason?: string): Promise<{ success: boolean }> {
+  return authRequest(`/store/orders/${orderId}/cancel`, token, {
+    method: "POST",
+    body: { reason },
+  });
 }
 
 export interface ShipmentTimeline {

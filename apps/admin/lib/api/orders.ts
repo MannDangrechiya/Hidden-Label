@@ -94,7 +94,7 @@ export interface OrderDetail {
 }
 
 const DETAIL_FIELDS =
-  "*items,*items.metadata,*shipping_address,*customer,*payment_collections,*payment_collections.payments,*payment_collections.payments.refunds,metadata";
+  "id,display_id,status,fulfillment_status,payment_status,email,currency_code,total,subtotal,shipping_total,tax_total,created_at,metadata,*items,*items.metadata,*shipping_address,*customer,*payment_collections,*payment_collections.payments,*payment_collections.payments.refunds";
 
 export async function fetchOrder(id: string): Promise<OrderDetail> {
   const { order } = await backendFetch<{ order: OrderDetail }>(

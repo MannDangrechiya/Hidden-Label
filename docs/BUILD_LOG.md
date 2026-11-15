@@ -1,5 +1,45 @@
 # Build log — delivered and verified
 
+## Critical fix (2026-11-15): every storefront page reloaded itself / never finished loading
+
+Symptom the client reported: clicking anything (a size, a filter tab, "Add to bag") appeared
+to refresh the whole page, and the catalogue never settled. Reproduced in a real browser:
+`performance.now()` on `/collections/all` never exceeded ~250ms and the dev server logged a
+continuous stream of full-document `GET /collections/all` requests (dozens per second), while
+`/api/health` and the admin app stayed alive for 16s+ without a reload. Switching the storefront
+to `next dev --webpack` stopped the reload storm but exposed the underlying state: the page sat
+on the "Loading catalogue…" skeleton forever, with the real grid present but hidden (`[hidden]`
+Div, `gridVisible: false`, 17 product links in the DOM).
+
+**Root cause: `apps/storefront/app/collections/all/loading.tsx`.** A route-level `loading.tsx`
+adds a Suspense boundary that Next streams the page into; on Next 16.4.6 dev this boundary never
+resolved for the catalogue, so the streamed segment was never revealed behind the fallback. Under
+Turbopack the un-resolved boundary fed back into HMR and forced repeated full-document reloads
+(the reported "automatic refresh"); under webpack the same boundary simply stayed stuck.
+Removing that file made the grid render immediately and the document stop reloading under both
+bundlers — verified: age 17.5s after an 8s wait, 2 requests in the server log, grid visible,
+17 products. `page.tsx` only fetched in ~100ms, so a route-level skeleton bought nothing.
+
+**Verified interactions after the fix** (real browser, no document reload — `performance.now()`
+kept climbing across each step):
+- catalogue category tab ("Custom Bespoke") -> `aria-pressed=true`, grid narrowed 17 -> 2 items, instant;
+- product card click -> URL changed to the PDP, document age continued 39.8s -> 42.0s (client route);
+- PDP size button -> `aria-pressed` flipped without navigation; bespoke drawer trigger + Place Bid present;
+- "BUY NOW" -> `/cart`, bag 1, document age continued 48.6s -> 52.0s;
+- cart quantity `+` (server action) -> bag 1 -> 2, document age continued 58.0s -> 61.0s, no reload.
+
+Two related defects fixed in the same pass:
+
+1. **Hydration mismatch in the activity ticker.** `MarketTickerRotator` rendered
+   `relativeTime(event.created_at)` (built from `Date.now()`) during SSR *and* during hydration,
+   so the server said e.g. "14m ago" while the browser computed "13m ago". React 19 treated it as
+   a hydration failure and regenerated the whole tree client-side on every load. The relative
+   stamp is now client-only (`showRelative` flips after mount), so server HTML and first client
+   render agree; console is clean of hydration errors.
+2. **Redundant `router.refresh()` calls** after a click: removed from `add-to-bag.tsx` and
+   `bespoke-drawer.tsx` (they `router.push("/cart")`, which already fetches fresh data) and from
+   `wishlist-button.tsx` (local state is enough to repaint one label).
+
 Last updated: 2026-11-14. This file records what actually runs, what was checked and how, and
 separately what exists as code but has **not** been independently verified end-to-end yet. See
 `docs/HANDOFF.md` for the detailed file-by-file breakdown and next-agent instructions.

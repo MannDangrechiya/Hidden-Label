@@ -17,6 +17,17 @@ function relativeTime(iso: string): string {
  * order lines (see market-ticker.tsx / lib/medusa.ts fetchRecentActivity). No fabricated rows. */
 export function MarketTickerRotator({ items }: { items: ResaleActivityItem[] }) {
   const [index, setIndex] = useState(0);
+  /**
+   * "14m ago" is computed from `Date.now()`, so the server and the browser disagree by the time
+   * hydration runs. That mismatch made React throw away and re-render the whole tree on every
+   * page load — which is what looked like the site refreshing itself. The relative stamp is
+   * therefore client-only: both the server render and the first client render leave it out.
+   */
+  const [showRelative, setShowRelative] = useState(false);
+
+  useEffect(() => {
+    setShowRelative(true);
+  }, []);
 
   useEffect(() => {
     if (items.length < 2) return;
@@ -38,7 +49,9 @@ export function MarketTickerRotator({ items }: { items: ResaleActivityItem[] }) 
       <span className="text-emerald-400 font-bold">
         {formatINR(moneyFromRupees(event.unit_price))}
       </span>
-      <span className="hidden md:inline text-surface/60">({relativeTime(event.created_at)})</span>
+      {showRelative ? (
+        <span className="hidden md:inline text-surface/60">({relativeTime(event.created_at)})</span>
+      ) : null}
     </div>
   );
 }

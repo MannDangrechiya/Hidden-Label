@@ -5,11 +5,13 @@ import { redirect } from "next/navigation";
 import { readAuthToken } from "@/lib/auth-cookie";
 import { readCartId, writeCartId } from "@/lib/cart-cookie";
 import {
+  addCartPromotion,
   addLineItem,
   attachCustomerToCart,
   createCart,
   fetchCart,
   MedusaError,
+  removeCartPromotion,
   removeLineItem,
   updateLineItem,
 } from "@/lib/medusa";
@@ -94,4 +96,48 @@ export async function removeLineAction(formData: FormData): Promise<void> {
   const lineId = String(formData.get("lineId") ?? "");
   if (!lineId) return;
   await removeFromCart(lineId);
+}
+
+export async function applyPromotionAction(
+  _prev: CartActionResult | null,
+  formData: FormData,
+): Promise<CartActionResult> {
+  const code = String(formData.get("code") ?? "").trim().toUpperCase();
+  if (!code) return { ok: false, message: "Enter a promotion code." };
+
+  const cartId = await readCartId();
+  if (!cartId) return { ok: false, message: "No active bag found." };
+
+  try {
+    await addCartPromotion(cartId, code);
+    revalidatePath("/cart");
+    revalidatePath("/checkout");
+    return { ok: true, message: `Promotion code ${code} applied.` };
+  } catch (error) {
+    const message =
+      error instanceof MedusaError
+        ? error.message
+        : "Invalid or expired promotion code.";
+    return { ok: false, message };
+  }
+}
+
+export async function removePromotionAction(
+  _prev: CartActionResult | null,
+  formData: FormData,
+): Promise<CartActionResult> {
+  const code = String(formData.get("code") ?? "").trim().toUpperCase();
+  if (!code) return { ok: false, message: "No promotion code specified." };
+
+  const cartId = await readCartId();
+  if (!cartId) return { ok: false, message: "No active bag found." };
+
+  try {
+    await removeCartPromotion(cartId, code);
+    revalidatePath("/cart");
+    revalidatePath("/checkout");
+    return { ok: true, message: "Promotion code removed." };
+  } catch {
+    return { ok: false, message: "Could not remove promotion." };
+  }
 }

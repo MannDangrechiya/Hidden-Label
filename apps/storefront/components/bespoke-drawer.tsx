@@ -123,7 +123,8 @@ export function BespokeDrawer({
       });
 
       if (result.ok) {
-        router.refresh();
+        // push() already re-fetches the bag server-side; refreshing the PDP first only added a
+        // second render pass the customer could see.
         router.push("/cart");
       } else {
         setMessage(result.message ?? "Could not add the made-to-measure piece to your bag.");

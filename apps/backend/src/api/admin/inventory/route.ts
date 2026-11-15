@@ -12,6 +12,7 @@ interface AdjustBody {
 
 export const ADJUST_REASONS = [
   "count_correction",
+  "stock_count",
   "damaged",
   "lost",
   "return_restock",

@@ -56,13 +56,20 @@ export interface PromotionInput {
     currency_code?: string;
     max_quantity?: number;
   };
+  limit?: number | null;
   usage_limit?: number | null;
 }
 
 export async function createPromotion(input: PromotionInput): Promise<Promotion> {
+  const { usage_limit, limit, ...rest } = input;
+  const payload: Record<string, unknown> = { ...rest };
+  const effectiveLimit = limit ?? usage_limit;
+  if (effectiveLimit !== undefined && effectiveLimit !== null) {
+    payload.limit = effectiveLimit;
+  }
   const { promotion } = await backendFetch<{ promotion: Promotion }>("/admin/promotions", {
     method: "POST",
-    body: input,
+    body: payload,
   });
   return promotion;
 }
@@ -71,9 +78,15 @@ export async function updatePromotion(
   id: string,
   input: Partial<PromotionInput>,
 ): Promise<Promotion> {
+  const { usage_limit, limit, ...rest } = input;
+  const payload: Record<string, unknown> = { ...rest };
+  const effectiveLimit = limit ?? usage_limit;
+  if (effectiveLimit !== undefined && effectiveLimit !== null) {
+    payload.limit = effectiveLimit;
+  }
   const { promotion } = await backendFetch<{ promotion: Promotion }>(`/admin/promotions/${id}`, {
     method: "POST",
-    body: input,
+    body: payload,
   });
   return promotion;
 }

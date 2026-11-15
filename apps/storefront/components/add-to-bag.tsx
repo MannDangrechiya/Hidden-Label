@@ -75,7 +75,8 @@ export function AddToBag({
       if (result.ok) {
         setAdded(true);
         setMessage("Added to bag successfully.");
-        router.refresh();
+        // No router.refresh() here: push() already fetches a fresh RSC payload for /cart, and a
+        // second refresh re-rendered the current PDP underneath it (a visible double flash).
         router.push("/cart");
       } else {
         setMessage(result.message ?? "Could not add to bag.");

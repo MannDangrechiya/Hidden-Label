@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { CheckoutAddressForm } from "@/components/checkout-address-form";
 import { CheckoutShippingForm } from "@/components/checkout-shipping-form";
 import { CheckoutPaymentForm } from "@/components/checkout-payment-form";
+import { PromoCodeInput } from "@/components/promo-code-input";
 import { readCartId } from "@/lib/cart-cookie";
 import { isFulfilmentMode, PICKUP_LOCATION, type FulfilmentMode } from "@/lib/fulfilment";
 import {
@@ -130,6 +131,14 @@ export default async function CheckoutPage({ searchParams }: PageProps) {
                 <Price value={moneyFromRupees(cart.item_total ?? 0)} />
               </dd>
             </div>
+            {(cart.discount_total ?? 0) > 0 ? (
+              <div className="flex justify-between text-emerald-600">
+                <dt>Promotion discount</dt>
+                <dd className="m-0 tabular">
+                  −<Price value={moneyFromRupees(cart.discount_total ?? 0)} />
+                </dd>
+              </div>
+            ) : null}
             <div className="flex justify-between">
               <dt className="text-on-surface-variant">
                 {fulfilmentMode === "store_pickup" ? "Collection (boutique)" : "Shipping"}
@@ -145,6 +154,9 @@ export default async function CheckoutPage({ searchParams }: PageProps) {
               </dd>
             </div>
           </dl>
+          <div className="mt-sp-3">
+            <PromoCodeInput promotions={cart.promotions} />
+          </div>
           {fulfilmentMode === "store_pickup" ? (
             <div className="mt-sp-3 border border-ink p-3">
               <p className="font-mono text-label-caps uppercase text-ink">Collect in boutique</p>

@@ -12,6 +12,7 @@ export default [
       "**/coverage/**",
       "**/*.d.ts",
       "apps/backend/migrations/**",
+      "scripts/**",
     ],
   },
   ...shared,

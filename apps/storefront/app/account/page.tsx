@@ -89,6 +89,12 @@ export default async function AccountPage() {
               Orders
             </Link>
             <Link
+              href="/account/returns"
+              className="border border-ink px-4 py-2 font-mono text-label-caps uppercase text-ink no-underline hover:bg-ink hover:text-white"
+            >
+              Returns
+            </Link>
+            <Link
               href="/account/bids"
               className="border border-ink px-4 py-2 font-mono text-label-caps uppercase text-ink no-underline hover:bg-ink hover:text-white"
             >

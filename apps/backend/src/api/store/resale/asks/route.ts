@@ -97,11 +97,18 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 
   const pg = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION);
 
-  const asks = (await pg("resale_ask as a")
+  const statusFilter = (req.query as Record<string, string | undefined>)?.status ?? "active";
+  const query = pg("resale_ask as a")
     .join("product_variant as pv", "pv.id", "a.variant_id")
     .join("product as p", "p.id", "pv.product_id")
     .where("a.seller_id", sellerId)
-    .whereNull("a.deleted_at")
+    .whereNull("a.deleted_at");
+
+  if (statusFilter !== "all") {
+    query.where("a.status", statusFilter);
+  }
+
+  const asks = (await query
     .orderBy("a.created_at", "desc")
     .select(
       "a.id",

@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { readAuthToken } from "@/lib/auth-cookie";
 import {
   addToWishlist,
+  cancelMyOrder,
   createAddress,
   deleteAddress,
   MedusaError,
@@ -152,4 +153,21 @@ export async function removeWishlistAction(formData: FormData): Promise<void> {
   if (!variantId) return;
   await removeFromWishlist(token, variantId);
   revalidatePath("/account/wishlist");
+}
+
+export async function cancelOrderAction(orderId: string, reason?: string): Promise<ActionResult> {
+  const token = await readAuthToken();
+  if (!token) redirect("/login");
+
+  try {
+    await cancelMyOrder(token, orderId, reason);
+    revalidatePath(`/account/orders/${orderId}`);
+    revalidatePath("/account/orders");
+    return { ok: true, message: "Order cancelled successfully." };
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof MedusaError ? error.message : "Could not cancel this order.",
+    };
+  }
 }

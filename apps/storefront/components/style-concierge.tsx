@@ -105,13 +105,17 @@ export function StyleConcierge() {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-40 flex items-center gap-2.5 rounded-full border border-ink bg-ink px-4 py-3 text-surface shadow-2xl transition-transform hover:scale-105 active:scale-95"
+        className="fixed bottom-5 right-5 z-40 flex items-center justify-center gap-2 rounded-full border border-ink bg-ink p-3 text-surface shadow-2xl transition-transform hover:scale-105 active:scale-95 sm:bottom-6 sm:right-6 sm:px-4 sm:py-3"
+        aria-label="Open Aura-7 Style Concierge"
       >
         <span className="flex h-2.5 w-2.5 items-center justify-center">
           <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
         </span>
-        <span className="font-mono text-xs uppercase tracking-wider font-semibold">
+        <span className="hidden font-mono text-xs uppercase tracking-wider font-semibold sm:inline">
           Aura-7 Concierge (AI-05)
+        </span>
+        <span className="font-mono text-xs font-bold uppercase sm:hidden">
+          A7
         </span>
       </button>
 

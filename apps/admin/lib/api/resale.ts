@@ -116,3 +116,10 @@ export async function createAdminFitRule(body: {
   });
   return rule;
 }
+
+export async function deleteAdminFitRule(id: string): Promise<void> {
+  await backendFetch(`/admin/fit-rules/${id}`, {
+    method: "DELETE",
+  });
+}
+

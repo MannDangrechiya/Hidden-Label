@@ -43,18 +43,50 @@ export default async function OrderDetailPage({ params }: PageProps) {
         <div>
           <p className="font-mono text-label-caps uppercase text-muted">Order detail</p>
           <h1 className="type-headline-lg mt-2 uppercase">THL-{order.display_id}</h1>
-          <p className="mt-1 font-sans text-body-sm text-on-surface-variant">
-            Placed {new Date(order.created_at).toLocaleDateString("en-IN")} · {order.status}
-          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span className="font-sans text-body-sm text-on-surface-variant">
+              Placed {new Date(order.created_at).toLocaleDateString("en-IN")}
+            </span>
+            <span className="text-muted">·</span>
+            <span className="inline-flex items-center px-2 py-0.5 font-mono text-label-caps uppercase bg-surface-container text-ink">
+              Status: {order.status}
+            </span>
+            {order.fulfillment_status ? (
+              <span className="inline-flex items-center px-2 py-0.5 font-mono text-label-caps uppercase bg-surface-container text-ink">
+                Fulfilment: {order.fulfillment_status}
+              </span>
+            ) : null}
+            {order.payment_status ? (
+              <span className="inline-flex items-center px-2 py-0.5 font-mono text-label-caps uppercase bg-surface-container text-ink">
+                Payment: {order.payment_status}
+              </span>
+            ) : null}
+          </div>
         </div>
-        {canReturn ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {order.status === "pending" || order.fulfillment_status === "not_fulfilled" ? (
+            <Link
+              href={`/account/orders/${order.id}/cancel`}
+              className="inline-flex min-h-12 items-center justify-center border border-line px-4 py-2 font-mono text-label-caps uppercase tracking-[0.12em] text-muted hover:border-ink hover:text-ink no-underline transition-colors"
+            >
+              Cancel Order
+            </Link>
+          ) : null}
           <Link
-            href={`/account/orders/${order.id}/return`}
-            className="inline-flex min-h-12 items-center justify-center border border-ink px-6 py-3 font-mono text-label-caps uppercase tracking-[0.12em] text-ink no-underline transition-colors hover:bg-ink hover:text-white"
+            href={`/account/orders/${order.id}/invoice`}
+            className="inline-flex min-h-12 items-center justify-center border border-line px-4 py-2 font-mono text-label-caps uppercase tracking-[0.12em] text-ink no-underline transition-colors hover:bg-surface-container"
           >
-            Request return
+            GST Invoice
           </Link>
-        ) : null}
+          {canReturn ? (
+            <Link
+              href={`/account/orders/${order.id}/return`}
+              className="inline-flex min-h-12 items-center justify-center border border-ink px-6 py-3 font-mono text-label-caps uppercase tracking-[0.12em] text-ink no-underline transition-colors hover:bg-ink hover:text-white"
+            >
+              Request return
+            </Link>
+          ) : null}
+        </div>
       </header>
 
       <div className="grid gap-sp-5 lg:grid-cols-[1fr_360px]">

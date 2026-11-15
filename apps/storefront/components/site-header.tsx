@@ -28,11 +28,11 @@ export async function SiteHeader() {
   ];
 
   return (
-    <header className="sticky top-0 z-40 border-b border-ink bg-canvas/95 backdrop-blur-sm">
-      <div className="mx-auto flex w-full max-w-page items-center justify-between gap-sp-3 px-margin py-4 sm:px-margin-tablet lg:px-margin-desktop">
+    <header className="sticky top-0 z-40 border-b border-ink bg-canvas/95 backdrop-blur-sm overflow-x-clip">
+      <div className="mx-auto flex w-full max-w-page items-center justify-between gap-2 px-margin py-3 sm:gap-sp-3 sm:px-margin-tablet sm:py-4 lg:px-margin-desktop">
         <Link
           href="/"
-          className="shrink-0 whitespace-nowrap font-display text-[15px] uppercase tracking-[-0.02em] text-ink no-underline sm:text-headline-sm"
+          className="shrink-0 whitespace-nowrap font-display text-[13px] uppercase tracking-[-0.02em] text-ink no-underline sm:text-headline-sm"
         >
           The Hidden Label
         </Link>
@@ -49,7 +49,7 @@ export async function SiteHeader() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-3 sm:gap-sp-3">
+        <div className="flex items-center gap-2 sm:gap-sp-3 shrink-0">
           <SearchOverlay />
           <Link
             href={session ? "/account/wishlist" : "/login"}
@@ -59,13 +59,13 @@ export async function SiteHeader() {
           </Link>
           <Link
             href={session ? "/account" : "/login"}
-            className="font-mono text-label-caps uppercase text-ink no-underline"
+            className="max-w-[72px] sm:max-w-none truncate font-mono text-xs sm:text-label-caps uppercase text-ink no-underline"
           >
             {session ? session.customer.first_name ?? "Account" : "Sign in"}
           </Link>
           <Link
             href="/cart"
-            className="font-mono text-label-caps uppercase text-ink no-underline"
+            className="whitespace-nowrap font-mono text-xs sm:text-label-caps uppercase text-ink no-underline"
             aria-label={`Bag, ${count} item${count === 1 ? "" : "s"}`}
           >
             Bag <span className="tabular">({count})</span>

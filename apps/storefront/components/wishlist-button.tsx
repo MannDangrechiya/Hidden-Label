@@ -1,11 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toggleWishlistAction } from "@/app/actions/account";
 
 export function WishlistButton({ variantId, initialSaved }: { variantId: string; initialSaved: boolean }) {
-  const router = useRouter();
   const [saved, setSaved] = useState(initialSaved);
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
@@ -15,8 +13,9 @@ export function WishlistButton({ variantId, initialSaved }: { variantId: string;
     startTransition(async () => {
       const result = await toggleWishlistAction(variantId, saved);
       if (result.ok) {
+        // Local state is the source of truth for this button; a router.refresh() here re-fetched
+        // the entire PDP just to repaint one label.
         setSaved(!saved);
-        router.refresh();
       } else {
         setMessage(result.message ?? "Could not update your saved list.");
       }

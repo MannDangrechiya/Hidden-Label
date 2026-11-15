@@ -69,11 +69,11 @@ export async function POST(
       const items = await pg("order_item")
         .where({ order_id: orderId })
         .whereNull("deleted_at")
-        .select("id", "quantity", "fulfilled_quantity");
+        .select("id", "item_id", "quantity", "fulfilled_quantity");
 
       const pending = items
-        .map((item: { id: string; quantity: number; fulfilled_quantity: number | null }) => ({
-          id: item.id,
+        .map((item: { id: string; item_id: string; quantity: number; fulfilled_quantity: number | null }) => ({
+          id: item.item_id,
           quantity: Number(item.quantity) - Number(item.fulfilled_quantity ?? 0),
         }))
         .filter((item: { quantity: number }) => item.quantity > 0);
@@ -148,6 +148,8 @@ export async function POST(
     const refreshed = await pg("order").where({ id: orderId }).first("id", "display_id", "status");
     res.json({ order: refreshed, action });
   } catch (error) {
+    const logger = req.scope.resolve(ContainerRegistrationKeys.LOGGER);
+    logger.error(`Order action ${action} failed: ${error instanceof Error ? error.stack : String(error)}`);
     const message = error instanceof Error ? error.message : "The action failed.";
     res.status(422).json({ type: "action_failed", message });
   }

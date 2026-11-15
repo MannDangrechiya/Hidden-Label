@@ -176,6 +176,9 @@ export default async function ProductPage({ params }: PageProps) {
                   Sold out — all sizes
                 </span>
               ) : null}
+              <span className="font-mono text-label-caps uppercase text-muted">
+                · Quick View enabled
+              </span>
             </div>
           </div>
 

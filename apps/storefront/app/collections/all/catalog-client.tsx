@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { formatINR, moneyFromRupees } from "@thl/shared";
+import { addToCart } from "@/app/actions/cart";
 import type { StoreProduct } from "@/lib/medusa";
 import {
   APPAREL_SIZES,
@@ -44,6 +45,11 @@ export function CatalogClient({
   const [priceBuckets, setPriceBuckets] = useState<string[]>([]);
   const [sizes, setSizes] = useState<string[]>(initialSizeTokens(initialSizeFilter));
   const [sortBy, setSortBy] = useState<"trending" | "price_asc" | "price_desc">("trending");
+  const [quickViewProduct, setQuickViewProduct] = useState<StoreProduct | null>(null);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+  const [addingToBag, setAddingToBag] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+  const [addSuccess, setAddSuccess] = useState(false);
 
   /**
    * Option lists come from the catalogue itself: a size or brand filter is only offered when at
@@ -380,11 +386,147 @@ export function CatalogClient({
                     {variantCount} {variantCount === 1 ? "size" : "sizes"}
                   </span>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setQuickViewProduct(product);
+                    setSelectedVariantId(product.variants?.[0]?.id ?? null);
+                    setAddSuccess(false);
+                    setAddError(null);
+                  }}
+                  className="mt-3 w-full border border-line py-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-muted hover:border-ink hover:text-ink hover:bg-surface-container transition-colors"
+                >
+                  Quick View
+                </button>
               </Link>
             );
           })}
         </div>
       )}
+
+      {quickViewProduct ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 p-4 backdrop-blur-sm"
+          onClick={() => setQuickViewProduct(null)}
+        >
+          <div
+            className="relative flex w-full max-w-lg flex-col border border-line bg-surface p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setQuickViewProduct(null)}
+              className="absolute right-4 top-4 font-mono text-sm text-muted hover:text-ink"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+
+            <div className="flex gap-4">
+              <div className="h-32 w-24 flex-none bg-surface-container">
+                {quickViewProduct.thumbnail ? (
+                  <img
+                    src={quickViewProduct.thumbnail}
+                    alt={quickViewProduct.title}
+                    className="h-full w-full object-cover"
+                  />
+                ) : null}
+              </div>
+              <div className="flex flex-col">
+                <span className="font-mono text-label-caps uppercase text-muted">
+                  {brandOf(quickViewProduct) ?? "The Hidden Label"}
+                </span>
+                <h2 className="font-display text-headline-sm uppercase text-ink mt-1">
+                  {quickViewProduct.title}
+                </h2>
+                <span className="font-mono text-currency-md tabular text-ink mt-2">
+                  {(() => {
+                    const price = productPriceRupees(quickViewProduct);
+                    return price !== null ? formatINR(moneyFromRupees(price)) : "Price unavailable";
+                  })()}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-2">
+              <span className="font-mono text-label-caps uppercase text-muted">Select size</span>
+              <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto">
+                {(quickViewProduct.variants ?? []).map((v) => {
+                  const isSelected = v.id === selectedVariantId;
+                  return (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => setSelectedVariantId(v.id)}
+                      className={`min-h-10 border px-3 py-1 font-mono text-xs uppercase transition-colors ${
+                        isSelected
+                          ? "border-ink bg-ink text-white"
+                          : "border-line bg-surface text-ink hover:border-ink"
+                      }`}
+                    >
+                      {v.title}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {addError ? (
+              <p className="mt-3 font-sans text-xs text-negative">{addError}</p>
+            ) : null}
+
+            {addSuccess ? (
+              <div className="mt-4 flex items-center justify-between border border-line bg-surface-container p-3">
+                <span className="font-mono text-xs text-ink">Added to bag</span>
+                <Link
+                  href="/cart"
+                  className="font-mono text-xs uppercase text-ink underline hover:text-muted"
+                >
+                  View bag →
+                </Link>
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={addingToBag || !selectedVariantId}
+                onClick={async () => {
+                  if (!selectedVariantId) return;
+                  setAddingToBag(true);
+                  setAddError(null);
+                  try {
+                    const res = await addToCart(selectedVariantId, 1);
+                    if (!res.ok) {
+                      setAddError(res.message ?? "Could not add to bag.");
+                    } else {
+                      setAddSuccess(true);
+                    }
+                  } catch {
+                    setAddError("Could not add to bag.");
+                  } finally {
+                    setAddingToBag(false);
+                  }
+                }}
+                className="mt-6 w-full border border-ink bg-ink py-3 font-mono text-label-caps uppercase tracking-[0.12em] text-white hover:bg-accent hover:text-ink disabled:opacity-50 transition-colors"
+              >
+                {addingToBag ? "Adding…" : "Add to bag"}
+              </button>
+            )}
+
+            <Link
+              href={`/products/${quickViewProduct.handle}`}
+              onClick={() => setQuickViewProduct(null)}
+              className="mt-3 text-center font-mono text-[10px] uppercase tracking-[0.1em] text-muted hover:text-ink underline"
+            >
+              View full details →
+            </Link>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

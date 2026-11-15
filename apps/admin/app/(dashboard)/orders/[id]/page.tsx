@@ -38,10 +38,12 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     <div className="flex flex-col gap-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-headline-lg">Order #{order.display_id}</h1>
+          <h1 className="font-display text-headline-lg">
+            Order #{order.display_id !== undefined && order.display_id !== null ? order.display_id : id}
+          </h1>
           <p className="font-sans text-body-sm text-on-surface-variant">
             {order.email ?? order.customer?.email ?? "Guest"} ·{" "}
-            {new Date(order.created_at).toLocaleString("en-IN")}
+            {order.created_at ? new Date(order.created_at).toLocaleString("en-IN") : "—"}
           </p>
           <p className="mt-1 font-mono text-label-caps uppercase text-muted">
             {fulfilmentMode === "store_pickup"

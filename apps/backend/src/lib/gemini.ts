@@ -50,7 +50,7 @@ async function callOnce(model: string, parts: GeminiPart[]): Promise<Response> {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ contents: [{ parts }] }),
-    signal: AbortSignal.timeout(30_000),
+    signal: AbortSignal.timeout(2_000),
   });
 }
 
@@ -61,7 +61,7 @@ async function callWithRetry(model: string, parts: GeminiPart[]): Promise<Respon
   } catch {
     // fall through to the retry below — covers a thrown timeout/network error, not just a 503
   }
-  await new Promise((resolve) => setTimeout(resolve, 1500));
+  await new Promise((resolve) => setTimeout(resolve, 250));
   return callOnce(model, parts);
 }
 
