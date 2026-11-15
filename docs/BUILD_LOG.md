@@ -150,6 +150,9 @@ just skipped in the self-reported "all passed" summary.
 11. **Seed script demo customer attribution** — Fixed `seed-phase5-5.ts` dynamically selecting the first real registered customer rows for asks/bids, which wrongly attributed ~50 demo bids to a live test user. Now uses dedicated test seed emails.
 12. **Omnichannel luxury fashion pivot** — Integrated custom bespoke apparel studio (Chest, Waist, Shoulder, Sleeve, Inseam in inches with fit preferences), multi-brand streetwear catalog (Harvi Fashion, Represent, Fear of God, Essentials, Palm Angels, Off-White), Indian payment rails (UPI Intent/QR, Cards, EMI, COD OTP), in-store boutique pickup at Sindhu Bhavan Road (Bodakdev, Ahmedabad), and admin master tailor sheet pipeline.
 13. **Admin order detail tax_total undefined guard** — Fixed crash (`MoneyError: invalid rupee amount: undefined`) when orders omit `tax_total` or item subtotal.
+14. **CMS editorial & policy routes resolved** — Wired `/about`, `/support`, `/size-guide`, `/authenticity`, and `/policies/[slug]` (shipping, returns, privacy, terms) to backend `GET /store/cms/:slug` with a zero-dependency brutalist markdown renderer and updated `SiteFooter`.
+15. **Collection handle routing** — Added `/collections/[handle]` to map category handles (`footwear`, `bespoke`, `menswear`, `womenswear`, `accessories`) directly into `CatalogClient`.
+16. **Brutalist 404 & 500 error boundaries** — Implemented custom `not-found.tsx` and `error.tsx` across both `apps/storefront` and `apps/admin`.
 
 ## Known gaps (next work, in order)
 
