@@ -7,6 +7,15 @@ import { fetchOrder, fetchOrderShipment } from "@/lib/medusa";
 
 export const dynamic = "force-dynamic";
 
+/** Mirrors the master-tailor pipeline written by the admin order actions (`bespoke_stage`). */
+const BESPOKE_STEPS = [
+  { key: "measurements_verified", label: "Measurements verified" },
+  { key: "fabric_cutting", label: "Fabric cutting" },
+  { key: "stitching", label: "Stitching" },
+  { key: "qc_passed", label: "Quality check passed" },
+  { key: "ready_for_pickup", label: "Ready for pickup / dispatched" },
+] as const;
+
 interface PageProps {
   params: Promise<{ id: string }>;
 }
@@ -36,6 +45,14 @@ export default async function OrderDetailPage({ params }: PageProps) {
   }
 
   const canReturn = order.status === "completed" || order.fulfillment_status === "delivered";
+
+  // Made-to-measure orders only: a ready-to-wear order never shows tailoring steps it will
+  // not go through, and an unknown stage renders nothing rather than a broken timeline.
+  const bespokeStage = typeof order.metadata?.bespoke_stage === "string" ? order.metadata.bespoke_stage : null;
+  const bespokeIndex = BESPOKE_STEPS.findIndex((step) => step.key === bespokeStage);
+  const bespokeCurrent = bespokeIndex >= 0 ? BESPOKE_STEPS[bespokeIndex] : null;
+  const bespokeUpdatedAt =
+    typeof order.metadata?.bespoke_stage_updated_at === "string" ? order.metadata.bespoke_stage_updated_at : null;
 
   return (
     <main className="mx-auto w-full max-w-page px-margin py-sp-5 sm:px-margin-tablet lg:px-margin-desktop">
@@ -118,6 +135,41 @@ export default async function OrderDetailPage({ params }: PageProps) {
               </li>
             ))}
           </ul>
+
+          {bespokeCurrent ? (
+            <>
+              <h2 className="mt-sp-3 border-b border-line pb-2 font-display text-headline-sm uppercase">
+                Tailoring
+              </h2>
+              <div className="flex flex-col gap-2">
+                <p className="font-sans text-body-sm text-on-surface-variant">
+                  Current stage: {bespokeCurrent.label}
+                  {bespokeUpdatedAt
+                    ? ` · updated ${new Date(bespokeUpdatedAt).toLocaleDateString("en-IN")}`
+                    : ""}
+                </p>
+                <ol className="m-0 flex list-none flex-col gap-2 border-l border-line p-0 pl-4">
+                  {BESPOKE_STEPS.map((step, index) => (
+                    <li
+                      key={step.key}
+                      className={`font-sans text-body-sm ${
+                        index < bespokeIndex
+                          ? "text-muted line-through"
+                          : index === bespokeIndex
+                            ? "font-medium text-ink"
+                            : "text-muted"
+                      }`}
+                    >
+                      <span className="font-mono text-label-caps uppercase">
+                        {index < bespokeIndex ? "Done" : index === bespokeIndex ? "Now" : "Next"}
+                      </span>{" "}
+                      {step.label}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </>
+          ) : null}
 
           <h2 className="mt-sp-3 border-b border-line pb-2 font-display text-headline-sm uppercase">Tracking</h2>
           {shipment?.shipment ? (
