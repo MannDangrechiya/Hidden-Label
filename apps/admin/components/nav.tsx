@@ -23,6 +23,7 @@ const ITEMS: NavItem[] = [
   { href: "/payments", label: "Payments & refunds", code: "A-10", minimum: "support" },
   { href: "/shipments", label: "Shipments", code: "A-11", minimum: "support" },
   { href: "/returns", label: "Returns", code: "A-12", minimum: "support" },
+  { href: "/support", label: "Support inbox", code: "A-21", minimum: "support" },
   { href: "/promotions", label: "Promotions", code: "A-13", minimum: "support" },
   { href: "/content", label: "Content & CMS", code: "A-14", minimum: "support" },
   { href: "/reports", label: "Reports", code: "A-15", minimum: "support" },

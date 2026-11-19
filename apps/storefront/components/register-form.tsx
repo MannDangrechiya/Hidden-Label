@@ -47,6 +47,22 @@ export function RegisterForm() {
         hint={fields.password ? undefined : "At least 8 characters."}
       />
 
+      {/* GAP-REG-02: affirmative, unticked DPDP consent before the account is created. */}
+      <label className="flex items-start gap-2">
+        <input type="checkbox" name="accept_privacy" required className="mt-1" />
+        <span className="font-sans text-body-sm text-on-surface-variant">
+          I have read and accept the{" "}
+          <a href="/policies/privacy" className="underline" target="_blank" rel="noreferrer">
+            privacy notice
+          </a>{" "}
+          and the{" "}
+          <a href="/policies/terms" className="underline" target="_blank" rel="noreferrer">
+            terms of service
+          </a>
+          . I understand I can withdraw consent and request erasure of my account at any time.
+        </span>
+      </label>
+
       {message ? (
         <p role="alert" className="font-sans text-body-sm text-error">
           {message}

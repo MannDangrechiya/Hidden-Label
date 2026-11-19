@@ -2,6 +2,7 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { ContainerRegistrationKeys, generateEntityId } from "@medusajs/framework/utils";
 import { requestMeta, writeAudit } from "../../../lib/audit";
 import { requireRole } from "../../../lib/admin-auth";
+import { computePackage } from "../../../lib/package";
 import { customerStatus, isStale } from "../../../lib/shipment-status";
 import { createShiprocketOrder, isConfigured as shiprocketConfigured } from "../../../lib/shiprocket";
 import { THL_MODULE } from "../../../modules/thl";
@@ -99,13 +100,48 @@ export async function POST(req: MedusaRequest<Body>, res: MedusaResponse) {
         .join("order_item as oi", "oi.item_id", "oli.id")
         .where("oi.order_id", order.id)
         .whereNull("oli.deleted_at")
-        .select("oli.product_title", "oli.variant_sku", "oi.quantity", "oli.unit_price")) as Record<
-        string,
-        unknown
-      >[];
+        .select(
+          "oli.product_id",
+          "oli.product_title",
+          "oli.variant_sku",
+          "oli.metadata",
+          "oi.quantity",
+          "oli.unit_price",
+        )) as Record<string, unknown>[];
 
       if (!address) throw new Error("Order has no shipping address on file.");
       if (lineItems.length === 0) throw new Error("Order has no line items.");
+
+      // GAP-LOG-02: real dimensions/weight from product metadata + category, never the
+      // universal 30×20×12 / 0.6 kg box.
+      const productIds = [
+        ...new Set(lineItems.map((item) => String(item.product_id ?? "")).filter(Boolean)),
+      ];
+      const productRows = productIds.length
+        ? ((await pg("product").whereIn("id", productIds).select("id", "metadata")) as Record<
+            string,
+            unknown
+          >[])
+        : [];
+      const metaByProduct = new Map(
+        productRows.map((row) => [String(row.id), (row.metadata ?? {}) as Record<string, unknown>]),
+      );
+
+      const pkg = computePackage(
+        lineItems.map((item) => {
+          const productMeta = metaByProduct.get(String(item.product_id ?? "")) ?? {};
+          const lineMeta = (item.metadata ?? {}) as Record<string, unknown>;
+          return {
+            quantity: Number(item.quantity ?? 1),
+            category: typeof productMeta.category === "string" ? productMeta.category : null,
+            metadata: { ...productMeta, ...lineMeta },
+          };
+        }),
+      );
+
+      // GAP-LOG-02: a COD order must reach the courier as COD, a prepaid one as Prepaid.
+      const orderMeta = (order.metadata ?? {}) as Record<string, unknown>;
+      const paymentMethod = orderMeta.payment_method === "cod" ? "COD" : "Prepaid";
 
       const result = await createShiprocketOrder({
         orderId: order.id,
@@ -129,7 +165,11 @@ export async function POST(req: MedusaRequest<Body>, res: MedusaResponse) {
           (sum, item) => sum + Number(item.unit_price ?? 0) * Number(item.quantity ?? 1),
           0,
         ),
-        paymentMethod: "COD",
+        paymentMethod,
+        weightKg: pkg.chargeableWeightKg,
+        lengthCm: pkg.lengthCm,
+        breadthCm: pkg.breadthCm,
+        heightCm: pkg.heightCm,
       });
 
       providerResult = {

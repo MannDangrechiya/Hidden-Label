@@ -60,7 +60,9 @@ export default async function CheckoutPage({ searchParams }: PageProps) {
         const providers = await listRegionPaymentProviders(regionId);
         paymentProviderIds = providers.map((provider) => provider.id);
       } catch {
-        paymentProviderIds = ["pp_system_default"];
+        // No provider list means online payment is unavailable; the payment step says so
+        // instead of falling back to a Cash-on-Delivery path we no longer offer.
+        paymentProviderIds = [];
       }
     }
   }
@@ -99,6 +101,7 @@ export default async function CheckoutPage({ searchParams }: PageProps) {
               phone={cart.shipping_address?.phone ?? ""}
               totalRupees={cart.total ?? 0}
               fulfilmentMode={fulfilmentMode}
+              razorpayKeyId={process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ?? null}
             />
           )}
 

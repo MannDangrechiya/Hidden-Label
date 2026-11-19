@@ -166,8 +166,7 @@ export default async function CartPage() {
               Checkout
             </Link>
             <p className="mt-2 font-sans text-body-sm text-muted">
-              Cash on Delivery is available today; online payment unlocks automatically once
-              Razorpay test keys are configured.
+              Prepaid only — UPI and cards, secured by Razorpay. Cash on Delivery is not offered.
             </p>
 
             <p className="mt-sp-3 font-sans text-body-sm text-muted">

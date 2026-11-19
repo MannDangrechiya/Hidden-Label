@@ -6,6 +6,8 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import { requireRole } from "./admin-auth";
 import { requestMeta, writeAudit } from "./audit";
+import { computePackage } from "./package";
+import { createShiprocketReturn, isConfigured as shiprocketConfigured } from "./shiprocket";
 
 export const RETURN_WINDOW_DAYS = 7;
 
@@ -146,12 +148,105 @@ export async function processReturnAction(
     return row;
   });
 
+  // GAP-LOG-04: an approved return gets a real reverse pickup. A provider failure never
+  // blocks the approval — operations simply receive no AWB and arrange the pickup manually.
+  let reversePickupNote: string | undefined;
+  if (action === "approve" && shiprocketConfigured()) {
+    try {
+      const order = (await pg("order")
+        .where({ id: request.order_id })
+        .first("display_id", "email", "shipping_address_id", "metadata")) as
+        | { display_id: number | string; email: string | null; shipping_address_id: string | null; metadata?: Record<string, unknown> | null }
+        | undefined;
+
+      const address = order?.shipping_address_id
+        ? ((await pg("order_address").where({ id: order.shipping_address_id }).first()) as Record<
+            string,
+            unknown
+          > | undefined)
+        : undefined;
+
+      const items = (await pg("return_request_item as rri")
+        .join("order_line_item as oli", "oli.id", "rri.order_item_id")
+        .leftJoin("product as p", "p.id", "oli.product_id")
+        .where("rri.return_request_id", request.id)
+        .select(
+          "oli.product_title",
+          "oli.variant_sku",
+          "rri.quantity",
+          "oli.unit_price",
+          "p.metadata as product_metadata",
+        )) as Record<string, unknown>[];
+
+      if (order && address && items.length > 0) {
+        const pkg = computePackage(
+          items.map((item) => {
+            const meta = (item.product_metadata ?? {}) as Record<string, unknown>;
+            return {
+              quantity: Number(item.quantity ?? 1),
+              category: typeof meta.category === "string" ? meta.category : null,
+              metadata: meta,
+            };
+          }),
+        );
+
+        const reverse = await createShiprocketReturn({
+          rmaNumber: String(request.display_id),
+          originalOrderDisplayId: String(order.display_id),
+          pickupCustomerName: `${address.first_name ?? ""} ${address.last_name ?? ""}`.trim() || "Customer",
+          pickupAddressLine1: String(address.address_1 ?? ""),
+          pickupAddressLine2: address.address_2 ? String(address.address_2) : undefined,
+          pickupCity: String(address.city ?? ""),
+          pickupState: String(address.province ?? ""),
+          pickupPincode: String(address.postal_code ?? ""),
+          pickupPhone: String(address.phone ?? ""),
+          pickupEmail: order.email ?? "",
+          items: items.map((item) => ({
+            name: String(item.product_title ?? "Item"),
+            sku: String(item.variant_sku ?? item.product_title ?? "SKU"),
+            units: Number(item.quantity ?? 1),
+            selling_price: Number(item.unit_price ?? 0),
+          })),
+          subTotalRupees: items.reduce(
+            (sum, item) => sum + Number(item.unit_price ?? 0) * Number(item.quantity ?? 1),
+            0,
+          ),
+          weightKg: pkg.chargeableWeightKg,
+          lengthCm: pkg.lengthCm,
+          breadthCm: pkg.breadthCm,
+          heightCm: pkg.heightCm,
+        });
+
+        await pg("return_request")
+          .where({ id: request.id })
+          .update({
+            awb: reverse.awb,
+            courier: reverse.courierName,
+            updated_at: new Date(),
+          });
+
+        reversePickupNote = reverse.awb
+          ? `Reverse pickup booked with ${reverse.courierName ?? "the courier"} (AWB ${reverse.awb}).`
+          : "Reverse pickup created; the courier AWB will appear once assigned.";
+      }
+    } catch (error) {
+      const logger = req.scope.resolve(ContainerRegistrationKeys.LOGGER);
+      logger.warn(
+        `Reverse pickup failed for ${request.display_id}, arrange manually: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      reversePickupNote =
+        "Reverse pickup could not be booked automatically — arrange a manual pickup. See server logs.";
+    }
+  }
+
   res.json({
     return: updated,
     note:
       action === "refund" && request.refund_amount
         ? "Refund recorded. Manual payments are settled offline; card payments refund through the provider."
-        : undefined,
+        : reversePickupNote,
   });
   return true;
 }

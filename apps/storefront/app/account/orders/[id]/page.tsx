@@ -72,6 +72,14 @@ export default async function OrderDetailPage({ params }: PageProps) {
               Cancel Order
             </Link>
           ) : null}
+          {/* GAP-SUP-01: the FAQ tells customers to use contact options on the order — this is
+              the missing destination, with the order reference already filled in. */}
+          <Link
+            href={`/support?order=THL-${order.display_id}`}
+            className="inline-flex min-h-12 items-center justify-center border border-line px-4 py-2 font-mono text-label-caps uppercase tracking-[0.12em] text-ink no-underline transition-colors hover:bg-surface-container"
+          >
+            Get help with this order
+          </Link>
           <Link
             href={`/account/orders/${order.id}/invoice`}
             className="inline-flex min-h-12 items-center justify-center border border-line px-4 py-2 font-mono text-label-caps uppercase tracking-[0.12em] text-ink no-underline transition-colors hover:bg-surface-container"

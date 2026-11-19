@@ -20,6 +20,8 @@ import {
   linkSalesChannelsToApiKeyWorkflow,
   linkSalesChannelsToStockLocationWorkflow,
 } from "@medusajs/medusa/core-flows";
+import { hsnForProduct, PACKAGE_BY_CATEGORY } from "../lib/hsn";
+import { ensureIndiaTaxSetup } from "../lib/tax";
 import { THL_MODULE } from "../modules/thl";
 import type ThlModuleService from "../modules/thl/service";
 
@@ -419,6 +421,24 @@ const PRODUCTS: SeedProduct[] = [
   },
 ];
 
+/**
+ * Real parcel data per product so Shiprocket is never handed one universal box and GST
+ * invoices can carry a category-correct HSN (GAP-TAX-04 / GAP-LOG-02).
+ */
+function packageMetadata(category: string | undefined): Record<string, number> {
+  const dims = PACKAGE_BY_CATEGORY[category ?? "ready_to_wear"] ?? PACKAGE_BY_CATEGORY.ready_to_wear;
+  return {
+    package_length_cm: dims.length,
+    package_breadth_cm: dims.breadth,
+    package_height_cm: dims.height,
+  };
+}
+
+function packageWeightGrams(category: string | undefined): number {
+  const dims = PACKAGE_BY_CATEGORY[category ?? "ready_to_wear"] ?? PACKAGE_BY_CATEGORY.ready_to_wear;
+  return Math.round(dims.weight * 1000);
+}
+
 /** Stocked quantity per size index; the final size of each product is deliberately empty. */
 function stockForSize(index: number, total: number): number {
   // A single-size product (sunglasses, one-size accessories) must still be purchasable.
@@ -432,7 +452,7 @@ const PAGES = [
     slug: "policies/shipping",
     kind: "policy",
     title: "Shipping",
-    body: `## Delivery within India\n\nStandard delivery is complimentary on every order and arrives in 3–6 working days. Express delivery is available at checkout for ₹199 and arrives in 1–2 working days in serviceable pincodes.\n\n## Dispatch\n\nOrders placed before 2pm IST on a working day are packed the same day. Every shipment is trackable from your account.\n\n## Serviceability\n\nWe currently ship within India only. If a pincode is not serviceable, checkout will tell you before payment.`,
+    body: `## Delivery within India\n\nStandard delivery is complimentary on every order and arrives in 3–6 working days. Express delivery is available at checkout for ₹199 and arrives in 1–2 working days in serviceable pincodes.\n\n## Dispatch\n\nOrders placed before 2pm IST on a working day are packed the same day. Every shipment is trackable from your account.\n\n## Serviceability\n\nWe currently ship within India only. We ship to most pincodes across India.`,
   },
   {
     slug: "policies/returns",
@@ -513,13 +533,11 @@ export default async function seed({ container }: ExecArgs) {
     ).result[0];
 
   /* --- Region ----------------------------------------------------------- */
-  // pp_system_default powers Cash on Delivery today (it always authorizes; capture happens
-  // when the admin confirms cash was collected). pp_razorpay_razorpay is linked only once real
-  // test/live keys exist, so an unconfigured environment never offers a payment method it
-  // cannot actually process.
-  const regionPaymentProviders = process.env.RAZORPAY_KEY_ID
-    ? ["pp_system_default", "pp_razorpay_razorpay"]
-    : ["pp_system_default"];
+  // Prepaid only: UPI and cards through Razorpay. Cash on Delivery (pp_system_default) is
+  // deliberately NOT linked to the India region, so the store API can never offer it. The
+  // provider is linked only once real keys exist; an unconfigured environment offers no
+  // payment method rather than one it cannot process.
+  const regionPaymentProviders = process.env.RAZORPAY_KEY_ID ? ["pp_razorpay_razorpay"] : [];
 
   const existingRegions = await regionService.listRegions({ currency_code: "inr" });
   if (existingRegions.length === 0) {
@@ -537,6 +555,14 @@ export default async function seed({ container }: ExecArgs) {
     });
     logger.info("region created: India (INR)");
   }
+
+  /* --- GST tax configuration (GAP-TAX-01) ------------------------------- */
+  // Medusa ships with empty tax tables; without this every cart records tax_total = 0.
+  // `pnpm db:setup-tax` runs the same idempotent helper on production, where seed.ts refuses.
+  const tax = await ensureIndiaTaxSetup(pg);
+  logger.info(
+    `India GST region ready: ${tax.regionId} (created ${tax.createdRates.length}, existing ${tax.existingRates.length})`,
+  );
 
   /* --- Publishable key -------------------------------------------------- */
   const existingKeys = await apiKeyService.listApiKeys({ type: "publishable" });
@@ -825,7 +851,7 @@ export default async function seed({ container }: ExecArgs) {
             handle: product.handle,
             description: product.description,
             status: ProductStatus.PUBLISHED,
-            weight: 900,
+            weight: packageWeightGrams(product.category),
             thumbnail: product.image,
             images: [{ url: product.image }],
             metadata: {
@@ -833,6 +859,13 @@ export default async function seed({ container }: ExecArgs) {
               category: product.category ?? "footwear",
               ...(product.gender ? { gender: product.gender } : {}),
               ...(product.bespoke ? { bespoke: true } : {}),
+              hsn: hsnForProduct({
+                title: product.title,
+                category: product.category,
+                gender: product.gender,
+              }),
+              country_of_origin: "India",
+              ...packageMetadata(product.category),
             },
             ...(shippingProfileId ? { shipping_profile_id: shippingProfileId } : {}),
             options: [{ title: "Size", values: product.sizes }],

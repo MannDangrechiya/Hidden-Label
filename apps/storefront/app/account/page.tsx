@@ -2,7 +2,8 @@ import { ErrorState } from "@thl/ui";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { logoutAction } from "@/app/actions/auth";
-import { updateProfileAction } from "@/app/actions/account";
+import { deleteAccountAction, updateProfileAction } from "@/app/actions/account";
+import { DownloadMyDataButton } from "@/components/download-my-data-button";
 import { ProfileForm } from "@/components/profile-form";
 import { getCurrentCustomer } from "@/lib/session";
 import { listMyOrders, MedusaError } from "@/lib/medusa";
@@ -138,6 +139,32 @@ export default async function AccountPage() {
             }}
           />
           <p className="mt-sp-3 font-sans text-body-sm text-muted">Email: {session.customer.email}</p>
+
+          {/* GAP-REG-03 / DPDP §11: a copy of the account's own data on demand. */}
+          <div className="mt-sp-3 border-t border-line pt-sp-3">
+            <h3 className="font-mono text-label-caps uppercase text-muted">Your data</h3>
+            <p className="mt-1 font-sans text-body-sm text-on-surface-variant">
+              Download your profile, saved addresses and order history as a JSON file.
+            </p>
+            <DownloadMyDataButton />
+          </div>
+
+          {/* GAP-REG-03: DPDP erasure is self-service, not an email request. */}
+          <div className="mt-sp-3 border-t border-line pt-sp-3">
+            <h3 className="font-mono text-label-caps uppercase text-muted">Close your account</h3>
+            <p className="mt-1 font-sans text-body-sm text-on-surface-variant">
+              Closes the account and erases your name, phone, address and email. Order records are
+              kept in a redacted form where tax law requires them.
+            </p>
+            <form action={deleteAccountAction} className="mt-2">
+              <button
+                type="submit"
+                className="border border-error px-3 py-2 font-mono text-label-caps uppercase text-error hover:bg-error-container"
+              >
+                Delete my account
+              </button>
+            </form>
+          </div>
         </aside>
       </div>
     </main>

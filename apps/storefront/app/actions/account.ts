@@ -3,12 +3,16 @@
 import { addressSchema, profileSchema } from "@thl/shared";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { readAuthToken } from "@/lib/auth-cookie";
+import { clearAuthToken, readAuthToken } from "@/lib/auth-cookie";
 import {
   addToWishlist,
   cancelMyOrder,
   createAddress,
   deleteAddress,
+  deleteCustomerAccount,
+  fetchMe,
+  listAddresses,
+  listMyOrders,
   MedusaError,
   removeFromWishlist,
   updateAddress,
@@ -20,6 +24,52 @@ function fieldErrors(issues: { path: PropertyKey[]; message: string }[]): Record
   const fields: Record<string, string> = {};
   for (const issue of issues) fields[String(issue.path[0])] = issue.message;
   return fields;
+}
+
+/**
+ * GAP-REG-03: DPDP Act 2023 self-service erasure. The backend closes the account, redacts
+ * direct identifiers and removes the login credentials; the customer is signed out here.
+ */
+export async function deleteAccountAction(): Promise<void> {
+  const token = await readAuthToken();
+  if (!token) redirect("/login");
+
+  try {
+    await deleteCustomerAccount(token);
+  } catch {
+    redirect("/account?delete=failed");
+  }
+
+  await clearAuthToken();
+  revalidatePath("/", "layout");
+  redirect("/?account=deleted");
+}
+
+/**
+ * GAP-REG-03 / DPDP Act §11: data portability. Returns the customer's profile, saved addresses
+ * and order history as a JSON document the account page downloads.
+ */
+export async function exportMyDataAction(): Promise<{ filename: string; json: string }> {
+  const token = await readAuthToken();
+  if (!token) redirect("/login");
+
+  const [customer, addresses, orders] = await Promise.all([
+    fetchMe(token),
+    listAddresses(token),
+    listMyOrders(token, { limit: 100 }),
+  ]);
+
+  const payload = {
+    exported_at: new Date().toISOString(),
+    account: customer,
+    addresses,
+    orders: orders.orders,
+  };
+
+  return {
+    filename: `the-hidden-label-data-${new Date().toISOString().slice(0, 10)}.json`,
+    json: JSON.stringify(payload, null, 2),
+  };
 }
 
 export async function updateProfileAction(formData: FormData): Promise<ActionResult> {
@@ -46,6 +96,12 @@ export async function updateProfileAction(formData: FormData): Promise<ActionRes
 
   revalidatePath("/account");
   return { ok: true, message: "Profile updated." };
+}
+
+function addressMetadata(formData: FormData): Record<string, unknown> {
+  const landmark = String(formData.get("landmark") ?? "").trim();
+  const addressType = formData.get("address_type") === "work" ? "work" : "home";
+  return { address_type: addressType, ...(landmark ? { landmark } : {}) };
 }
 
 function addressPayload(formData: FormData) {
@@ -75,7 +131,7 @@ export async function createAddressAction(formData: FormData): Promise<ActionRes
   }
 
   try {
-    await createAddress(token, parsed.data);
+    await createAddress(token, { ...parsed.data, metadata: addressMetadata(formData) });
   } catch (error) {
     return {
       ok: false,
@@ -101,7 +157,7 @@ export async function updateAddressAction(formData: FormData): Promise<ActionRes
   }
 
   try {
-    await updateAddress(token, addressId, parsed.data);
+    await updateAddress(token, addressId, { ...parsed.data, metadata: addressMetadata(formData) });
   } catch (error) {
     return {
       ok: false,

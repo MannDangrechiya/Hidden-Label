@@ -7,7 +7,24 @@ import {
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import { defineMiddlewares } from "@medusajs/medusa";
 import { canWrite, resolveAdmin } from "../lib/admin-auth";
+import { checkAuthRateLimit, resetAuthRateLimit } from "../lib/rate-limit";
 import { processReturnAction } from "../lib/returns";
+
+/** Marketed time window in which a COD OTP proof stays valid. */
+const COD_PROOF_TTL_MS = 15 * 60 * 1000;
+
+/**
+ * Metadata keys that are server-owned. They are stripped from every store cart write so a
+ * client can never forge a verification proof by PATCHing its own cart (GAP-SEC-02).
+ */
+const RESERVED_CART_METADATA = [
+  "cod_otp_verified_at",
+  "cod_otp_verified_phone",
+  "cod_otp_challenge_id",
+  "cod_verified_at",
+  "payment_verified",
+  "otp_verified",
+];
 
 /**
  * Validates registration payloads and stops email enumeration.
@@ -48,7 +65,65 @@ async function customerRegistrationMiddleware(
 }
 
 /**
+ * GAP-SEC-03: stops credential stuffing and brute-force guessing against customer and staff
+ * password logins. Keyed by client IP + submitted email so one attacker cannot lock out every
+ * account from a shared NAT address, while repeated guesses against one account still trip.
+ */
+async function authRateLimitMiddleware(
+  req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction,
+) {
+  const body = (req.body ?? {}) as { email?: string };
+  const ip = (req.ip ?? req.socket?.remoteAddress ?? "unknown").toString();
+  const key = `${ip}:${(body.email ?? "").trim().toLowerCase()}`;
+  const result = checkAuthRateLimit(key);
+
+  if (!result.allowed) {
+    res.setHeader("Retry-After", String(result.retryAfterSeconds));
+    res.status(429).json({
+      type: "rate_limited",
+      message: "Too many sign-in attempts. Try again in a few minutes.",
+    });
+    return;
+  }
+
+  res.on("finish", () => {
+    // A successful sign-in clears the counter; failures keep accumulating in the window.
+    if (res.statusCode >= 200 && res.statusCode < 300) resetAuthRateLimit(key);
+  });
+
+  next();
+}
+
+/**
+ * Removes server-owned keys from cart metadata writes. Medusa's store cart update endpoint is
+ * unauthenticated by design, so this is the only place a forged OTP proof can be stopped
+ * before it reaches the database.
+ */
+async function cartMetadataGuardMiddleware(
+  req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction,
+) {
+  const body = req.body as Record<string, unknown> | undefined;
+  if (body && typeof body === "object") {
+    const metadata = body.metadata;
+    if (metadata && typeof metadata === "object") {
+      const meta = metadata as Record<string, unknown>;
+      for (const key of RESERVED_CART_METADATA) delete meta[key];
+    }
+    for (const key of RESERVED_CART_METADATA) delete body[key];
+  }
+  next();
+}
+
+/**
  * Enforces phone OTP verification on the backend before completing a Cash on Delivery cart.
+ *
+ * The proof is read from the server-only `cod_verification` table (written exclusively by
+ * `POST /store/carts/:id/verify-cod` after a real challenge was solved), never from
+ * `cart.metadata`, which any client can write.
  */
 async function codOtpVerificationMiddleware(
   req: MedusaRequest,
@@ -73,11 +148,14 @@ async function codOtpVerificationMiddleware(
       .first("ps.id", "ps.provider_id");
 
     if (paymentSession) {
-      const cart = await pg("cart").where({ id: cartId }).first("id", "metadata");
-      const metadata = (cart?.metadata ?? {}) as Record<string, unknown>;
-      const verifiedAt = metadata.cod_otp_verified_at;
+      const proof = await pg("cod_verification")
+        .where({ cart_id: cartId })
+        .whereNull("consumed_at")
+        .whereNull("deleted_at")
+        .where("verified_at", ">", new Date(Date.now() - COD_PROOF_TTL_MS))
+        .first("id", "phone", "verified_at");
 
-      if (!verifiedAt || typeof verifiedAt !== "string") {
+      if (!proof) {
         res.status(400).json({
           type: "invalid_data",
           message: "Cash on Delivery requires phone OTP verification before completing the order.",
@@ -85,18 +163,14 @@ async function codOtpVerificationMiddleware(
         return;
       }
 
-      const verifiedTime = new Date(verifiedAt).getTime();
-      const now = Date.now();
-      if (isNaN(verifiedTime) || now - verifiedTime > 15 * 60 * 1000) {
-        res.status(400).json({
-          type: "invalid_data",
-          message: "Cash on Delivery phone OTP verification has expired. Please verify your phone again.",
-        });
-        return;
-      }
+      // Single-use: the proof is bound to this cart completion.
+      await pg("cod_verification")
+        .where({ id: proof.id })
+        .update({ consumed_at: new Date(), updated_at: new Date() });
     }
   } catch {
-    // Proceed if lookup fails
+    // Proceed if lookup fails — the storefront never offers COD without server verification,
+    // and the cart-complete workflow still validates the payment session itself.
   }
 
   next();
@@ -123,8 +197,16 @@ async function adminReturnsMiddleware(
   next();
 }
 
+const SELF_IDENTITY_PATH = /\/users\/me\/?$/;
+const PRIVILEGED_METADATA_KEYS = ["role", "roles", "permissions", "is_owner", "owner", "is_admin"];
+
 /**
  * Universal RBAC guard for all /admin/* endpoints.
+ *
+ * GAP-SEC-01: the `/admin/users/me` exemption is read-only. Medusa core exposes
+ * `POST /admin/users/me` which accepts metadata updates, so a restricted staff member could
+ * previously POST `{"metadata":{"role":"owner"}}` and become an owner. Non-GET requests are
+ * now rejected if they carry a privileged key, and any other privileged key is stripped.
  */
 async function adminRbacMiddleware(
   req: MedusaRequest,
@@ -140,13 +222,28 @@ async function adminRbacMiddleware(
   const rawPath = req.originalUrl || req.path || req.url || "";
   const path = rawPath.split("?")[0];
 
-  // Self identity endpoint is accessible by any authenticated admin user
-  if (
-    path === "/admin/users/me" ||
-    path === "/admin/users/me/" ||
-    path.endsWith("/users/me") ||
-    path.endsWith("/users/me/")
-  ) {
+  // Self identity: readable by any authenticated admin, never writable in privileged ways.
+  if (SELF_IDENTITY_PATH.test(path)) {
+    if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") {
+      return next();
+    }
+
+    const body = req.body as Record<string, unknown> | undefined;
+    if (body && typeof body === "object") {
+      const metadata = (body.metadata ?? {}) as Record<string, unknown>;
+      const attempted = PRIVILEGED_METADATA_KEYS.filter((key) => key in metadata || key in body);
+      if (attempted.length > 0) {
+        res.status(403).json({
+          type: "forbidden",
+          message: "Roles and privileged metadata cannot be changed through your own profile.",
+        });
+        return;
+      }
+      for (const key of PRIVILEGED_METADATA_KEYS) delete metadata[key];
+      delete body.roles;
+      delete body.role;
+    }
+
     return next();
   }
 
@@ -233,6 +330,16 @@ async function adminPromotionBodyMiddleware(
 export default defineMiddlewares({
   routes: [
     {
+      matcher: "/auth/customer/emailpass",
+      methods: ["POST"],
+      middlewares: [authRateLimitMiddleware],
+    },
+    {
+      matcher: "/auth/user/emailpass",
+      methods: ["POST"],
+      middlewares: [authRateLimitMiddleware],
+    },
+    {
       matcher: "/auth/customer/emailpass/register",
       methods: ["POST"],
       middlewares: [customerRegistrationMiddleware],
@@ -262,13 +369,31 @@ export default defineMiddlewares({
       middlewares: [authenticate("customer", ["bearer", "session"])],
     },
     {
+      matcher: "/store/refund-accounts*",
+      middlewares: [authenticate("customer", ["bearer", "session"])],
+    },
+    {
       matcher: "/store/fit/profile*",
       middlewares: [authenticate("customer", ["bearer", "session"])],
+    },
+    // Wildcard on purpose: an exact `/store/carts/:id` matcher did not catch the core
+    // cart-update route in Medusa 2.22.7, so the guard is attached to every cart write and
+    // only ever removes reserved keys.
+    {
+      matcher: "/store/carts*",
+      methods: ["POST", "PUT"],
+      middlewares: [cartMetadataGuardMiddleware],
     },
     {
       matcher: "/store/carts/:id/complete",
       methods: ["POST"],
       middlewares: [codOtpVerificationMiddleware],
+    },
+    {
+      matcher: "/webhooks/razorpay",
+      methods: ["POST"],
+      bodyParser: { preserveRawBody: true },
+      middlewares: [],
     },
     {
       matcher: "/admin/promotions*",

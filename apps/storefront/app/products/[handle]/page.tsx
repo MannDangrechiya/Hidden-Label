@@ -1,4 +1,4 @@
-import { moneyFromRupees } from "@thl/shared";
+import { hsnForProduct, moneyFromRupees } from "@thl/shared";
 import { Price } from "@thl/ui";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -227,6 +227,47 @@ export default async function ProductPage({ params }: PageProps) {
               <p className="font-sans text-body-sm text-on-surface-variant">{product.description}</p>
             </div>
           ) : null}
+
+          {/* GAP-REG-04: Legal Metrology (Packaged Commodities) Rules declarations. */}
+          <div className="border-t border-line pt-sp-3">
+            <h2 className="mb-2 font-mono text-label-caps uppercase text-muted">
+              Product declarations
+            </h2>
+            <dl className="m-0 grid grid-cols-[150px_1fr] gap-y-1 font-sans text-body-sm text-on-surface-variant">
+              <dt className="font-mono text-[11px] uppercase text-muted">Country of origin</dt>
+              <dd className="m-0">
+                {typeof product.metadata?.country_of_origin === "string"
+                  ? product.metadata.country_of_origin
+                  : "India"}
+              </dd>
+              <dt className="font-mono text-[11px] uppercase text-muted">Net quantity</dt>
+              <dd className="m-0">1 unit</dd>
+              <dt className="font-mono text-[11px] uppercase text-muted">MRP</dt>
+              <dd className="m-0">
+                {amount === null ? "—" : `₹${amount.toLocaleString("en-IN")}`} inclusive of all
+                taxes
+              </dd>
+              <dt className="font-mono text-[11px] uppercase text-muted">HSN</dt>
+              <dd className="m-0">
+                {typeof product.metadata?.hsn === "string"
+                  ? product.metadata.hsn
+                  : hsnForProduct(
+                      product.title,
+                      typeof product.metadata?.gender === "string" ? product.metadata.gender : null,
+                    )}
+              </dd>
+              <dt className="font-mono text-[11px] uppercase text-muted">Marketed by</dt>
+              <dd className="m-0">
+                {process.env.BUSINESS_LEGAL_NAME ?? "The Hidden Label Luxury Retail Pvt Ltd"},
+                Ahmedabad, Gujarat
+              </dd>
+              <dt className="font-mono text-[11px] uppercase text-muted">Consumer care</dt>
+              <dd className="m-0">
+                {process.env.SUPPORT_EMAIL ?? "concierge@thehiddenlabel.com"} ·{" "}
+                {process.env.SUPPORT_PHONE ?? "+91 79 4000 0000"}
+              </dd>
+            </dl>
+          </div>
 
           <div className="border-t border-line pt-sp-3">
             <h2 className="mb-2 font-mono text-label-caps uppercase text-muted">Shipping &amp; returns</h2>

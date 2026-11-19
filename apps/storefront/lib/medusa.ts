@@ -201,7 +201,7 @@ export interface StoreCart {
     country_code: string | null;
   } | null;
   shipping_methods?: { id: string; name: string; shipping_option_id: string }[];
-  /** Set at checkout: fulfilment mode (`home_delivery` / `store_pickup`) and COD OTP proof. */
+  /** Set at checkout: fulfilment mode (`home_delivery` / `store_pickup`) and consent. */
   metadata?: Record<string, unknown> | null;
 }
 
@@ -311,8 +311,9 @@ export async function addLineItem(
 
 /**
  * Merges `metadata` into the cart. Used for checkout facts that are not product data:
- * the fulfilment mode chosen (home delivery vs Sindhu Bhavan pickup) and the COD OTP proof.
- * Medusa's update replaces `metadata` wholesale, so the merge happens here.
+ * the fulfilment mode chosen (home delivery vs Sindhu Bhavan pickup), the prepaid payment
+ * method and the DPDP consent timestamp. Medusa's update replaces `metadata` wholesale, so
+ * the merge happens here.
  */
 export async function setCartMetadata(
   cartId: string,
@@ -598,7 +599,13 @@ export interface StoreCustomer {
 /** Step 2: attach a customer record to the actorless identity from `authRegister`. */
 export async function createCustomerAccount(
   registrationToken: string,
-  data: { email: string; first_name: string; last_name: string; phone?: string },
+  data: {
+    email: string;
+    first_name: string;
+    last_name: string;
+    phone?: string;
+    metadata?: Record<string, unknown>;
+  },
 ): Promise<StoreCustomer> {
   const body = await authRequest<{ customer: StoreCustomer }>("/store/customers", registrationToken, {
     method: "POST",
@@ -668,6 +675,7 @@ export interface StoreAddress {
   province: string | null;
   postal_code: string | null;
   country_code: string | null;
+  metadata?: Record<string, unknown> | null;
   is_default_shipping?: boolean;
   is_default_billing?: boolean;
 }
@@ -744,10 +752,14 @@ export interface StoreOrderItem {
   title: string;
   variant_title?: string | null;
   product_title?: string | null;
+  product_handle?: string | null;
   thumbnail?: string | null;
   quantity: number;
   unit_price: number;
   total?: number;
+  tax_total?: number;
+  metadata?: Record<string, unknown> | null;
+  product?: { metadata?: Record<string, unknown> | null } | null;
 }
 
 export interface StoreOrder {
@@ -761,14 +773,16 @@ export interface StoreOrder {
   total: number;
   subtotal?: number;
   shipping_total?: number;
+  tax_total?: number;
   created_at: string;
   customer_id?: string | null;
+  metadata?: Record<string, unknown> | null;
   items?: StoreOrderItem[];
   shipping_address?: StoreAddress | null;
 }
 
 const ORDER_FIELDS =
-  "id,display_id,status,fulfillment_status,payment_status,email,currency_code,total,subtotal,shipping_total,created_at,customer_id,*items,*shipping_address";
+  "id,display_id,status,fulfillment_status,payment_status,email,currency_code,total,subtotal,shipping_total,tax_total,created_at,customer_id,metadata,*items,items.metadata,items.product.metadata,*shipping_address";
 
 export async function listMyOrders(
   token: string,
@@ -909,6 +923,7 @@ export interface AddressPayload {
   postal_code: string;
   country_code: string;
   company?: string;
+  metadata?: Record<string, unknown>;
 }
 
 /** Sets the cart's email + shipping/billing address (billing mirrors shipping in v1). */
@@ -972,7 +987,7 @@ export async function createPaymentCollection(cartId: string): Promise<PaymentCo
   return body.payment_collection;
 }
 
-/** `providerId` is the full stored id, e.g. `pp_system_default` for Cash on Delivery. */
+/** `providerId` is the full stored id, e.g. `pp_razorpay_razorpay` for online payment. */
 export async function createPaymentSession(
   collectionId: string,
   providerId: string,
@@ -996,3 +1011,44 @@ export type CompleteCartResult =
 export async function completeCart(cartId: string): Promise<CompleteCartResult> {
   return request<CompleteCartResult>(`/store/carts/${cartId}/complete`, { method: "POST" });
 }
+
+/** Attaches the Razorpay checkout result to the payment session before completing the cart. */
+export async function updatePaymentSession(
+  collectionId: string,
+  sessionId: string,
+  data: Record<string, unknown>,
+): Promise<PaymentCollection> {
+  const body = await request<{ payment_collection: PaymentCollection }>(
+    `/store/payment-collections/${collectionId}/payment-sessions/${sessionId}`,
+    { method: "POST", body: { data } },
+  );
+  return body.payment_collection;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Compliance & support (custom routes)                                     */
+/* -------------------------------------------------------------------------- */
+
+export async function deleteCustomerAccount(token: string): Promise<{ deleted: boolean }> {
+  return authRequest("/store/customers/me/delete-account", token, { method: "DELETE" });
+}
+
+export interface SupportTicketInput {
+  name: string;
+  email: string;
+  phone?: string;
+  order_id?: string;
+  category: string;
+  subject: string;
+  message: string;
+}
+
+export async function createSupportTicket(
+  input: SupportTicketInput,
+  token?: string,
+): Promise<{ ticket: { display_id: string; status: string } }> {
+  return token
+    ? authRequest("/store/support/tickets", token, { method: "POST", body: input })
+    : request("/store/support/tickets", { method: "POST", body: input });
+}
+

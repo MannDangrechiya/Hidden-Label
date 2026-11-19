@@ -1,5 +1,6 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
+import { sendOrderDeliveredEmail } from "../../../lib/order-email";
 import { applyShipmentUpdate } from "../../../lib/shipment-status";
 import { THL_MODULE } from "../../../modules/thl";
 import type ThlModuleService from "../../../modules/thl/service";
@@ -71,6 +72,36 @@ export async function POST(req: MedusaRequest<ShiprocketWebhookBody>, res: Medus
       rawPayload: body,
     }),
   );
+
+  /*
+   * GAP-LOG-03: a carrier `delivered` scan used to stop at our own `shipment` table, leaving
+   * Medusa's fulfilment (and therefore the customer's order page) on "shipped" forever.
+   * Reflect the transition into Medusa core, then send the delivery email.
+   */
+  if (result.status === "delivered" && !result.deduped) {
+    try {
+      await pg.transaction(async (trx) => {
+        const link = (await trx("order_fulfillment")
+          .where({ order_id: shipment.order_id })
+          .whereNull("deleted_at")
+          .first("fulfillment_id")) as { fulfillment_id: string } | undefined;
+
+        if (link?.fulfillment_id) {
+          await trx("fulfillment")
+            .where({ id: link.fulfillment_id })
+            .update({ delivered_at: new Date(), updated_at: new Date() });
+        }
+      });
+    } catch (error) {
+      logger.warn(
+        `Delivered scan could not be reflected into Medusa fulfilment for order ${shipment.order_id}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+
+    await sendOrderDeliveredEmail(req.scope, shipment.order_id);
+  }
 
   res.status(200).json({ received: true, matched: true, status: result.status, deduped: result.deduped });
 }

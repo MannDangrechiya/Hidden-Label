@@ -30,6 +30,17 @@ export interface ActionResult {
  * Then an OTP is sent to the registered email so `/verify` can confirm it, per decision Q6.
  */
 export async function registerAction(formData: FormData): Promise<ActionResult> {
+  // GAP-REG-02: DPDP Act 2023 requires an affirmative, specific consent — not a pre-ticked box
+  // buried in the terms.
+  const consent = formData.get("accept_privacy");
+  if (consent !== "on" && consent !== "true") {
+    return {
+      ok: false,
+      message: "Please accept the privacy notice and terms to create an account.",
+      fields: { accept_privacy: "Required" },
+    };
+  }
+
   const parsed = registerSchema.safeParse({
     first_name: formData.get("first_name"),
     last_name: formData.get("last_name"),
@@ -53,6 +64,11 @@ export async function registerAction(formData: FormData): Promise<ActionResult> 
       first_name,
       last_name,
       ...(phone ? { phone } : {}),
+      // Stored proof of consent with the policy version (DPDP §6).
+      metadata: {
+        privacy_consent_at: new Date().toISOString(),
+        privacy_policy_version: "2026-11",
+      },
     });
     const sessionToken = await authLogin(email, password);
     await writeAuthToken(sessionToken);

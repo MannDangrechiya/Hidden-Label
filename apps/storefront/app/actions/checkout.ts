@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { readAuthToken } from "@/lib/auth-cookie";
 import { clearCartId, readCartId } from "@/lib/cart-cookie";
+import { lookupPincode } from "@/lib/pincode";
 import {
   attachCustomerToCart,
   completeCart,
@@ -13,13 +14,13 @@ import {
   fetchCart,
   MedusaError,
   selectShippingOption,
-  sendOtp,
   setCartAddress,
   setCartMetadata,
-  verifyOtp,
+  updatePaymentSession,
 } from "@/lib/medusa";
+// Cash on Delivery is not offered: every order is prepaid through Razorpay (UPI or card).
 import type { ActionResult } from "@/app/actions/auth";
-import { COD_PROVIDER, PICKUP_LOCATION, type FulfilmentMode } from "@/lib/fulfilment";
+import { PICKUP_LOCATION, RAZORPAY_PROVIDER, type FulfilmentMode } from "@/lib/fulfilment";
 
 function requireCartId(cartId: string | null): asserts cartId is string {
   if (!cartId) redirect("/cart");
@@ -49,6 +50,21 @@ export async function setCheckoutAddressAction(formData: FormData): Promise<Acti
     return { ok: false, message: "Check the highlighted fields.", fields };
   }
 
+  // ADR-02: the postal directory is the serviceability gate. A PIN that does not exist cannot
+  // be delivered to, so checkout stops here rather than taking payment for an undeliverable
+  // parcel. If India Post is unreachable we let the address through instead of failing the sale.
+  const pincode = await lookupPincode(address.data.postal_code);
+  if (pincode.status === "not_found") {
+    return {
+      ok: false,
+      message: "We don't deliver to this pincode yet. Please try another address.",
+      fields: { postal_code: "Invalid PIN code" },
+    };
+  }
+
+  const landmark = String(formData.get("landmark") ?? "").trim();
+  const addressType = formData.get("address_type") === "work" ? "work" : "home";
+
   try {
     const token = await readAuthToken();
     if (token) {
@@ -57,7 +73,15 @@ export async function setCheckoutAddressAction(formData: FormData): Promise<Acti
       // (GET /store/orders filters by customer_id; see docs/BUILD_LOG.md).
       await attachCustomerToCart(cartId, token).catch(() => undefined);
     }
-    await setCartAddress(cartId, email.data.email, address.data, token ?? undefined);
+    await setCartAddress(
+      cartId,
+      email.data.email,
+      {
+        ...address.data,
+        metadata: { address_type: addressType, ...(landmark ? { landmark } : {}) },
+      },
+      token ?? undefined,
+    );
   } catch (error) {
     return {
       ok: false,
@@ -110,178 +134,117 @@ export async function selectShippingAction(formData: FormData): Promise<ActionRe
   redirect("/checkout?step=payment");
 }
 
-export interface CodOtpSendResult extends ActionResult {
-  challengeId?: string;
-  channel?: "sms" | "email";
-  /** Present only when the backend has `OTP_DEV_ECHO=true` outside production. */
-  devCode?: string;
-}
-
-/**
- * Dispatches the Cash-on-Delivery verification code to the customer's phone.
- *
- * SMS needs a provider (`OTP_PROVIDER`); when this environment has none, the backend answers
- * `501 not_configured` and this falls back to an email code *and says so*, rather than dropping
- * the verification step and letting a high-value COD order through unverified.
- */
-export async function sendCodOtpAction(phone: string, email: string): Promise<CodOtpSendResult> {
-  const destination = phone.trim();
-
-  if (!/^\+[1-9]\d{7,14}$/.test(destination)) {
-    return {
-      ok: false,
-      message: "Enter the phone number in international format, for example +919876543210.",
-    };
-  }
-
-  try {
-    const sms = await sendOtp({ destination, channel: "sms", purpose: "cod_verify" });
-    return {
-      ok: true,
-      challengeId: sms.challenge_id,
-      channel: "sms",
-      devCode: sms.dev_code,
-      message: sms.delivered
-        ? "A six-digit code has been sent to your phone."
-        : "Code generated. This environment has no SMS provider configured, so delivery is simulated.",
-    };
-  } catch (error) {
-    const notConfigured = error instanceof MedusaError && error.status === 501;
-    if (!notConfigured) {
-      return {
-        ok: false,
-        message: error instanceof MedusaError ? error.message : "Could not send the verification code.",
-      };
-    }
-  }
-
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-    return {
-      ok: false,
-      message: "SMS codes are not configured here and no valid email is on this order for the fallback code.",
-    };
-  }
-
-  try {
-    const mail = await sendOtp({ destination: email, channel: "email", purpose: "cod_verify" });
-    return {
-      ok: true,
-      challengeId: mail.challenge_id,
-      channel: "email",
-      devCode: mail.dev_code,
-      message: mail.delivered
-        ? "SMS is not configured here, so we sent the code to your email instead."
-        : `SMS is not configured here and email delivery is off (${mail.delivery_note ?? "no provider"}).`,
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      message: error instanceof MedusaError ? error.message : "Could not send the verification code.",
-    };
-  }
-}
-
-/**
- * Confirms the COD code and records the proof on the cart. `placeOrderAction` refuses a COD
- * order without it, so this cannot be skipped by calling the order endpoint directly.
- */
-export async function confirmCodOtpAction(input: {
-  challengeId: string;
-  code: string;
-  phone: string;
-}): Promise<ActionResult> {
-  const cartId = await readCartId();
-  requireCartId(cartId);
-
-  if (!input.challengeId) return { ok: false, message: "Request a code first." };
-
-  try {
-    const result = await verifyOtp({ challenge_id: input.challengeId, code: input.code.trim() });
-    if (!result.verified) {
-      return { ok: false, message: "That code could not be verified." };
-    }
-    await setCartMetadata(cartId, {
-      cod_otp_verified_phone: input.phone.trim(),
-      cod_otp_verified_at: new Date().toISOString(),
-    });
-  } catch (error) {
-    return {
-      ok: false,
-      message: error instanceof MedusaError ? error.message : "Could not verify that code.",
-    };
-  }
-
-  return { ok: true, message: "Phone verified for Cash on Delivery." };
-}
-
 export interface PlaceOrderResult {
   ok: boolean;
   message?: string;
   orderId?: string;
 }
 
+export interface RazorpayBeginResult {
+  ok: boolean;
+  message?: string;
+  keyId?: string;
+  razorpayOrderId?: string;
+  amountPaise?: number;
+  collectionId?: string;
+  sessionId?: string;
+}
+
 /**
- * The only function in the storefront allowed to create an order. `providerId` is either
- * `pp_system_default` (Cash on Delivery — always available) or `pp_razorpay_razorpay` (only
- * offered once the backend has real keys and the region lists it — see checkout/page.tsx).
- *
- * This calls Medusa's own cart-complete workflow server-side and returns only once Medusa has
- * actually created the order; a `{ type: "cart" }` response (stock short, payment not
- * authorized, etc.) is surfaced as an error and the customer stays on the payment step —
- * nothing here ever renders a success state from the browser's own belief that it "paid"
- * (docs/PROJECT_PLAN.md §6, the single most important rule in this codebase).
- *
- * Cash on Delivery additionally requires the phone OTP proof written by `confirmCodOtpAction`.
+ * GAP-PAY-01: creates the payment collection + Razorpay session server-side and returns only
+ * the public checkout parameters. The Razorpay order id comes from the provider's
+ * `initiatePayment`, so the browser never invents an amount or an order.
  */
-export async function placeOrderAction(
-  providerId: string,
-  options?: { fulfilmentMode?: FulfilmentMode },
-): Promise<PlaceOrderResult> {
+export async function beginRazorpayPaymentAction(options: {
+  fulfilmentMode?: FulfilmentMode;
+  privacyConsent?: boolean;
+}): Promise<RazorpayBeginResult> {
+  if (!options.privacyConsent) {
+    return { ok: false, message: "Please accept the privacy notice and terms before paying." };
+  }
+
   const cartId = await readCartId();
   if (!cartId) return { ok: false, message: "Your bag could not be found. Start again from the cart." };
 
+  const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+  if (!keyId) {
+    return { ok: false, message: "Online payment is not configured on this environment." };
+  }
+
   try {
     const cart = await fetchCart(cartId);
-    if (!cart || cart.items.length === 0) {
-      return { ok: false, message: "Your bag is empty." };
-    }
-
+    if (!cart || cart.items.length === 0) return { ok: false, message: "Your bag is empty." };
     if (!cart.shipping_methods || cart.shipping_methods.length === 0) {
       return { ok: false, message: "Choose a delivery method before paying." };
     }
 
-    if (providerId === COD_PROVIDER && !cart.metadata?.cod_otp_verified_at) {
-      return {
-        ok: false,
-        message: "Verify your phone with the one-time code before placing a Cash on Delivery order.",
-      };
-    }
-
-    if (options?.fulfilmentMode) {
-      await setCartMetadata(cartId, { fulfilment_mode: options.fulfilmentMode });
-    }
+    await setCartMetadata(cartId, {
+      ...(options.fulfilmentMode ? { fulfilment_mode: options.fulfilmentMode } : {}),
+      payment_method: "razorpay",
+      privacy_consent_at: new Date().toISOString(),
+      privacy_policy_version: "2026-11",
+    });
 
     const collection = await createPaymentCollection(cartId);
-    const withSession = await createPaymentSession(collection.id, providerId);
-    const session = withSession.payment_sessions?.find((s) => s.provider_id === providerId);
-
+    const withSession = await createPaymentSession(collection.id, RAZORPAY_PROVIDER);
+    const session = withSession.payment_sessions?.find((s) => s.provider_id === RAZORPAY_PROVIDER);
     if (!session) {
-      return { ok: false, message: "Could not start a payment session for that method." };
+      return { ok: false, message: "Could not start a Razorpay payment session." };
     }
 
-    const result = await completeCart(cartId);
+    const razorpayOrderId = session.data?.razorpay_order_id;
+    if (typeof razorpayOrderId !== "string" || !razorpayOrderId) {
+      return { ok: false, message: "The payment gateway did not return an order reference." };
+    }
 
+    return {
+      ok: true,
+      keyId,
+      razorpayOrderId,
+      amountPaise: Math.round((cart.total ?? 0) * 100),
+      collectionId: collection.id,
+      sessionId: session.id,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof MedusaError ? error.message : "Could not start the online payment.",
+    };
+  }
+}
+
+/**
+ * Called from the Razorpay handler with the signed checkout result. The provider verifies the
+ * HMAC signature server-side during `completeCart`; a forged signature fails the payment session
+ * and no order is created.
+ */
+export async function confirmRazorpayPaymentAction(input: {
+  collectionId: string;
+  sessionId: string;
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}): Promise<PlaceOrderResult> {
+  const cartId = await readCartId();
+  if (!cartId) return { ok: false, message: "Your bag could not be found." };
+
+  try {
+    await updatePaymentSession(input.collectionId, input.sessionId, {
+      razorpay_order_id: input.razorpay_order_id,
+      razorpay_payment_id: input.razorpay_payment_id,
+      razorpay_signature: input.razorpay_signature,
+    });
+
+    const result = await completeCart(cartId);
     if (result.type === "cart") {
       return {
         ok: false,
         message:
           result.error?.message ??
-          "We could not confirm payment for this order. No charge has been made — please try again.",
+          "The payment could not be confirmed. No order was created — please try again.",
       };
     }
 
-    // Order exists and is confirmed server-side. Clear the cart cookie so a fresh visit starts
-    // a new cart instead of reopening the one that just became an order.
     await clearCartId();
     revalidatePath("/cart");
     return { ok: true, orderId: result.order.id };
@@ -291,7 +254,7 @@ export async function placeOrderAction(
       message:
         error instanceof MedusaError
           ? error.message
-          : `Could not place the order: ${error instanceof Error ? error.message : String(error)}`,
+          : `Could not confirm the payment: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
 }

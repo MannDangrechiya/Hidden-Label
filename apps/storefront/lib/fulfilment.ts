@@ -5,7 +5,7 @@
  * async functions, so plain constants live here.
  */
 
-export const COD_PROVIDER = "pp_system_default";
+/** Prepaid only: UPI and cards through Razorpay. Cash on Delivery is not offered. */
 export const RAZORPAY_PROVIDER = "pp_razorpay_razorpay";
 
 export type FulfilmentMode = "home_delivery" | "store_pickup";

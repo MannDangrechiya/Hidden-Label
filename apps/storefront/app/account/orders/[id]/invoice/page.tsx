@@ -1,7 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import { computeInclusiveGst, gstStateCode, hsnForProduct } from "@thl/shared";
 import { getCurrentCustomer } from "@/lib/session";
-import { fetchOrder } from "@/lib/medusa";
+import { fetchOrder, type StoreOrderItem } from "@/lib/medusa";
 import { PrintButton } from "./invoice-client";
 
 export const dynamic = "force-dynamic";
@@ -34,11 +35,44 @@ export default async function OrderInvoicePage({ params }: PageProps) {
   const addr = order.shipping_address;
   const items = order.items ?? [];
 
-  // Calculate GST components (assumes 18% inclusive GST for luxury apparel/footwear)
-  const taxableAmount = Math.round((order.total / 1.18) * 100) / 100;
-  const totalTax = Math.round((order.total - taxableAmount) * 100) / 100;
-  const cgst = Math.round((totalTax / 2) * 100) / 100;
-  const sgst = Math.round((totalTax - cgst) * 100) / 100;
+  /*
+   * GAP-TAX-02/GAP-TAX-03/GAP-TAX-05: the invoice is generated from the business's registered
+   * identity and the real place of supply. A supply whose destination state differs from the
+   * supplier's state is IGST; only an intra-state supply splits into CGST + SGST.
+   */
+  const sellerStateCode = process.env.BUSINESS_STATE_CODE ?? "24";
+  const sellerStateName = process.env.BUSINESS_STATE_NAME ?? "Gujarat";
+  const sellerGstin = process.env.BUSINESS_GSTIN ?? "";
+  const sellerLegalName = process.env.BUSINESS_LEGAL_NAME ?? "The Hidden Label Luxury Retail Pvt Ltd";
+  const sellerAddress =
+    process.env.BUSINESS_ADDRESS ?? "Sindhu Bhavan Road, Bodakdev, Ahmedabad, Gujarat 380054, India";
+
+  const buyerStateCode = gstStateCode(addr?.province) ?? null;
+  const gst = computeInclusiveGst({
+    totalInclusive: order.total,
+    sellerStateCode,
+    buyerState: addr?.province ?? sellerStateName,
+    actualTaxTotal: order.tax_total,
+  });
+
+  const paymentMode =
+    order.metadata?.payment_method === "cod"
+      ? "Cash on Delivery"
+      : order.payment_status === "captured" || order.payment_status === "authorized"
+        ? "Prepaid — online payment"
+        : "Prepaid — settled with order";
+
+  function hsnForItem(item: StoreOrderItem): string {
+    const fromLine = item.metadata?.hsn;
+    if (typeof fromLine === "string" && fromLine.trim()) return fromLine;
+    const fromProduct = item.product?.metadata?.hsn;
+    if (typeof fromProduct === "string" && fromProduct.trim()) return fromProduct;
+    const gender = item.product?.metadata?.gender;
+    return hsnForProduct(
+      item.product_title ?? item.title,
+      typeof gender === "string" ? gender : null,
+    );
+  }
 
   return (
     <main className="mx-auto w-full max-w-4xl px-margin py-sp-5 sm:px-margin-tablet lg:px-margin-desktop font-sans text-ink">
@@ -61,11 +95,10 @@ export default async function OrderInvoicePage({ params }: PageProps) {
             </h1>
             <p className="font-mono text-xs text-muted uppercase mt-1">Omnichannel Luxury Boutique</p>
             <p className="mt-2 text-xs text-on-surface-variant max-w-xs leading-relaxed">
-              The Hidden Label Luxury Retail Pvt Ltd<br />
-              Sindhu Bhavan Road, Bodakdev<br />
-              Ahmedabad, Gujarat 380054, India<br />
-              <strong>GSTIN:</strong> 24AAACT1234F1Z5<br />
-              <strong>State Code:</strong> 24 (Gujarat)
+              {sellerLegalName}<br />
+              {sellerAddress}<br />
+              <strong>GSTIN:</strong> {sellerGstin || "Registration not configured"}<br />
+              <strong>State Code:</strong> {sellerStateCode} ({sellerStateName})
             </p>
           </div>
           <div className="text-right">
@@ -75,7 +108,7 @@ export default async function OrderInvoicePage({ params }: PageProps) {
             <p className="font-mono text-xs text-muted"><strong>Invoice No:</strong> {invoiceNo}</p>
             <p className="font-mono text-xs text-muted"><strong>Date:</strong> {invoiceDate}</p>
             <p className="font-mono text-xs text-muted"><strong>Order ID:</strong> THL-{order.display_id}</p>
-            <p className="font-mono text-xs text-muted"><strong>Payment Mode:</strong> Cash on Delivery / Offline</p>
+            <p className="font-mono text-xs text-muted"><strong>Payment Mode:</strong> {paymentMode}</p>
           </div>
         </div>
 
@@ -102,7 +135,7 @@ export default async function OrderInvoicePage({ params }: PageProps) {
             <p className="text-on-surface-variant mt-1">
               {addr?.address_1}{addr?.address_2 ? `, ${addr.address_2}` : ""}<br />
               {addr?.city}, {addr?.province} — {addr?.postal_code}<br />
-              Place of Supply: {addr?.province ?? "Gujarat"} (State Code: 24)
+              Place of Supply: {addr?.province ?? sellerStateName} (State Code: {buyerStateCode ?? sellerStateCode})
             </p>
           </div>
         </div>
@@ -130,7 +163,7 @@ export default async function OrderInvoicePage({ params }: PageProps) {
                       <p className="font-mono text-[11px] text-muted">{item.variant_title}</p>
                     )}
                   </td>
-                  <td className="py-3 px-3 font-mono">6403 (Footwear)</td>
+                  <td className="py-3 px-3 font-mono">{hsnForItem(item)}</td>
                   <td className="py-3 px-3 text-center font-mono">{item.quantity}</td>
                   <td className="py-3 px-3 text-right font-mono">
                     ₹{Number(item.unit_price).toLocaleString("en-IN")}
@@ -147,12 +180,21 @@ export default async function OrderInvoicePage({ params }: PageProps) {
         {/* Totals & Tax Summary */}
         <div className="border-t border-line pt-4 flex flex-col sm:flex-row justify-between gap-6 text-xs">
           <div className="max-w-xs text-muted space-y-1">
-            <p className="font-mono text-label-caps uppercase font-semibold text-ink mb-1">Tax Summary (18% GST)</p>
-            <p>Taxable Value: ₹{taxableAmount.toLocaleString("en-IN")}</p>
-            <p>CGST (9.0%): ₹{cgst.toLocaleString("en-IN")}</p>
-            <p>SGST (9.0%): ₹{sgst.toLocaleString("en-IN")}</p>
+            <p className="font-mono text-label-caps uppercase font-semibold text-ink mb-1">
+              Tax Summary ({gst.ratePercent}% GST — {gst.intraState ? "intra-state" : "inter-state"})
+            </p>
+            <p>Taxable Value: ₹{gst.taxable.toLocaleString("en-IN")}</p>
+            {gst.intraState ? (
+              <>
+                <p>CGST ({gst.cgstPercent}%): ₹{gst.cgst.toLocaleString("en-IN")}</p>
+                <p>SGST ({gst.sgstPercent}%): ₹{gst.sgst.toLocaleString("en-IN")}</p>
+              </>
+            ) : (
+              <p>IGST ({gst.igstPercent}%): ₹{gst.igst.toLocaleString("en-IN")}</p>
+            )}
+            <p>Total Tax: ₹{gst.totalTax.toLocaleString("en-IN")}</p>
             <p className="mt-3 text-[11px] italic">
-              All luxury luxury goods are checked and certified for authenticity prior to shipment.
+              Every luxury good is checked and certified for authenticity prior to shipment.
             </p>
           </div>
 
