@@ -584,9 +584,16 @@ export interface CmsPage {
   published_at: string | null;
 }
 
+/**
+ * MF-32: the backend's CMS route is a single Medusa path segment (`/store/cms/:slug`), which
+ * cannot contain a literal "/" — a multi-segment slug like `guides/sizing/footwear` 404s if sent
+ * as-is. Percent-encoding each part keeps it one URL segment on the wire; Medusa's router
+ * decodes it back to the real slug (with slashes) before it ever reaches the handler.
+ */
 export async function fetchCmsPage(slug: string): Promise<CmsPage | null> {
+  const encoded = slug.split("/").map(encodeURIComponent).join("%2F");
   try {
-    const body = await request<{ page: CmsPage }>(`/store/cms/${slug}`, { revalidate: 60 });
+    const body = await request<{ page: CmsPage }>(`/store/cms/${encoded}`, { revalidate: 60 });
     return body.page;
   } catch (error) {
     if (error instanceof MedusaError && error.status === 404) return null;
