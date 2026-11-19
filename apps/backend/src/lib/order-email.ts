@@ -1,6 +1,7 @@
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import type { MedusaContainer } from "@medusajs/framework/types";
 import { orderEmailHtml, sendEmail } from "./email";
+import { isWhatsappConfigured, sendWhatsappTemplate } from "./whatsapp";
 
 /**
  * GAP-EML-02/03: the lifecycle emails all render through `orderEmailHtml`, which previously
@@ -16,7 +17,33 @@ interface OrderRow {
   display_id: number | string;
   email: string | null;
   total: number | string;
+  shipping_address_id?: string | null;
   metadata?: Record<string, unknown> | null;
+}
+
+/** The lifecycle channel alongside email. Looked up once per message so a missing phone or an
+ *  unconfigured account never touches the order's own state. */
+async function notifyWhatsapp(
+  container: MedusaContainer,
+  order: OrderRow,
+  template: string,
+  params: string[],
+): Promise<void> {
+  if (!isWhatsappConfigured()) return;
+  if (!order.shipping_address_id) return;
+
+  const pg = container.resolve(ContainerRegistrationKeys.PG_CONNECTION);
+  const logger = container.resolve(ContainerRegistrationKeys.LOGGER);
+
+  const address = (await pg("order_address")
+    .where({ id: order.shipping_address_id })
+    .first("phone")) as { phone: string | null } | undefined;
+  if (!address?.phone) return;
+
+  const result = await sendWhatsappTemplate(address.phone, template, params);
+  if (!result.sent) {
+    logger.info(`WhatsApp (${template}) skipped for order ${order.id}: ${result.reason ?? "not configured"}`);
+  }
 }
 
 interface OrderLine {
@@ -35,9 +62,17 @@ export async function sendOrderPlacedEmail(container: MedusaContainer, orderId: 
     "display_id",
     "email",
     "total",
+    "shipping_address_id",
     "metadata",
   )) as OrderRow | undefined;
   if (!order?.email) return;
+
+  await notifyWhatsapp(
+    container,
+    order,
+    process.env.WHATSAPP_TEMPLATE_ORDER_PLACED ?? "thl_order_placed",
+    [`THL-${order.display_id}`, inr(Number(order.total))],
+  );
 
   const lines = (await pg("order_line_item as oli")
     .join("order_item as oi", "oi.item_id", "oli.id")
@@ -70,10 +105,17 @@ export async function sendOrderPlacedEmail(container: MedusaContainer, orderId: 
 
 export async function sendOrderCanceledEmail(container: MedusaContainer, orderId: string): Promise<void> {
   const pg = container.resolve(ContainerRegistrationKeys.PG_CONNECTION);
-  const order = (await pg("order").where({ id: orderId }).first("id", "display_id", "email", "total")) as
-    | OrderRow
-    | undefined;
+  const order = (await pg("order")
+    .where({ id: orderId })
+    .first("id", "display_id", "email", "total", "shipping_address_id")) as OrderRow | undefined;
   if (!order?.email) return;
+
+  await notifyWhatsapp(
+    container,
+    order,
+    process.env.WHATSAPP_TEMPLATE_ORDER_CANCELED ?? "thl_order_canceled",
+    [`THL-${order.display_id}`],
+  );
 
   await sendEmail({
     to: order.email,
@@ -92,10 +134,17 @@ export async function sendOrderCanceledEmail(container: MedusaContainer, orderId
 
 export async function sendOrderShippedEmail(container: MedusaContainer, orderId: string): Promise<void> {
   const pg = container.resolve(ContainerRegistrationKeys.PG_CONNECTION);
-  const order = (await pg("order").where({ id: orderId }).first("id", "display_id", "email", "total")) as
-    | OrderRow
-    | undefined;
+  const order = (await pg("order")
+    .where({ id: orderId })
+    .first("id", "display_id", "email", "total", "shipping_address_id")) as OrderRow | undefined;
   if (!order?.email) return;
+
+  await notifyWhatsapp(
+    container,
+    order,
+    process.env.WHATSAPP_TEMPLATE_ORDER_SHIPPED ?? "thl_order_shipped",
+    [`THL-${order.display_id}`],
+  );
 
   const shipment = (await pg("shipment")
     .where({ order_id: orderId })
@@ -125,10 +174,17 @@ export async function sendOrderShippedEmail(container: MedusaContainer, orderId:
 
 export async function sendOrderDeliveredEmail(container: MedusaContainer, orderId: string): Promise<void> {
   const pg = container.resolve(ContainerRegistrationKeys.PG_CONNECTION);
-  const order = (await pg("order").where({ id: orderId }).first("id", "display_id", "email", "total")) as
-    | OrderRow
-    | undefined;
+  const order = (await pg("order")
+    .where({ id: orderId })
+    .first("id", "display_id", "email", "total", "shipping_address_id")) as OrderRow | undefined;
   if (!order?.email) return;
+
+  await notifyWhatsapp(
+    container,
+    order,
+    process.env.WHATSAPP_TEMPLATE_ORDER_DELIVERED ?? "thl_order_delivered",
+    [`THL-${order.display_id}`],
+  );
 
   await sendEmail({
     to: order.email,
