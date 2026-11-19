@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { runOrderAction, updateOrderMetadata, type OrderAction } from "../../../lib/api/orders";
 import { BackendError } from "../../../lib/backend";
 import { BESPOKE_STAGES, isBespokeStage } from "../../../lib/bespoke";
+import { REFUND_REASON_LABELS } from "../../../lib/refund-reasons";
 
 export interface OrderActionState {
   error?: string;
@@ -16,10 +17,19 @@ export async function orderActionHandler(
 ): Promise<OrderActionState> {
   const orderId = String(formData.get("order_id") ?? "");
   const action = String(formData.get("action") ?? "") as OrderAction;
-  const reason = String(formData.get("reason") ?? "").trim() || undefined;
+  const reasonCode = String(formData.get("reason_code") ?? "").trim();
+  const reasonDetail = String(formData.get("reason") ?? "").trim();
+  const reason =
+    action === "refund"
+      ? [REFUND_REASON_LABELS[reasonCode] ?? reasonCode, reasonDetail].filter(Boolean).join(": ") ||
+        undefined
+      : reasonDetail || undefined;
   const amountRupees = formData.get("amount");
 
-  if ((action === "cancel" || action === "refund") && !reason) {
+  if (action === "refund" && !reasonCode) {
+    return { error: "A reason code is required to refund this order." };
+  }
+  if (action === "cancel" && !reason) {
     return { error: `A reason is required to ${action} this order.` };
   }
 

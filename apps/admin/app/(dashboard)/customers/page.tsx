@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { EmptyState, ErrorState, Table } from "@thl/ui";
+import { EmptyState, ErrorState, StatusChip, Table } from "@thl/ui";
 import { fetchCustomers } from "../../../lib/api/customers";
 import { BackendError } from "../../../lib/backend";
 
@@ -59,6 +59,16 @@ export default async function CustomersPage({
               { key: "phone", header: "Phone", render: (c) => c.phone ?? "—" },
               { key: "account", header: "Account", render: (c) => (c.has_account ? "Registered" : "Guest") },
               { key: "tier", header: "Tier", render: (c) => String(c.metadata?.tier ?? "—") },
+              {
+                key: "risk",
+                header: "Risk",
+                render: (c) => {
+                  const flag = c.metadata?.risk_flag;
+                  if (flag === "blocked") return <StatusChip tone="critical">Blocked</StatusChip>;
+                  if (flag === "watch") return <StatusChip tone="warning">Watch</StatusChip>;
+                  return <span className="text-muted">—</span>;
+                },
+              },
               {
                 key: "created_at",
                 header: "Joined",

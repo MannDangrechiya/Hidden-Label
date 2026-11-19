@@ -28,10 +28,20 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="font-display text-headline-lg">
-          {[customer.first_name, customer.last_name].filter(Boolean).join(" ") || customer.email}
-        </h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="font-display text-headline-lg">
+            {[customer.first_name, customer.last_name].filter(Boolean).join(" ") || customer.email}
+          </h1>
+          {customer.metadata?.risk_flag === "blocked" ? (
+            <StatusChip tone="critical">Blocked</StatusChip>
+          ) : customer.metadata?.risk_flag === "watch" ? (
+            <StatusChip tone="warning">Watch</StatusChip>
+          ) : null}
+        </div>
         <p className="font-sans text-body-sm text-on-surface-variant">{customer.email}</p>
+        {customer.metadata?.risk_note ? (
+          <p className="mt-1 font-sans text-body-sm text-error">{String(customer.metadata.risk_note)}</p>
+        ) : null}
       </div>
 
       <section className="grid grid-cols-1 gap-8 lg:grid-cols-2">

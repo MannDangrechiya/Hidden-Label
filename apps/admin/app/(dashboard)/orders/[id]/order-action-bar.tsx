@@ -1,9 +1,10 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Button, Input } from "@thl/ui";
+import { Button, Input, Select } from "@thl/ui";
 import { orderActionHandler, type OrderActionState } from "../actions";
 import type { OrderAction } from "../../../../lib/api/orders";
+import { REFUND_REASON_CODES } from "../../../../lib/refund-reasons";
 
 const EMPTY_STATE: OrderActionState = {};
 
@@ -39,8 +40,24 @@ export function OrderActionBar({ orderId }: { orderId: string }) {
         <form action={formAction} className="flex flex-col gap-3 border-t border-line pt-4">
           <input type="hidden" name="order_id" value={orderId} />
           <input type="hidden" name="action" value={current.action} />
+          {current.action === "refund" ? (
+            <Select label="Reason code" name="reason_code" required defaultValue="">
+              <option value="" disabled>
+                Select a reason
+              </option>
+              {REFUND_REASON_CODES.map((entry) => (
+                <option key={entry.value} value={entry.value}>
+                  {entry.label}
+                </option>
+              ))}
+            </Select>
+          ) : null}
           {current.needsReason ? (
-            <Input label="Reason" name="reason" required />
+            <Input
+              label={current.action === "refund" ? "Additional detail (optional)" : "Reason"}
+              name="reason"
+              required={current.action !== "refund"}
+            />
           ) : null}
           {current.action === "refund" ? (
             <Input

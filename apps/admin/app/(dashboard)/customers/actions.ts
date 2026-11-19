@@ -22,10 +22,20 @@ export async function updateCustomerNotesAction(
   const id = String(formData.get("id") ?? "");
   const tier = String(formData.get("tier") ?? "").trim();
   const notes = String(formData.get("notes") ?? "").trim();
+  const riskFlag = String(formData.get("risk_flag") ?? "none").trim();
+  const riskNote = String(formData.get("risk_note") ?? "").trim();
 
   try {
     const existing = await fetchCustomer(id);
-    const metadata = { ...(existing.metadata ?? {}), tier: tier || undefined, notes: notes || undefined };
+    const metadata = {
+      ...(existing.metadata ?? {}),
+      tier: tier || undefined,
+      notes: notes || undefined,
+      // "none" is the absence of a flag — never stored, so a customer with no risk history
+      // never carries a stale risk_flag key.
+      risk_flag: riskFlag !== "none" ? riskFlag : undefined,
+      risk_note: riskFlag !== "none" ? riskNote || undefined : undefined,
+    };
     await backendFetch<{ customer: CustomerDetail }>(`/admin/customers/${id}`, {
       method: "POST",
       body: { metadata },
