@@ -15,6 +15,7 @@
     "db:setup-tax": "pnpm --filter @thl/backend exec medusa exec ./src/scripts/setup-tax.ts",
     "db:setup-payments": "pnpm --filter @thl/backend exec medusa exec ./src/scripts/setup-payments.ts",
     "dev:backend": "pnpm --filter @thl/backend dev",
+    "dev:admin": "pnpm --filter @thl/admin dev",
     "dev:storefront": "pnpm --filter @thl/storefront dev",
     "typecheck": "pnpm -r --no-bail typecheck",
     "lint": "eslint .",
