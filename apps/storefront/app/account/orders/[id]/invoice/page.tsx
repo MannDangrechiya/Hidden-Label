@@ -56,11 +56,9 @@ export default async function OrderInvoicePage({ params }: PageProps) {
   });
 
   const paymentMode =
-    order.metadata?.payment_method === "cod"
-      ? "Cash on Delivery"
-      : order.payment_status === "captured" || order.payment_status === "authorized"
-        ? "Prepaid — online payment"
-        : "Prepaid — settled with order";
+    order.payment_status === "captured" || order.payment_status === "authorized"
+      ? "Prepaid — online payment"
+      : "Prepaid — settled with order";
 
   function hsnForItem(item: StoreOrderItem): string {
     const fromLine = item.metadata?.hsn;

@@ -139,9 +139,8 @@ export async function POST(req: MedusaRequest<Body>, res: MedusaResponse) {
         }),
       );
 
-      // GAP-LOG-02: a COD order must reach the courier as COD, a prepaid one as Prepaid.
-      const orderMeta = (order.metadata ?? {}) as Record<string, unknown>;
-      const paymentMethod = orderMeta.payment_method === "cod" ? "COD" : "Prepaid";
+      // Every order is prepaid: payment is collected online through Razorpay before dispatch.
+      const paymentMethod = "Prepaid";
 
       const result = await createShiprocketOrder({
         orderId: order.id,

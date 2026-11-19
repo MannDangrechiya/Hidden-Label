@@ -31,12 +31,10 @@ module.exports = defineConfig({
   modules: [
     // Project-owned tables: brand, CMS, wishlist, OTP, returns, shipments and the audit log.
     { resolve: "./src/modules/thl" },
-    // Payment module: the system provider (pp_system_default) is Medusa's built-in default and
-    // powers Cash on Delivery today — it authorizes immediately, with capture left to the admin
-    // once cash is actually collected. Razorpay is always registered (so the code path and types
-    // are real, not dead code), but its methods refuse to call out without
-    // RAZORPAY_KEY_ID/RAZORPAY_KEY_SECRET — see docs/BUILD_LOG.md for what to add once real test
-    // keys exist, including linking "pp_razorpay_razorpay" to the INR region.
+    // Payment module: prepaid only. `pp_system_default` is Medusa's built-in provider and is
+    // deliberately unlinked from the INR region by setup-payments.ts, so the store API never
+    // offers it. Razorpay is always registered (so the code path and types are real, not dead
+    // code), but its methods refuse to call out without RAZORPAY_KEY_ID/RAZORPAY_KEY_SECRET.
     {
       resolve: "@medusajs/medusa/payment",
       options: {

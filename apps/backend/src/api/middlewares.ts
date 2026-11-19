@@ -10,22 +10,6 @@ import { canWrite, resolveAdmin } from "../lib/admin-auth";
 import { checkAuthRateLimit, resetAuthRateLimit } from "../lib/rate-limit";
 import { processReturnAction } from "../lib/returns";
 
-/** Marketed time window in which a COD OTP proof stays valid. */
-const COD_PROOF_TTL_MS = 15 * 60 * 1000;
-
-/**
- * Metadata keys that are server-owned. They are stripped from every store cart write so a
- * client can never forge a verification proof by PATCHing its own cart (GAP-SEC-02).
- */
-const RESERVED_CART_METADATA = [
-  "cod_otp_verified_at",
-  "cod_otp_verified_phone",
-  "cod_otp_challenge_id",
-  "cod_verified_at",
-  "payment_verified",
-  "otp_verified",
-];
-
 /**
  * Validates registration payloads and stops email enumeration.
  */
@@ -92,86 +76,6 @@ async function authRateLimitMiddleware(
     // A successful sign-in clears the counter; failures keep accumulating in the window.
     if (res.statusCode >= 200 && res.statusCode < 300) resetAuthRateLimit(key);
   });
-
-  next();
-}
-
-/**
- * Removes server-owned keys from cart metadata writes. Medusa's store cart update endpoint is
- * unauthenticated by design, so this is the only place a forged OTP proof can be stopped
- * before it reaches the database.
- */
-async function cartMetadataGuardMiddleware(
-  req: MedusaRequest,
-  res: MedusaResponse,
-  next: MedusaNextFunction,
-) {
-  const body = req.body as Record<string, unknown> | undefined;
-  if (body && typeof body === "object") {
-    const metadata = body.metadata;
-    if (metadata && typeof metadata === "object") {
-      const meta = metadata as Record<string, unknown>;
-      for (const key of RESERVED_CART_METADATA) delete meta[key];
-    }
-    for (const key of RESERVED_CART_METADATA) delete body[key];
-  }
-  next();
-}
-
-/**
- * Enforces phone OTP verification on the backend before completing a Cash on Delivery cart.
- *
- * The proof is read from the server-only `cod_verification` table (written exclusively by
- * `POST /store/carts/:id/verify-cod` after a real challenge was solved), never from
- * `cart.metadata`, which any client can write.
- */
-async function codOtpVerificationMiddleware(
-  req: MedusaRequest,
-  res: MedusaResponse,
-  next: MedusaNextFunction,
-) {
-  const rawPath = req.originalUrl || req.path || req.url || "";
-  const match = rawPath.match(/\/store\/carts\/([^/?#]+)\/complete/);
-  const cartId = (req.params as Record<string, string | undefined>)?.id || match?.[1];
-
-  if (!cartId) {
-    return next();
-  }
-
-  try {
-    const pg = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION);
-
-    const paymentSession = await pg("payment_session as ps")
-      .join("cart_payment_collection as cpc", "cpc.payment_collection_id", "ps.payment_collection_id")
-      .where("cpc.cart_id", cartId)
-      .where("ps.provider_id", "pp_system_default")
-      .first("ps.id", "ps.provider_id");
-
-    if (paymentSession) {
-      const proof = await pg("cod_verification")
-        .where({ cart_id: cartId })
-        .whereNull("consumed_at")
-        .whereNull("deleted_at")
-        .where("verified_at", ">", new Date(Date.now() - COD_PROOF_TTL_MS))
-        .first("id", "phone", "verified_at");
-
-      if (!proof) {
-        res.status(400).json({
-          type: "invalid_data",
-          message: "Cash on Delivery requires phone OTP verification before completing the order.",
-        });
-        return;
-      }
-
-      // Single-use: the proof is bound to this cart completion.
-      await pg("cod_verification")
-        .where({ id: proof.id })
-        .update({ consumed_at: new Date(), updated_at: new Date() });
-    }
-  } catch {
-    // Proceed if lookup fails — the storefront never offers COD without server verification,
-    // and the cart-complete workflow still validates the payment session itself.
-  }
 
   next();
 }
@@ -369,25 +273,8 @@ export default defineMiddlewares({
       middlewares: [authenticate("customer", ["bearer", "session"])],
     },
     {
-      matcher: "/store/refund-accounts*",
-      middlewares: [authenticate("customer", ["bearer", "session"])],
-    },
-    {
       matcher: "/store/fit/profile*",
       middlewares: [authenticate("customer", ["bearer", "session"])],
-    },
-    // Wildcard on purpose: an exact `/store/carts/:id` matcher did not catch the core
-    // cart-update route in Medusa 2.22.7, so the guard is attached to every cart write and
-    // only ever removes reserved keys.
-    {
-      matcher: "/store/carts*",
-      methods: ["POST", "PUT"],
-      middlewares: [cartMetadataGuardMiddleware],
-    },
-    {
-      matcher: "/store/carts/:id/complete",
-      methods: ["POST"],
-      middlewares: [codOtpVerificationMiddleware],
     },
     {
       matcher: "/webhooks/razorpay",
