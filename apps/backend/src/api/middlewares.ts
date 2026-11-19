@@ -61,7 +61,7 @@ async function authRateLimitMiddleware(
   const body = (req.body ?? {}) as { email?: string };
   const ip = (req.ip ?? req.socket?.remoteAddress ?? "unknown").toString();
   const key = `${ip}:${(body.email ?? "").trim().toLowerCase()}`;
-  const result = checkAuthRateLimit(key);
+  const result = await checkAuthRateLimit(key);
 
   if (!result.allowed) {
     res.setHeader("Retry-After", String(result.retryAfterSeconds));
@@ -74,7 +74,8 @@ async function authRateLimitMiddleware(
 
   res.on("finish", () => {
     // A successful sign-in clears the counter; failures keep accumulating in the window.
-    if (res.statusCode >= 200 && res.statusCode < 300) resetAuthRateLimit(key);
+    // Fire-and-forget: the response has already been sent, nothing is waiting on this.
+    if (res.statusCode >= 200 && res.statusCode < 300) void resetAuthRateLimit(key);
   });
 
   next();

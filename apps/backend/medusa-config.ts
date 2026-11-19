@@ -10,6 +10,16 @@ const ADMIN_ORIGIN = process.env.ADMIN_ORIGIN ?? "http://localhost:7001";
 module.exports = defineConfig({
   projectConfig: {
     databaseUrl: process.env.DATABASE_URL,
+    // Without this, knex defaults to a 10-connection pool per process — fine for local dev,
+    // not for concurrent traffic. DB_POOL_MAX should stay well under Postgres's own
+    // max_connections divided by the number of backend replicas (each replica gets its own
+    // pool of this size).
+    databaseDriverOptions: {
+      pool: {
+        min: Number(process.env.DB_POOL_MIN ?? 2),
+        max: Number(process.env.DB_POOL_MAX ?? 20),
+      },
+    },
     // Redis backs the event bus, workflow engine and caching. Left unset in local dev so the
     // in-memory modules are used when no Redis is available.
     redisUrl: process.env.REDIS_URL || undefined,
