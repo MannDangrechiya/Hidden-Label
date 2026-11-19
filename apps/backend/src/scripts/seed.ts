@@ -88,11 +88,15 @@ const CATEGORY_TREE: SeedCategory[] = [
 /** Which category handles a seeded product belongs to — derived from the same fields the
  *  storefront's `category`/`gender` metadata already carries, never invented separately. */
 function categoryHandlesFor(product: SeedProduct): string[] {
-  if (product.category === "bespoke_custom") return ["bespoke"];
+  // Matches the same implicit default the product's own metadata.category gets at creation time
+  // (`category: product.category ?? "footwear"`) — the oldest seed entries predate this field.
+  const category = product.category ?? "footwear";
 
-  if (product.category === "footwear") return ["footwear-sneakers"];
+  if (category === "bespoke_custom") return ["bespoke"];
 
-  if (product.category === "accessory") {
+  if (category === "footwear") return ["footwear-sneakers"];
+
+  if (category === "accessory") {
     const title = product.title.toLowerCase();
     if (/bag|tote|backpack/.test(title)) return ["accessories-bags"];
     if (/sunglass|eyewear|glasses/.test(title)) return ["accessories-eyewear"];
