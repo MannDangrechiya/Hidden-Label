@@ -1,9 +1,16 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Button, Input } from "@thl/ui";
+import { Button, Input, Select } from "@thl/ui";
 import type { ReturnAction, ReturnRequest } from "../../../../lib/api/returns";
 import { actOnReturnAction, type ReturnActionState } from "../actions";
+
+/** MF-29: reverse-inspection grade required on receive — only "resellable" restocks. */
+const CONDITIONS = [
+  { value: "resellable", label: "Resellable — return to stock" },
+  { value: "damaged", label: "Damaged — do not restock" },
+  { value: "disposed", label: "Disposed / written off" },
+] as const;
 
 const EMPTY_STATE: ReturnActionState = {};
 
@@ -40,6 +47,18 @@ export function ReturnActionForm({ request }: { request: ReturnRequest }) {
         <form action={formAction} className="flex flex-col gap-3 border-t border-line pt-4">
           <input type="hidden" name="id" value={request.id} />
           <input type="hidden" name="action" value={action} />
+          {action === "receive" ? (
+            <Select label="Condition on arrival" name="condition" required defaultValue="">
+              <option value="" disabled>
+                Select a condition
+              </option>
+              {CONDITIONS.map((entry) => (
+                <option key={entry.value} value={entry.value}>
+                  {entry.label}
+                </option>
+              ))}
+            </Select>
+          ) : null}
           <Input label="Note" name="note" />
           {state.error ? <p className="font-sans text-body-sm text-error">{state.error}</p> : null}
           {state.success ? <p className="font-sans text-body-sm text-on-surface">Done.</p> : null}

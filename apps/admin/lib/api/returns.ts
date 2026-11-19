@@ -28,6 +28,9 @@ export interface ReturnRequest {
   approved_at: string | null;
   received_at: string | null;
   closed_at: string | null;
+  condition: string | null;
+  condition_note: string | null;
+  restocked_at: string | null;
 }
 
 export type ReturnAction = "approve" | "reject" | "receive" | "refund";
@@ -44,10 +47,11 @@ export async function actOnReturn(
   id: string,
   action: ReturnAction,
   note?: string,
+  condition?: string,
 ): Promise<ReturnRequest> {
   const { return: updated } = await backendFetch<{ return: ReturnRequest }>(
     `/admin/returns/${id}`,
-    { method: "POST", body: { action, note } },
+    { method: "POST", body: { action, note, condition } },
   );
   return updated;
 }

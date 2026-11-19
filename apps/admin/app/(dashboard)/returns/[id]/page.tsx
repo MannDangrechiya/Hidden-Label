@@ -74,6 +74,19 @@ export default async function ReturnDetailPage({ params }: { params: Promise<{ i
               {formatINR(moneyFromRupees(request.refund_amount))}
             </p>
           ) : null}
+          {request.condition ? (
+            <p>
+              <span className="text-muted">Condition on arrival: </span>
+              {request.condition}
+              {request.condition_note ? ` — ${request.condition_note}` : ""}
+            </p>
+          ) : null}
+          {request.restocked_at ? (
+            <p>
+              <span className="text-muted">Restocked: </span>
+              {new Date(request.restocked_at).toLocaleString("en-IN")}
+            </p>
+          ) : null}
           <p>
             <span className="text-muted">Requested: </span>
             {new Date(request.requested_at).toLocaleString("en-IN")}

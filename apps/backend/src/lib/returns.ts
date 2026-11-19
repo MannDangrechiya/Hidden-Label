@@ -57,12 +57,16 @@ export function checkReturnEligibility(input: ReturnEligibilityInput): ReturnEli
 const ACTIONS = ["approve", "reject", "receive", "refund"] as const;
 export type Action = (typeof ACTIONS)[number];
 
+/** MF-29: the reverse-inspection grade recorded when a returned unit is received back. */
+const CONDITIONS = ["resellable", "damaged", "disposed"] as const;
+export type Condition = (typeof CONDITIONS)[number];
+
 export async function processReturnAction(
   req: MedusaRequest,
   res: MedusaResponse,
   returnId: string,
 ): Promise<boolean> {
-  const body = (req.body ?? {}) as { action?: Action; note?: string };
+  const body = (req.body ?? {}) as { action?: Action; note?: string; condition?: Condition };
   const action = body.action;
   if (!action || !ACTIONS.includes(action)) {
     return false;
@@ -70,6 +74,14 @@ export async function processReturnAction(
 
   const actor = await requireRole(req, res, "operations");
   if (!actor) return true;
+
+  if (action === "receive" && (!body.condition || !CONDITIONS.includes(body.condition))) {
+    res.status(400).json({
+      type: "invalid_data",
+      message: `A reverse-inspection condition is required: ${CONDITIONS.join(", ")}.`,
+    });
+    return true;
+  }
 
   const pg = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION);
   const meta = requestMeta(req);
@@ -126,7 +138,11 @@ export async function processReturnAction(
   const updated = await pg.transaction(async (trx) => {
     const patch: Record<string, unknown> = { status: nextStatus, updated_at: new Date() };
     if (action === "approve") patch.approved_at = new Date();
-    if (action === "receive") patch.received_at = new Date();
+    if (action === "receive") {
+      patch.received_at = new Date();
+      patch.condition = body.condition;
+      patch.condition_note = body.note ?? null;
+    }
     if (action === "refund" || action === "reject") patch.closed_at = new Date();
 
     const [row] = await trx("return_request")
@@ -141,9 +157,72 @@ export async function processReturnAction(
       entityType: "return_request",
       entityId: request.id,
       summary: `${request.display_id} ${action}d by ${actor.email ?? actor.id}`,
-      changes: { from: request.status, to: nextStatus, note: body.note ?? null },
+      changes: {
+        from: request.status,
+        to: nextStatus,
+        note: body.note ?? null,
+        ...(action === "receive" ? { condition: body.condition } : {}),
+      },
       ...meta,
     });
+
+    // MF-29: only a unit graded resellable goes back into sellable stock — a damaged or
+    // disposed return closes the loop without ever touching inventory.
+    if (action === "receive" && body.condition === "resellable") {
+      const items = (await trx("return_request_item as rri")
+        .join("order_line_item as oli", "oli.id", "rri.order_item_id")
+        .where("rri.return_request_id", request.id)
+        .select("oli.variant_id", "rri.quantity")) as { variant_id: string | null; quantity: number }[];
+
+      const location = await trx("stock_location").first("id");
+      let restockedAny = false;
+
+      if (location) {
+        for (const item of items) {
+          if (!item.variant_id) continue;
+          const link = await trx("product_variant_inventory_item")
+            .where({ variant_id: item.variant_id })
+            .first("inventory_item_id");
+          if (!link) continue;
+
+          const level = await trx("inventory_level")
+            .where({ inventory_item_id: link.inventory_item_id, location_id: location.id })
+            .first();
+          if (!level) continue;
+
+          const quantity = Number(item.quantity) || 0;
+          if (quantity <= 0) continue;
+
+          await trx("inventory_level")
+            .where({ id: level.id })
+            .update({
+              stocked_quantity: Number(level.stocked_quantity) + quantity,
+              updated_at: new Date(),
+            });
+          restockedAny = true;
+
+          await writeAudit(trx, {
+            actorType: "admin",
+            actorId: actor.id,
+            action: "inventory.adjusted",
+            entityType: "inventory_item",
+            entityId: link.inventory_item_id,
+            summary: `Stock adjusted by +${quantity} (return_restock, RMA ${request.display_id})`,
+            changes: {
+              before: Number(level.stocked_quantity),
+              after: Number(level.stocked_quantity) + quantity,
+              reason: "return_restock",
+            },
+            ...meta,
+          });
+        }
+      }
+
+      if (restockedAny) {
+        await trx("return_request").where({ id: request.id }).update({ restocked_at: new Date() });
+        row.restocked_at = new Date();
+      }
+    }
 
     return row;
   });

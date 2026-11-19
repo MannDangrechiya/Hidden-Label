@@ -18,4 +18,9 @@ export const ReturnRequest = model.define("return_request", {
   approved_at: model.dateTime().nullable(),
   received_at: model.dateTime().nullable(),
   closed_at: model.dateTime().nullable(),
+  /** MF-29: the reverse-inspection grade set when the unit is received back — drives whether
+   *  it is restocked, scrapped or sent for repair. Null until `receive`. */
+  condition: model.text().nullable(),
+  condition_note: model.text().nullable(),
+  restocked_at: model.dateTime().nullable(),
 });

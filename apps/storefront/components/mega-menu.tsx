@@ -45,7 +45,10 @@ export function MegaMenu({ categories, brands }: { categories: StoreCategoryNode
     >
       <button
         type="button"
-        onClick={() => setOpen((value) => !value)}
+        // A toggle here would fight the hover handlers above on a real mouse (hover opens it,
+        // then the click that follows the pointer there would immediately close it again) — a
+        // tap-only device never fires onMouseEnter, so "always open" is correct for both.
+        onClick={() => setOpen(true)}
         aria-expanded={open}
         className="font-mono text-label-caps uppercase text-on-surface-variant no-underline transition-colors hover:text-ink"
       >
