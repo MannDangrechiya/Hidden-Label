@@ -243,6 +243,7 @@ export async function fetchProducts(params?: {
   q?: string;
   order?: string;
   categoryId?: string;
+  variantIds?: string[];
 }): Promise<ProductsResponse> {
   const search = new URLSearchParams();
   search.set("limit", String(params?.limit ?? 24));
@@ -251,6 +252,7 @@ export async function fetchProducts(params?: {
   if (params?.q) search.set("q", params.q);
   if (params?.order) search.set("order", params.order);
   if (params?.categoryId) search.set("category_id[]", params.categoryId);
+  if (params?.variantIds) for (const id of params.variantIds) search.append("variants.id[]", id);
 
   const regionId = await resolveRegionId();
   if (regionId) search.set("region_id", regionId);
@@ -474,10 +476,9 @@ export async function fetchProductsByIds(ids: string[]): Promise<StoreProduct[]>
 
 /**
  * Resolves products for a set of variant ids (used by the wishlist, which only stores
- * `variant_id`). The store product list route does not expose a documented `variants.id[]`
- * filter, so this loads the published catalogue once and matches in memory — correct and
- * simple at the catalogue sizes v1 ships with; worth revisiting with a dedicated route if the
- * catalogue grows into the thousands.
+ * `variant_id`). Filters directly by `variants.id[]` rather than loading the whole published
+ * catalogue into memory and matching there — that approach was documented as a stopgap and
+ * would not have scaled past a small catalogue or many concurrent wishlist page loads.
  */
 export async function fetchProductsForVariants(
   variantIds: string[],
@@ -486,7 +487,7 @@ export async function fetchProductsForVariants(
   if (variantIds.length === 0) return result;
 
   const wanted = new Set(variantIds);
-  const { products } = await fetchProducts({ limit: 200 });
+  const { products } = await fetchProducts({ limit: variantIds.length, variantIds });
   for (const product of products) {
     for (const variant of product.variants ?? []) {
       if (wanted.has(variant.id)) result.set(variant.id, { product, variant });
