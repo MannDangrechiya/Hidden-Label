@@ -4,12 +4,15 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
   createProduct,
+  deleteProduct,
+  fetchProduct,
   updateProduct,
   setProductStatus,
   upsertVariants,
   fetchDefaultSalesChannel,
   type ProductStatus,
 } from "../../../lib/api/products";
+import { uploadFile } from "../../../lib/api/uploads";
 import { BackendError } from "../../../lib/backend";
 
 export interface ProductFormState {
@@ -92,6 +95,62 @@ export async function updateProductAction(
 export async function setProductStatusAction(id: string, status: ProductStatus): Promise<void> {
   await setProductStatus(id, status);
   revalidatePath(`/products/${id}`);
+  revalidatePath("/products");
+}
+
+export interface ImageFormState {
+  error?: string;
+}
+
+/** MF-26: real upload through Medusa's file module — never just a pasted URL. */
+export async function addProductImageAction(
+  _prev: ImageFormState,
+  formData: FormData,
+): Promise<ImageFormState> {
+  const productId = String(formData.get("product_id") ?? "");
+  const file = formData.get("file");
+
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Choose an image file first." };
+  }
+
+  try {
+    const uploaded = await uploadFile(file);
+    const product = await fetchProduct(productId);
+    const images = [...(product.images ?? []).map((img) => ({ url: img.url })), { url: uploaded.url }];
+    await updateProduct(productId, {
+      images,
+      thumbnail: product.thumbnail ?? uploaded.url,
+    });
+  } catch (error) {
+    return { error: error instanceof BackendError ? error.message : "Could not upload this image." };
+  }
+  revalidatePath(`/products/${productId}`);
+  return {};
+}
+
+export async function removeProductImageAction(productId: string, url: string): Promise<void> {
+  const product = await fetchProduct(productId);
+  const images = (product.images ?? []).filter((img) => img.url !== url).map((img) => ({ url: img.url }));
+  await updateProduct(productId, {
+    images,
+    thumbnail: product.thumbnail === url ? (images[0]?.url ?? null) : undefined,
+  });
+  revalidatePath(`/products/${productId}`);
+}
+
+/** MF-26: bulk publish/draft/delete from the product list, instead of one at a time. */
+export async function bulkSetProductStatusAction(ids: string[], status: ProductStatus): Promise<void> {
+  for (const id of ids) {
+    await setProductStatus(id, status);
+  }
+  revalidatePath("/products");
+}
+
+export async function bulkDeleteProductsAction(ids: string[]): Promise<void> {
+  for (const id of ids) {
+    await deleteProduct(id);
+  }
   revalidatePath("/products");
 }
 

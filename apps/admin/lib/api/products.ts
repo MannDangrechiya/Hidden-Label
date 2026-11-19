@@ -120,6 +120,10 @@ export async function setProductStatus(id: string, status: ProductStatus): Promi
   return updateProduct(id, { status });
 }
 
+export async function deleteProduct(id: string): Promise<void> {
+  await backendFetch(`/admin/products/${id}`, { method: "DELETE" });
+}
+
 export async function upsertVariants(
   productId: string,
   payload: {

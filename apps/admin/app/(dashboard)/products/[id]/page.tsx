@@ -4,6 +4,7 @@ import { fetchProduct } from "../../../../lib/api/products";
 import { fetchCurrentAdmin, roleAtLeast } from "../../../../lib/api/auth";
 import { BackendError } from "../../../../lib/backend";
 import { EditProductForm } from "./edit-product-form";
+import { MediaManager } from "./media-manager";
 import { PublishControls } from "./publish-controls";
 import { VariantsTable } from "./variants-table";
 
@@ -72,18 +73,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         </div>
         <div>
           <h2 className="mb-3 font-display text-headline-sm">Media</h2>
-          {product.thumbnail ? (
-            <img src={product.thumbnail} alt="" className="aspect-square w-40 border border-line object-cover" />
-          ) : (
-            <p className="font-sans text-body-sm text-muted">No thumbnail set.</p>
-          )}
-          {product.images && product.images.length > 0 ? (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {product.images.map((img) => (
-                <img key={img.id} src={img.url} alt="" className="h-20 w-20 border border-line object-cover" />
-              ))}
-            </div>
-          ) : null}
+          <MediaManager product={product} canWrite={canWrite} />
         </div>
       </section>
 

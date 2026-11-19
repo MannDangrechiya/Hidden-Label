@@ -1,17 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Button, EmptyState, ErrorState, StatusChip, Table } from "@thl/ui";
+import { Button, EmptyState, ErrorState } from "@thl/ui";
 import { fetchProducts, type ProductStatus } from "../../../lib/api/products";
+import { fetchCurrentAdmin, roleAtLeast } from "../../../lib/api/auth";
 import { BackendError } from "../../../lib/backend";
+import { ProductsBulkTable } from "./products-bulk-table";
 
 export const metadata: Metadata = { title: "Products" };
-
-const STATUS_TONE: Record<ProductStatus, "neutral" | "positive" | "warning" | "critical"> = {
-  draft: "neutral",
-  proposed: "warning",
-  published: "positive",
-  rejected: "critical",
-};
 
 const LIMIT = 20;
 
@@ -25,20 +20,21 @@ export default async function ProductsPage({
   const offset = Number(offsetRaw ?? 0) || 0;
 
   let result;
+  let canWrite = false;
   try {
-    result = await fetchProducts({
-      q,
-      offset,
-      limit: LIMIT,
-      status: status ? [status as ProductStatus] : undefined,
-    });
+    [result, canWrite] = await Promise.all([
+      fetchProducts({
+        q,
+        offset,
+        limit: LIMIT,
+        status: status ? [status as ProductStatus] : undefined,
+      }),
+      fetchCurrentAdmin().then((a) => roleAtLeast(a.role, "manager")),
+    ]);
   } catch (error) {
     const message = error instanceof BackendError ? error.message : "Could not load products.";
     return <ErrorState message={message} />;
   }
-
-  const stockOf = (product: (typeof result.products)[number]) =>
-    (product.variants ?? []).reduce((sum, v) => sum + (v.inventory_quantity ?? 0), 0);
 
   const query = (patch: Record<string, string | undefined>) => {
     const params = new URLSearchParams();
@@ -98,35 +94,7 @@ export default async function ProductsPage({
         />
       ) : (
         <>
-          <Table
-            columns={[
-              {
-                key: "title",
-                header: "Product",
-                sticky: true,
-                render: (p) => (
-                  <Link href={`/products/${p.id}`} className="text-ink underline">
-                    {p.title}
-                  </Link>
-                ),
-              },
-              { key: "handle", header: "Handle", render: (p) => p.handle },
-              {
-                key: "status",
-                header: "Status",
-                render: (p) => <StatusChip tone={STATUS_TONE[p.status]}>{p.status}</StatusChip>,
-              },
-              { key: "variants", header: "Variants", render: (p) => p.variants?.length ?? 0, align: "right" },
-              { key: "stock", header: "Stock", render: (p) => stockOf(p), align: "right" },
-              {
-                key: "categories",
-                header: "Categories",
-                render: (p) => p.categories?.map((c) => c.name).join(", ") || "—",
-              },
-            ]}
-            rows={result.products}
-            rowKey={(p) => p.id}
-          />
+          <ProductsBulkTable products={result.products} canWrite={canWrite} />
 
           <div className="flex items-center justify-between">
             <p className="font-mono text-label-caps uppercase text-muted">
