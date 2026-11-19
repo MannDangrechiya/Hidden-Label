@@ -4,6 +4,7 @@ import { addressSchema, profileSchema } from "@thl/shared";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { clearAuthToken, readAuthToken } from "@/lib/auth-cookie";
+import { addToCart } from "@/app/actions/cart";
 import {
   addToWishlist,
   cancelMyOrder,
@@ -209,6 +210,20 @@ export async function removeWishlistAction(formData: FormData): Promise<void> {
   if (!variantId) return;
   await removeFromWishlist(token, variantId);
   revalidatePath("/account/wishlist");
+}
+
+/** MF-14: saved item -> bag, then dropped from the wishlist so it doesn't sit in both lists. */
+export async function moveWishlistItemToBagAction(formData: FormData): Promise<void> {
+  const token = await readAuthToken();
+  if (!token) redirect("/login");
+  const variantId = String(formData.get("variant_id") ?? "");
+  if (!variantId) return;
+
+  const added = await addToCart(variantId, 1);
+  if (added.ok) await removeFromWishlist(token, variantId).catch(() => undefined);
+
+  revalidatePath("/account/wishlist");
+  revalidatePath("/cart");
 }
 
 export async function cancelOrderAction(orderId: string, reason?: string): Promise<ActionResult> {

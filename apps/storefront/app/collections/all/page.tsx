@@ -1,5 +1,12 @@
+import Link from "next/link";
 import { ErrorState } from "@thl/ui";
-import { fetchProducts, MedusaError, type StoreProduct } from "@/lib/medusa";
+import {
+  fetchCategories,
+  fetchProducts,
+  findCategoryByHandle,
+  MedusaError,
+  type StoreProduct,
+} from "@/lib/medusa";
 import { CatalogClient } from "./catalog-client";
 
 export const dynamic = "force-dynamic";
@@ -10,16 +17,24 @@ export const metadata = {
 };
 
 interface PageProps {
-  searchParams: Promise<{ size?: string }>;
+  searchParams: Promise<{ size?: string; category?: string }>;
 }
 
 export default async function CatalogPage({ searchParams }: PageProps) {
-  const { size } = await searchParams;
+  const { size, category } = await searchParams;
   let products: StoreProduct[] = [];
   let error: string | null = null;
+  let activeCategoryName: string | null = null;
 
   try {
-    const data = await fetchProducts({ limit: 48 });
+    let categoryId: string | undefined;
+    if (category) {
+      const tree = await fetchCategories();
+      const node = findCategoryByHandle(tree, category);
+      categoryId = node?.id;
+      activeCategoryName = node?.name ?? null;
+    }
+    const data = await fetchProducts({ limit: 48, categoryId });
     products = data.products;
   } catch (caught) {
     error =
@@ -44,6 +59,14 @@ export default async function CatalogPage({ searchParams }: PageProps) {
           Buy immediately at the lowest ask, or place a size-specific bid. Units with a completed
           lab inspection show their authentication report on the product page.
         </p>
+        {activeCategoryName ? (
+          <p className="font-mono text-label-caps uppercase text-ink">
+            Category: {activeCategoryName}{" "}
+            <Link href="/collections/all" className="text-muted no-underline hover:text-ink hover:underline">
+              (clear)
+            </Link>
+          </p>
+        ) : null}
       </header>
 
       {error ? (

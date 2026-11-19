@@ -242,6 +242,7 @@ export async function fetchProducts(params?: {
   offset?: number;
   q?: string;
   order?: string;
+  categoryId?: string;
 }): Promise<ProductsResponse> {
   const search = new URLSearchParams();
   search.set("limit", String(params?.limit ?? 24));
@@ -249,6 +250,7 @@ export async function fetchProducts(params?: {
   search.set("fields", PRODUCT_FIELDS);
   if (params?.q) search.set("q", params.q);
   if (params?.order) search.set("order", params.order);
+  if (params?.categoryId) search.set("category_id[]", params.categoryId);
 
   const regionId = await resolveRegionId();
   if (regionId) search.set("region_id", regionId);
@@ -505,6 +507,35 @@ export interface SearchSuggestion {
 export async function fetchSearchSuggestions(q: string): Promise<SearchSuggestion> {
   if (q.trim().length < 2) return { products: [], brands: [] };
   return request<SearchSuggestion>(`/store/search/suggest?q=${encodeURIComponent(q)}`);
+}
+
+export interface StoreCategoryNode {
+  id: string;
+  name: string;
+  handle: string;
+  product_count: number;
+  children: StoreCategoryNode[];
+}
+
+/** Real `product_category` taxonomy (mega-menu), distinct from `lib/catalog.ts`'s heuristic tabs. */
+export async function fetchCategories(): Promise<StoreCategoryNode[]> {
+  const body = await request<{ categories: StoreCategoryNode[] }>("/store/categories", {
+    revalidate: 60,
+  });
+  return body.categories;
+}
+
+/** Depth-first lookup by handle, since a mega-menu link only carries the handle. */
+export function findCategoryByHandle(
+  tree: StoreCategoryNode[],
+  handle: string,
+): StoreCategoryNode | null {
+  for (const node of tree) {
+    if (node.handle === handle) return node;
+    const match = findCategoryByHandle(node.children, handle);
+    if (match) return match;
+  }
+  return null;
 }
 
 /* -------------------------------------------------------------------------- */

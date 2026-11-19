@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { CartDrawer } from "@/components/cart-drawer";
+import { MegaMenu } from "@/components/mega-menu";
 import { SearchOverlay } from "@/components/search-overlay";
 import { readCartId } from "@/lib/cart-cookie";
-import { fetchCart } from "@/lib/medusa";
+import { fetchBrands, fetchCart, fetchCategories } from "@/lib/medusa";
 import { getCurrentCustomer } from "@/lib/session";
 
 /**
@@ -20,9 +22,12 @@ export async function SiteHeader() {
 
   const session = await getCurrentCustomer().catch(() => null);
 
+  const [categories, brandsResult] = await Promise.all([
+    fetchCategories().catch(() => []),
+    fetchBrands().catch(() => ({ brands: [], count: 0 })),
+  ]);
+
   const nav = [
-    { label: "Shop", href: "/collections/all" },
-    { label: "Brands", href: "/brands" },
     { label: "Sell", href: "/sell" },
     { label: "Fit Studio", href: "/fit-studio" },
   ];
@@ -38,6 +43,13 @@ export async function SiteHeader() {
         </Link>
 
         <nav aria-label="Primary" className="hidden items-center gap-sp-4 sm:flex">
+          <MegaMenu categories={categories} brands={brandsResult.brands} />
+          <Link
+            href="/brands"
+            className="font-mono text-label-caps uppercase text-on-surface-variant no-underline transition-colors hover:text-ink"
+          >
+            Brands
+          </Link>
           {nav.map((item) => (
             <Link
               key={item.label}
@@ -63,13 +75,7 @@ export async function SiteHeader() {
           >
             {session ? session.customer.first_name ?? "Account" : "Sign in"}
           </Link>
-          <Link
-            href="/cart"
-            className="whitespace-nowrap font-mono text-xs sm:text-label-caps uppercase text-ink no-underline"
-            aria-label={`Bag, ${count} item${count === 1 ? "" : "s"}`}
-          >
-            Bag <span className="tabular">({count})</span>
-          </Link>
+          <CartDrawer initialCount={count} />
         </div>
       </div>
     </header>

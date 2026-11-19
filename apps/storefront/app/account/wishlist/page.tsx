@@ -2,7 +2,7 @@ import { moneyFromRupees } from "@thl/shared";
 import { EmptyState, ErrorState, Price } from "@thl/ui";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { removeWishlistAction } from "@/app/actions/account";
+import { moveWishlistItemToBagAction, removeWishlistAction } from "@/app/actions/account";
 import { getCurrentCustomer } from "@/lib/session";
 import { fetchProductsForVariants, fetchWishlist, MedusaError } from "@/lib/medusa";
 
@@ -76,15 +76,26 @@ export default async function WishlistPage() {
                 <span className="font-sans text-body-md font-medium text-ink">{row.title}</span>
                 <Price value={row.price} />
               </Link>
-              <form action={removeWishlistAction}>
-                <input type="hidden" name="variant_id" value={row.variantId} />
-                <button
-                  type="submit"
-                  className="font-mono text-label-caps uppercase text-muted underline-offset-4 hover:text-ink hover:underline"
-                >
-                  Remove
-                </button>
-              </form>
+              <div className="flex items-center gap-3">
+                <form action={moveWishlistItemToBagAction}>
+                  <input type="hidden" name="variant_id" value={row.variantId} />
+                  <button
+                    type="submit"
+                    className="font-mono text-label-caps uppercase text-ink underline-offset-4 hover:underline"
+                  >
+                    Move to bag
+                  </button>
+                </form>
+                <form action={removeWishlistAction}>
+                  <input type="hidden" name="variant_id" value={row.variantId} />
+                  <button
+                    type="submit"
+                    className="font-mono text-label-caps uppercase text-muted underline-offset-4 hover:text-ink hover:underline"
+                  >
+                    Remove
+                  </button>
+                </form>
+              </div>
             </li>
           ))}
         </ul>

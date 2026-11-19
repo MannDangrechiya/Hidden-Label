@@ -18,9 +18,16 @@ export async function GET(req: MedusaRequest<unknown, Query>, res: MedusaRespons
   const pattern = `%${q}%`;
 
   const products = await pg("product")
-    .whereNull("deleted_at")
-    .andWhere("status", "published")
-    .andWhere("title", "ilike", pattern)
+    .whereNull("product.deleted_at")
+    .andWhere("product.status", "published")
+    .andWhere((builder) => {
+      builder.where("product.title", "ilike", pattern).orWhereExists(
+        pg("product_variant")
+          .whereRaw('"product_variant"."product_id" = "product"."id"')
+          .andWhere("sku", "ilike", pattern)
+          .whereNull("deleted_at"),
+      );
+    })
     .orderBy("created_at", "desc")
     .limit(6)
     .select("id", "title", "handle", "thumbnail");
