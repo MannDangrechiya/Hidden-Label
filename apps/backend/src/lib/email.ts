@@ -8,6 +8,8 @@ export interface EmailInput {
   subject: string;
   html: string;
   text?: string;
+  /** Resend wants base64 content per file — used by the scheduled report email. */
+  attachments?: { filename: string; content: string }[];
 }
 
 export async function sendEmail(input: EmailInput): Promise<{ sent: boolean; reason?: string }> {
@@ -33,6 +35,7 @@ export async function sendEmail(input: EmailInput): Promise<{ sent: boolean; rea
         subject: input.subject,
         html: input.html,
         text: input.text,
+        attachments: input.attachments,
       }),
       signal: AbortSignal.timeout(10_000),
     });
