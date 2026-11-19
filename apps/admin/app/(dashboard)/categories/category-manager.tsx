@@ -48,6 +48,28 @@ function CategoryFields({
   );
 }
 
+/** Depth-first, parents-before-children ordering so the flat Table reads as a tree. */
+function treeOrder(categories: ProductCategory[]): { category: ProductCategory; depth: number }[] {
+  const byParent = new Map<string, ProductCategory[]>();
+  for (const category of categories) {
+    const key = category.parent_category_id ?? "";
+    const siblings = byParent.get(key) ?? [];
+    siblings.push(category);
+    byParent.set(key, siblings);
+  }
+  for (const siblings of byParent.values()) siblings.sort((a, b) => a.rank - b.rank || a.name.localeCompare(b.name));
+
+  const ordered: { category: ProductCategory; depth: number }[] = [];
+  function visit(parentId: string, depth: number) {
+    for (const category of byParent.get(parentId) ?? []) {
+      ordered.push({ category, depth });
+      visit(category.id, depth + 1);
+    }
+  }
+  visit("", 0);
+  return ordered;
+}
+
 export function CategoryManager({
   categories,
   canWrite,
@@ -67,7 +89,7 @@ export function CategoryManager({
     if (updateState.success) setEditing(null);
   }, [updateState]);
 
-  const parentName = (id: string | null) => categories.find((c) => c.id === id)?.name ?? "—";
+  const ordered = treeOrder(categories);
 
   return (
     <div className="flex flex-col gap-4">
@@ -81,28 +103,37 @@ export function CategoryManager({
       ) : (
         <Table
           columns={[
-            { key: "name", header: "Category", render: (c) => c.name, sticky: true },
-            { key: "handle", header: "Handle", render: (c) => c.handle },
-            { key: "parent", header: "Parent", render: (c) => parentName(c.parent_category_id) },
+            {
+              key: "name",
+              header: "Category",
+              sticky: true,
+              render: ({ category, depth }) => (
+                <span style={{ paddingLeft: depth * 20 }} className="inline-block">
+                  {depth > 0 ? <span className="mr-1.5 text-on-surface-variant">└</span> : null}
+                  {category.name}
+                </span>
+              ),
+            },
+            { key: "handle", header: "Handle", render: ({ category }) => category.handle },
             {
               key: "status",
               header: "Status",
-              render: (c) => (
-                <StatusChip tone={c.is_active ? "positive" : "neutral"}>
-                  {c.is_active ? "Active" : "Inactive"}
+              render: ({ category }) => (
+                <StatusChip tone={category.is_active ? "positive" : "neutral"}>
+                  {category.is_active ? "Active" : "Inactive"}
                 </StatusChip>
               ),
             },
             {
               key: "actions",
               header: "",
-              render: (c) =>
+              render: ({ category }) =>
                 canWrite ? (
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
                       className="font-mono text-label-caps uppercase text-ink underline"
-                      onClick={() => setEditing(c)}
+                      onClick={() => setEditing(category)}
                     >
                       Edit
                     </button>
@@ -110,7 +141,7 @@ export function CategoryManager({
                       type="button"
                       className="font-mono text-label-caps uppercase text-error underline"
                       onClick={() => {
-                        if (confirm(`Delete ${c.name}?`)) void deleteCategoryAction(c.id);
+                        if (confirm(`Delete ${category.name}?`)) void deleteCategoryAction(category.id);
                       }}
                     >
                       Delete
@@ -119,8 +150,8 @@ export function CategoryManager({
                 ) : null,
             },
           ]}
-          rows={categories}
-          rowKey={(c) => c.id}
+          rows={ordered}
+          rowKey={({ category }) => category.id}
         />
       )}
 

@@ -11,6 +11,7 @@ import {
   createInventoryItemsWorkflow,
   createInventoryLevelsWorkflow,
   createLocationFulfillmentSetWorkflow,
+  createProductCategoriesWorkflow,
   createProductsWorkflow,
   createRegionsWorkflow,
   createSalesChannelsWorkflow,
@@ -57,6 +58,53 @@ interface SeedProduct {
   gender?: "men" | "women" | "unisex";
   /** True for pieces the atelier cuts to the client's own measurements. */
   bespoke?: boolean;
+}
+
+interface SeedCategory {
+  handle: string;
+  name: string;
+  parentHandle?: string;
+}
+
+/**
+ * The real `product_category` taxonomy (admin A-05 tree, storefront mega-menu), seeded
+ * idempotently and kept separate from `lib/catalog.ts`'s metadata-driven storefront tabs — a
+ * product can appear in both systems without them needing to agree.
+ */
+const CATEGORY_TREE: SeedCategory[] = [
+  { handle: "footwear", name: "Footwear" },
+  { handle: "footwear-sneakers", name: "Sneakers", parentHandle: "footwear" },
+  { handle: "footwear-formal", name: "Formal Shoes", parentHandle: "footwear" },
+  { handle: "apparel", name: "Apparel" },
+  { handle: "apparel-menswear", name: "Menswear", parentHandle: "apparel" },
+  { handle: "apparel-womenswear", name: "Womenswear", parentHandle: "apparel" },
+  { handle: "accessories", name: "Accessories" },
+  { handle: "accessories-bags", name: "Bags", parentHandle: "accessories" },
+  { handle: "accessories-eyewear", name: "Eyewear", parentHandle: "accessories" },
+  { handle: "accessories-fragrance", name: "Fragrance", parentHandle: "accessories" },
+  { handle: "bespoke", name: "Bespoke" },
+];
+
+/** Which category handles a seeded product belongs to — derived from the same fields the
+ *  storefront's `category`/`gender` metadata already carries, never invented separately. */
+function categoryHandlesFor(product: SeedProduct): string[] {
+  if (product.category === "bespoke_custom") return ["bespoke"];
+
+  if (product.category === "footwear") return ["footwear-sneakers"];
+
+  if (product.category === "accessory") {
+    const title = product.title.toLowerCase();
+    if (/bag|tote|backpack/.test(title)) return ["accessories-bags"];
+    if (/sunglass|eyewear|glasses/.test(title)) return ["accessories-eyewear"];
+    if (/parfum|eau de|fragrance|cologne|oud/.test(title)) return ["accessories-fragrance"];
+    return ["accessories"];
+  }
+
+  // ready_to_wear (or undeclared): split by gender the same way lib/catalog.ts does.
+  if (product.gender === "unisex") return ["apparel-menswear", "apparel-womenswear"];
+  if (product.gender === "women") return ["apparel-womenswear"];
+  if (product.gender === "men") return ["apparel-menswear"];
+  return ["apparel"];
 }
 
 const BRANDS: SeedBrand[] = [
@@ -779,6 +827,34 @@ export default async function seed({ container }: ExecArgs) {
   const brandByHandle = new Map(brandRows.map((row) => [row.handle, row.id]));
   logger.info(`brands: ${brandRows.length}`);
 
+  /* --- Categories --------------------------------------------------------- */
+  const existingCategoryRows = await pg("product_category")
+    .whereNull("deleted_at")
+    .select("id", "handle");
+  const categoryIdByHandle = new Map(existingCategoryRows.map((row) => [row.handle, row.id]));
+
+  for (const category of CATEGORY_TREE) {
+    if (categoryIdByHandle.has(category.handle)) continue;
+    // Parents are listed before children in CATEGORY_TREE, so the parent id is always already
+    // in the map by the time a child is created.
+    const parentId = category.parentHandle ? categoryIdByHandle.get(category.parentHandle) : null;
+    const createdCategory = await createProductCategoriesWorkflow(container).run({
+      input: {
+        product_categories: [
+          {
+            name: category.name,
+            handle: category.handle,
+            is_active: true,
+            ...(parentId ? { parent_category_id: parentId } : {}),
+          },
+        ],
+      },
+    });
+    const newId = createdCategory.result[0]?.id;
+    if (newId) categoryIdByHandle.set(category.handle, newId);
+  }
+  logger.info(`categories: ${categoryIdByHandle.size}`);
+
   /* --- Products --------------------------------------------------------- */
   const existingProducts = await productService.listProducts(
     { handle: PRODUCTS.map((product) => product.handle) },
@@ -795,6 +871,16 @@ export default async function seed({ container }: ExecArgs) {
         .insert({ product_id: product.id, brand_id: brandId })
         .onConflict(["product_id", "brand_id"])
         .ignore();
+    }
+    if (pConfig) {
+      for (const handle of categoryHandlesFor(pConfig)) {
+        const categoryId = categoryIdByHandle.get(handle);
+        if (!categoryId) continue;
+        await pg("product_category_product")
+          .insert({ product_id: product.id, product_category_id: categoryId })
+          .onConflict(["product_id", "product_category_id"])
+          .ignore();
+      }
     }
   }
 
@@ -868,6 +954,9 @@ export default async function seed({ container }: ExecArgs) {
               ...packageMetadata(product.category),
             },
             ...(shippingProfileId ? { shipping_profile_id: shippingProfileId } : {}),
+            category_ids: categoryHandlesFor(product)
+              .map((handle) => categoryIdByHandle.get(handle))
+              .filter((id): id is string => Boolean(id)),
             options: [{ title: "Size", values: product.sizes }],
             variants: product.sizes.map((size, index) => ({
               title: size,
