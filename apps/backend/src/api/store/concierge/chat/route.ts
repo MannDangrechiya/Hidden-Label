@@ -1,6 +1,12 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { ContainerRegistrationKeys, generateEntityId } from "@medusajs/framework/utils";
 import { actorId } from "../../../../lib/auth";
+import {
+  createGuestSession,
+  decideThreadAccess,
+  hashGuestSessionToken,
+  verifyGuestSessionToken,
+} from "../../../../lib/concierge-session";
 import { generateConciergeReply, isConfigured as geminiConfigured } from "../../../../lib/gemini";
 
 interface ChatBody {
@@ -16,7 +22,15 @@ interface ProductItem {
   thumbnail: string | null;
   description: string | null;
   brand_name?: string;
-  price_rupees?: number;
+}
+
+/**
+ * The signing secret for guest concierge sessions. It is derived from the backend's own JWT
+ * secret, so a token minted for one environment cannot be replayed in another. With no secret
+ * configured the route refuses to issue sessions rather than falling back to an unsigned value.
+ */
+function conciergeSecret(): string | null {
+  return process.env.MEDUSA_JWT_SECRET || process.env.MEDUSA_COOKIE_SECRET || null;
 }
 
 /**
@@ -30,33 +44,84 @@ interface ProductItem {
  * authentication claim is made here — that only ever comes from a real `condition_inspection`
  * record shown on the product's own page. Keep this entry point hidden behind
  * `NEXT_PUBLIC_FEATURE_AI_LAYER` until you're ready to show it (docs/MASTER_PLAN.md §2.4).
+ *
+ * BUG-09: thread ownership. A signed-in customer can only touch a thread whose `customer_id`
+ * matches. A guest thread can only be continued with the exact backend-issued signed session
+ * token whose SHA-256 hash is stored. A client-supplied string is verified, never trusted, and
+ * a thread with no owner and no hash is inaccessible.
  */
 export async function POST(req: MedusaRequest<ChatBody>, res: MedusaResponse) {
   const customerId = actorId(req) ?? null;
-  const { thread_id, session_token = "guest-session", message } = req.body ?? {};
+  const body = req.body ?? {};
+  const message = body.message;
+  const requestedThreadId = body.thread_id;
+  const presentedToken =
+    typeof body.session_token === "string" && body.session_token.trim().length > 0
+      ? body.session_token.trim()
+      : null;
 
   if (!message || typeof message !== "string" || !message.trim()) {
     res.status(400).json({ type: "invalid_data", message: "A non-empty message is required." });
     return;
   }
 
-  const pg = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION);
+  const secret = conciergeSecret();
+  if (!secret) {
+    res.status(503).json({
+      type: "not_configured",
+      message: "The concierge is not configured on this environment.",
+    });
+    return;
+  }
 
-  // 1. Resolve or create thread
-  let activeThreadId = thread_id;
+  const pg = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION);
+  const presentedHash = presentedToken ? hashGuestSessionToken(presentedToken) : null;
+
+  // 1. Resolve the thread, enforcing ownership before anything is written.
+  let activeThreadId = requestedThreadId;
   if (activeThreadId) {
     const thread = await pg("concierge_thread").where({ id: activeThreadId }).first();
     if (!thread) {
       activeThreadId = undefined;
+    } else {
+      const access = decideThreadAccess(thread, {
+        customerId,
+        tokenHash: presentedHash,
+      });
+      if (!access.allowed) {
+        res.status(403).json({ type: "forbidden", message: "This conversation is not available." });
+        return;
+      }
     }
   }
 
+  let issuedToken: string | null = null;
+
   if (!activeThreadId) {
+    let sessionTokenHash: string | null = null;
+    let sessionMarker: string = customerId ? `customer:${customerId}` : "guest";
+
+    if (!customerId) {
+      // A guest thread is always bound to a backend-issued signed token. A previously issued,
+      // still-valid token is reused so a client that lost its thread id keeps the same identity;
+      // anything else is replaced rather than trusted.
+      const verified = verifyGuestSessionToken(presentedToken, secret);
+      if (verified && presentedToken && presentedHash) {
+        sessionTokenHash = presentedHash;
+      } else {
+        const session = createGuestSession(secret);
+        issuedToken = session.token;
+        sessionTokenHash = session.hash;
+      }
+      sessionMarker = sessionTokenHash;
+    }
+
     activeThreadId = generateEntityId(undefined, "cth");
     await pg("concierge_thread").insert({
       id: activeThreadId,
       customer_id: customerId,
-      session_token,
+      session_token: sessionMarker,
+      session_token_hash: sessionTokenHash,
       title: message.slice(0, 40) + (message.length > 40 ? "..." : ""),
     });
   }
@@ -152,6 +217,7 @@ export async function POST(req: MedusaRequest<ChatBody>, res: MedusaResponse) {
   res.json({
     thread_id: activeThreadId,
     reply: replyText,
+    ...(issuedToken ? { session_token: issuedToken } : {}),
     recommended_products: matchedProducts.map((p) => ({
       id: p.id,
       title: p.title,

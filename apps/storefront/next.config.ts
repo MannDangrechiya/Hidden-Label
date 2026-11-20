@@ -34,6 +34,64 @@ const contentSecurityPolicy = [
   .join("; ")
   .concat(isDev ? "" : "; upgrade-insecure-requests");
 
+/**
+ * SEC: the image optimiser is an authenticated proxy, so it must not fetch arbitrary hosts.
+ * The allowlist is derived from the origins this deployment actually uses:
+ *   - the Medusa backend (or object storage) that serves uploaded product media;
+ *   - the seeded editorial photography host;
+ *   - any extra origins listed in NEXT_PUBLIC_IMAGE_HOSTS (comma separated).
+ * A wildcard host is deliberately not permitted.
+ */
+function imageRemotePatterns(): Array<{
+  protocol: "http" | "https";
+  hostname: string;
+  port?: string;
+  pathname?: string;
+}> {
+  const patterns: Array<{
+    protocol: "http" | "https";
+    hostname: string;
+    port?: string;
+    pathname?: string;
+  }> = [{ protocol: "https", hostname: "images.unsplash.com", pathname: "/**" }];
+
+  const candidates = [
+    process.env.NEXT_PUBLIC_MEDUSA_URL,
+    process.env.MEDUSA_URL,
+    process.env.S3_PUBLIC_BASE_URL,
+    ...(process.env.NEXT_PUBLIC_IMAGE_HOSTS ?? "").split(","),
+  ];
+
+  for (const candidate of candidates) {
+    const value = candidate?.trim();
+    if (!value) continue;
+
+    try {
+      const url = new URL(value.includes("://") ? value : `https://${value}`);
+      if (url.protocol !== "http:" && url.protocol !== "https:") continue;
+      const protocol = url.protocol === "http:" ? "http" : "https";
+      const duplicate = patterns.some(
+        (pattern) =>
+          pattern.protocol === protocol &&
+          pattern.hostname === url.hostname &&
+          (pattern.port ?? "") === (url.port ?? ""),
+      );
+      if (!duplicate) {
+        patterns.push({
+          protocol,
+          hostname: url.hostname,
+          ...(url.port ? { port: url.port } : {}),
+          pathname: "/**",
+        });
+      }
+    } catch {
+      // A malformed origin is ignored rather than widening the allowlist.
+    }
+  }
+
+  return patterns;
+}
+
 const nextConfig: NextConfig = {
   // Workspace packages ship TypeScript source; Next transpiles them rather than needing a
   // build step in each package.
@@ -41,10 +99,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   images: {
-    remotePatterns: [
-      { protocol: "https", hostname: "**" },
-      { protocol: "http", hostname: "**" },
-    ],
+    remotePatterns: imageRemotePatterns(),
   },
   async headers() {
     return [

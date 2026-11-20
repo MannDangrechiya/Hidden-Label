@@ -1,9 +1,7 @@
 import { Client } from "pg";
 import fs from "node:fs";
 
-const SF = "http://localhost:3000";
 const BE = "http://localhost:9000";
-const AD = "http://localhost:7001";
 const PG = { host: "127.0.0.1", port: 5437, user: "postgres", database: "the_hidden_label" };
 
 const envText = fs.readFileSync("apps/storefront/.env", "utf8");
@@ -22,7 +20,7 @@ async function req(url, options = {}) {
   });
   const text = await res.text();
   let json = null;
-  try { json = JSON.parse(text); } catch {}
+  try { json = JSON.parse(text); } catch { /* response was not JSON */ }
   return { status: res.status, text, json };
 }
 

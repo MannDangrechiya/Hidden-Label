@@ -1,11 +1,23 @@
 import { defineConfig, loadEnv } from "@medusajs/framework/utils";
+import { assertProductionEnv } from "./src/lib/env-guard";
 
 // Loads apps/backend/.env — the backend's own env file. Integration secrets live here in
 // development and in the host's secret store in production (never in the repository).
 loadEnv(process.env.NODE_ENV ?? "development", process.cwd());
 
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+
+// GAP-116: a production process with missing or development secret values must not start. The
+// check reports variable names only, never values. Development keeps its convenience defaults.
+if (IS_PRODUCTION) {
+  assertProductionEnv(process.env as Record<string, string | undefined>);
+}
+
 const STOREFRONT_ORIGIN = process.env.STOREFRONT_ORIGIN ?? "http://localhost:3000";
 const ADMIN_ORIGIN = process.env.ADMIN_ORIGIN ?? "http://localhost:7001";
+const JWT_SECRET = process.env.MEDUSA_JWT_SECRET ?? (IS_PRODUCTION ? "" : "local_dev_jwt_secret");
+const COOKIE_SECRET =
+  process.env.MEDUSA_COOKIE_SECRET ?? (IS_PRODUCTION ? "" : "local_dev_cookie_secret");
 
 module.exports = defineConfig({
   projectConfig: {
@@ -29,8 +41,8 @@ module.exports = defineConfig({
       storeCors: STOREFRONT_ORIGIN,
       adminCors: `${ADMIN_ORIGIN},${STOREFRONT_ORIGIN}`,
       authCors: `${ADMIN_ORIGIN},${STOREFRONT_ORIGIN}`,
-      jwtSecret: process.env.MEDUSA_JWT_SECRET ?? "local_dev_jwt_secret",
-      cookieSecret: process.env.MEDUSA_COOKIE_SECRET ?? "local_dev_cookie_secret",
+      jwtSecret: JWT_SECRET,
+      cookieSecret: COOKIE_SECRET,
     },
   },
   admin: {

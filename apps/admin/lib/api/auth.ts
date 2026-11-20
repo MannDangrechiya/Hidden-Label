@@ -1,6 +1,6 @@
 import "server-only";
 import { backendFetch, BackendError } from "../backend";
-import { ROLE_RANK, roleAtLeast, type AdminRole } from "../roles";
+import { resolveAdminRole, ROLE_RANK, roleAtLeast, type AdminRole } from "../roles";
 
 export interface AdminActor {
   id: string;
@@ -9,7 +9,29 @@ export interface AdminActor {
 }
 
 export type { AdminRole };
-export { ROLE_RANK, roleAtLeast };
+export { ROLE_RANK, roleAtLeast, resolveAdminRole };
+
+/**
+ * SEC-01: thrown when the authenticated staff account has no explicit, valid role. Callers must
+ * render an access-denied state. It deliberately does **not** fall back to `owner`.
+ */
+export class NoRoleAssignedError extends BackendError {
+  constructor() {
+    super(
+      "This staff account has no role assigned. Ask an owner to assign one (owner, manager, operations, support or readonly).",
+      403,
+      "no_role_assigned",
+    );
+    this.name = "NoRoleAssignedError";
+  }
+}
+
+export function isNoRoleAssigned(error: unknown): boolean {
+  return (
+    error instanceof NoRoleAssignedError ||
+    (error instanceof BackendError && error.code === "no_role_assigned")
+  );
+}
 
 /**
  * POST /auth/user/emailpass — Medusa's standard admin credential exchange. Returns a signed
@@ -37,14 +59,22 @@ export async function loginWithPassword(email: string, password: string): Promis
 
 /** GET /admin/users/me — current admin identity, including `metadata.role`. */
 export async function fetchCurrentAdmin(): Promise<{ user: AdminActor; role: AdminRole }> {
-  const { user } = await backendFetch<{ user: AdminActor }>(
-    "/admin/users/me?fields=id,email,metadata",
-  );
-  const rawRole = user.metadata?.role;
-  const role: AdminRole =
-    typeof rawRole === "string" &&
-    ["owner", "manager", "operations", "support", "readonly"].includes(rawRole)
-      ? (rawRole as AdminRole)
-      : "owner";
-  return { user, role };
+  let payload: { user: AdminActor };
+  try {
+    payload = await backendFetch<{ user: AdminActor }>(
+      "/admin/users/me?fields=id,email,metadata",
+    );
+  } catch (error) {
+    // The backend answers 403 no_role_assigned for a signed-in staff user without a role.
+    // Translate that into the typed denial so callers render an access-denied state.
+    if (error instanceof BackendError && (error.code === "no_role_assigned" || error.status === 403)) {
+      throw new NoRoleAssignedError();
+    }
+    throw error;
+  }
+
+  const role = resolveAdminRole(payload.user.metadata?.role);
+  if (!role) throw new NoRoleAssignedError();
+
+  return { user: payload.user, role };
 }

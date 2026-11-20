@@ -10,6 +10,7 @@
     "start": "medusa start --port 9000",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.mts",
     "seed": "medusa exec ./src/scripts/seed.ts",
     "user": "medusa user"
   },

@@ -1,5 +1,4 @@
 import { Client } from "pg";
-import fs from "node:fs";
 
 const BE = "http://localhost:9000";
 const PG = { host: "127.0.0.1", port: 5437, user: "postgres", database: "the_hidden_label" };
@@ -17,7 +16,7 @@ async function req(url, options = {}) {
   });
   const text = await res.text();
   let json = null;
-  try { json = JSON.parse(text); } catch {}
+  try { json = JSON.parse(text); } catch { /* response was not JSON */ }
   return { status: res.status, text, json };
 }
 

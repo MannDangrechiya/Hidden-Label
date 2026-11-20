@@ -1,7 +1,12 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
-import { requestMeta, writeAudit } from "../../../lib/audit";
+import { requestMeta } from "../../../lib/audit";
 import { requireRole } from "../../../lib/admin-auth";
+import {
+  ADJUST_REASONS,
+  adjustStock,
+  type AdjustReason,
+} from "../../../lib/stock-adjustment";
 
 interface AdjustBody {
   inventory_item_id?: string;
@@ -9,16 +14,6 @@ interface AdjustBody {
   delta?: number;
   reason?: string;
 }
-
-export const ADJUST_REASONS = [
-  "count_correction",
-  "stock_count",
-  "damaged",
-  "lost",
-  "return_restock",
-  "sample",
-  "transfer",
-] as const;
 
 /** GET /admin/inventory?low=true — stock on hand with the linked variant. */
 export async function GET(
@@ -66,8 +61,12 @@ export async function GET(
 }
 
 /**
- * POST /admin/inventory — adjust stock. A reason code is mandatory, the resulting quantity can
- * never be negative, and the adjustment and its audit row commit together.
+ * POST /admin/inventory — adjust stock.
+ *
+ * The mutation itself lives in `lib/stock-adjustment.ts`: it locks the inventory row
+ * (`SELECT … FOR UPDATE`), re-checks the negative bound under that lock, and writes the audit
+ * row in the same transaction. Concurrent adjustments therefore compose instead of overwriting
+ * one another.
  */
 export async function POST(req: MedusaRequest<AdjustBody>, res: MedusaResponse) {
   const actor = await requireRole(req, res, "operations");
@@ -81,7 +80,7 @@ export async function POST(req: MedusaRequest<AdjustBody>, res: MedusaResponse) 
     return;
   }
 
-  if (!body.reason || !ADJUST_REASONS.includes(body.reason as (typeof ADJUST_REASONS)[number])) {
+  if (!body.reason || !ADJUST_REASONS.includes(body.reason as AdjustReason)) {
     res.status(400).json({
       type: "invalid_data",
       message: `A reason code is required: ${ADJUST_REASONS.join(", ")}.`,
@@ -92,43 +91,24 @@ export async function POST(req: MedusaRequest<AdjustBody>, res: MedusaResponse) 
   const pg = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION);
   const meta = requestMeta(req);
 
-  const level = await pg("inventory_level")
-    .where({ inventory_item_id: body.inventory_item_id, location_id: body.location_id })
-    .first();
+  const outcome = await adjustStock(
+    pg,
+    {
+      inventoryItemId: body.inventory_item_id,
+      locationId: body.location_id,
+      delta,
+      reason: body.reason as AdjustReason,
+    },
+    { actorId: actor.id, ip: meta.ip, userAgent: meta.userAgent },
+  );
 
-  if (!level) {
-    res.status(404).json({ type: "not_found", message: "Inventory level not found." });
+  if (!outcome.ok) {
+    res.status(outcome.status).json({ type: outcome.code, message: outcome.message });
     return;
   }
 
-  const next = Number(level.stocked_quantity) + delta;
-  if (next < 0) {
-    res.status(422).json({
-      type: "invalid_data",
-      message: `Adjusting by ${delta} would leave a negative quantity (${next}).`,
-    });
-    return;
-  }
-
-  const updated = await pg.transaction(async (trx) => {
-    const [row] = await trx("inventory_level")
-      .where({ id: level.id })
-      .update({ stocked_quantity: next, updated_at: new Date() })
-      .returning("*");
-
-    await writeAudit(trx, {
-      actorType: "admin",
-      actorId: actor.id,
-      action: "inventory.adjusted",
-      entityType: "inventory_item",
-      entityId: body.inventory_item_id ?? "",
-      summary: `Stock adjusted by ${delta > 0 ? "+" : ""}${delta} (${body.reason})`,
-      changes: { before: Number(level.stocked_quantity), after: next, reason: body.reason },
-      ...meta,
-    });
-
-    return row;
+  res.json({
+    level: outcome.level,
+    available: outcome.available,
   });
-
-  res.json({ level: updated, available: next - Number(updated.reserved_quantity) });
 }

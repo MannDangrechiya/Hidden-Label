@@ -1,5 +1,6 @@
 import "server-only";
 import { BackendError, requireSessionToken } from "../backend";
+import { validateImageUpload } from "../upload-rules";
 
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:9000";
 
@@ -14,6 +15,9 @@ export interface UploadedFile {
  * its body — and posts the browser-supplied `File` directly under the field name it expects.
  */
 export async function uploadFile(file: File): Promise<UploadedFile> {
+  const check = validateImageUpload({ name: file.name, type: file.type, size: file.size });
+  if (!check.ok) throw new BackendError(check.message, 400, "invalid_upload");
+
   const token = await requireSessionToken();
 
   const body = new FormData();

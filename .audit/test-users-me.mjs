@@ -1,5 +1,3 @@
-import fs from "node:fs";
-
 const BE = "http://localhost:9000";
 
 async function req(url, options = {}) {
@@ -15,7 +13,7 @@ async function req(url, options = {}) {
   });
   const text = await res.text();
   let json = null;
-  try { json = JSON.parse(text); } catch {}
+  try { json = JSON.parse(text); } catch { /* response was not JSON */ }
   return { status: res.status, text, json };
 }
 

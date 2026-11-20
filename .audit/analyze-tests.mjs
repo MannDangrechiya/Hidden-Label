@@ -12,7 +12,7 @@ function analyzeAuditScript(filePath) {
   let simulatedOrMockCount = 0;
 
   for (const m of testMatches) {
-    const [full, id, area, feature, expected, actual] = m;
+    const [, , , feature, expected, actual] = m;
     const isStatusOnly = /^(HTTP\s*\d{3}|200|201|400|403|404|422|4xx)$/i.test(expected.trim()) ||
                          /^(HTTP\s*\d{3})$/i.test(actual.trim());
     const isSimulated = /simulat|no provider|not configured|mock|placeholder/i.test(feature + " " + expected + " " + actual);

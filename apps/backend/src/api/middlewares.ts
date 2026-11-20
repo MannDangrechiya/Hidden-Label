@@ -6,9 +6,11 @@ import {
 } from "@medusajs/framework/http";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import { defineMiddlewares } from "@medusajs/medusa";
-import { canWrite, resolveAdmin } from "../lib/admin-auth";
-import { checkAuthRateLimit, resetAuthRateLimit } from "../lib/rate-limit";
+import { adminAccess, decideAdminRequest, stripPrivilegedMetadata } from "../lib/admin-auth";
+import { checkAuthRateLimit, resetAuthRateLimit, WRITE_RATE_LIMITS } from "../lib/rate-limit";
 import { processReturnAction } from "../lib/returns";
+import { checkUploadRequest } from "../lib/upload-validation";
+import { rateLimit } from "../lib/write-rate-limit";
 
 /**
  * Validates registration payloads and stops email enumeration.
@@ -82,6 +84,23 @@ async function authRateLimitMiddleware(
 }
 
 /**
+ * Rejects a huge or non-multipart upload before Medusa buffers it. Per-file MIME and size are
+ * checked by the admin app (`apps/admin/lib/upload-rules.ts`) before the request is made.
+ */
+async function uploadRequestGuard(
+  req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction,
+) {
+  const check = checkUploadRequest(req.headers as Record<string, string | string[] | undefined>);
+  if (!check.ok) {
+    res.status(check.status).json({ type: "invalid_data", message: check.message });
+    return;
+  }
+  next();
+}
+
+/**
  * Intercepts POST /admin/returns/:id to execute return actions before Medusa's strict core validator rejects them.
  */
 async function adminReturnsMiddleware(
@@ -102,114 +121,42 @@ async function adminReturnsMiddleware(
   next();
 }
 
-const SELF_IDENTITY_PATH = /\/users\/me\/?$/;
-const PRIVILEGED_METADATA_KEYS = ["role", "roles", "permissions", "is_owner", "owner", "is_admin"];
-
 /**
  * Universal RBAC guard for all /admin/* endpoints.
  *
- * GAP-SEC-01: the `/admin/users/me` exemption is read-only. Medusa core exposes
- * `POST /admin/users/me` which accepts metadata updates, so a restricted staff member could
- * previously POST `{"metadata":{"role":"owner"}}` and become an owner. Non-GET requests are
- * now rejected if they carry a privileged key, and any other privileged key is stripped.
+ * SEC-01: a staff user with no explicit role is denied with 403 here — never treated as owner.
+ * The decision itself lives in a pure function (`decideAdminRequest`) so it is unit-tested
+ * across every role and the self-escalation paths.
  */
 async function adminRbacMiddleware(
   req: MedusaRequest,
   res: MedusaResponse,
   next: MedusaNextFunction,
 ) {
-  const actor = await resolveAdmin(req);
-  if (!actor) {
-    res.status(401).json({ type: "unauthorized", message: "Admin authentication required." });
+  const access = await adminAccess(req);
+  if (!access.allowed) {
+    res.status(access.status).json({ type: access.code, code: access.code, message: access.message });
     return;
   }
 
   const rawPath = req.originalUrl || req.path || req.url || "";
   const path = rawPath.split("?")[0];
 
-  // Self identity: readable by any authenticated admin, never writable in privileged ways.
-  if (SELF_IDENTITY_PATH.test(path)) {
-    if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") {
-      return next();
-    }
+  const decision = decideAdminRequest({
+    role: access.actor.role,
+    actorId: access.actor.id,
+    method: req.method,
+    path,
+    body: (req.body ?? null) as Record<string, unknown> | null,
+  });
 
-    const body = req.body as Record<string, unknown> | undefined;
-    if (body && typeof body === "object") {
-      const metadata = (body.metadata ?? {}) as Record<string, unknown>;
-      const attempted = PRIVILEGED_METADATA_KEYS.filter((key) => key in metadata || key in body);
-      if (attempted.length > 0) {
-        res.status(403).json({
-          type: "forbidden",
-          message: "Roles and privileged metadata cannot be changed through your own profile.",
-        });
-        return;
-      }
-      for (const key of PRIVILEGED_METADATA_KEYS) delete metadata[key];
-      delete body.roles;
-      delete body.role;
-    }
-
-    return next();
-  }
-
-  // Staff and invite management
-  if (path.includes("/users") || path.includes("/invites")) {
-    if (actor.role !== "manager" && actor.role !== "owner") {
-      res.status(403).json({
-        type: "forbidden",
-        message: "User management requires at least manager role.",
-      });
-      return;
-    }
-
-    const body = (req.body ?? {}) as Record<string, unknown>;
-    const bodyMetadata = (body.metadata ?? {}) as Record<string, unknown>;
-    if (bodyMetadata.role || body.role) {
-      if (actor.role !== "owner") {
-        res.status(403).json({
-          type: "forbidden",
-          message: "Only owner can modify roles.",
-        });
-        return;
-      }
-
-      const segments = path.split("/").filter(Boolean);
-      const targetId = segments[2];
-      if (targetId && targetId === actor.id) {
-        res.status(403).json({
-          type: "forbidden",
-          message: "Self-role escalation is not permitted.",
-        });
-        return;
-      }
-    }
-
-    if (req.method !== "GET" && req.method !== "HEAD" && req.method !== "OPTIONS" && !canWrite(actor.role)) {
-      res.status(403).json({
-        type: "forbidden",
-        message: "Readonly role cannot perform write actions.",
-      });
-      return;
-    }
-
-    return next();
-  }
-
-  // Readonly users cannot read operational records (orders, customers, etc.) or write
-  if (actor.role === "readonly") {
-    res.status(403).json({
-      type: "forbidden",
-      message: "Readonly role does not have access to this resource.",
-    });
+  if (!decision.allow) {
+    res.status(decision.status).json({ type: "forbidden", message: decision.message });
     return;
   }
 
-  if (req.method !== "GET" && req.method !== "HEAD" && req.method !== "OPTIONS" && !canWrite(actor.role)) {
-    res.status(403).json({
-      type: "forbidden",
-      message: "Write operations not permitted for this role.",
-    });
-    return;
+  if (decision.stripPrivilegedMetadata) {
+    stripPrivilegedMetadata(req.body as Record<string, unknown> | undefined);
   }
 
   next();
@@ -282,6 +229,52 @@ export default defineMiddlewares({
       methods: ["POST"],
       bodyParser: { preserveRawBody: true },
       middlewares: [],
+    },
+
+    // ---- Write rate limits (public / authenticated) ------------------------------------------
+    {
+      matcher: "/store/otp/send",
+      methods: ["POST"],
+      middlewares: [rateLimit("otp-send", WRITE_RATE_LIMITS.otpSend)],
+    },
+    {
+      matcher: "/store/support/tickets",
+      methods: ["POST"],
+      middlewares: [rateLimit("support-ticket", WRITE_RATE_LIMITS.supportTicket)],
+    },
+    {
+      matcher: "/store/concierge/chat",
+      methods: ["POST"],
+      middlewares: [rateLimit("concierge", WRITE_RATE_LIMITS.concierge)],
+    },
+    {
+      matcher: "/store/sight-search",
+      methods: ["POST"],
+      middlewares: [rateLimit("sight-search", WRITE_RATE_LIMITS.sightSearch)],
+    },
+    {
+      matcher: "/store/resale/asks*",
+      methods: ["POST", "DELETE"],
+      middlewares: [rateLimit("resale-asks", WRITE_RATE_LIMITS.resaleWrite, { byActor: true })],
+    },
+    {
+      matcher: "/store/resale/bids*",
+      methods: ["POST", "DELETE"],
+      middlewares: [rateLimit("resale-bids", WRITE_RATE_LIMITS.resaleWrite, { byActor: true })],
+    },
+    {
+      matcher: "/store/customers/me/delete-account",
+      methods: ["POST"],
+      middlewares: [
+        rateLimit("account-delete", WRITE_RATE_LIMITS.destructiveAccount, { byActor: true }),
+      ],
+    },
+
+    // ---- Admin -------------------------------------------------------------------------------
+    {
+      matcher: "/admin/uploads",
+      methods: ["POST"],
+      middlewares: [uploadRequestGuard],
     },
     {
       matcher: "/admin/promotions*",

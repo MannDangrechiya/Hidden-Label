@@ -8,6 +8,14 @@
  */
 export type AdminRole = "owner" | "manager" | "operations" | "support" | "readonly";
 
+export const ADMIN_ROLES: readonly AdminRole[] = [
+  "owner",
+  "manager",
+  "operations",
+  "support",
+  "readonly",
+] as const;
+
 export const ROLE_RANK: Record<AdminRole, number> = {
   readonly: 1,
   support: 2,
@@ -18,4 +26,14 @@ export const ROLE_RANK: Record<AdminRole, number> = {
 
 export function roleAtLeast(role: AdminRole, minimum: AdminRole): boolean {
   return ROLE_RANK[role] >= ROLE_RANK[minimum];
+}
+
+/**
+ * SEC-01: no default role. Missing, empty or unrecognised metadata yields `null`, which the
+ * caller must treat as "no access". The backend enforces the same rule, so a role-less account
+ * is denied by the API regardless of what this app renders.
+ */
+export function resolveAdminRole(raw: unknown): AdminRole | null {
+  if (typeof raw !== "string") return null;
+  return (ADMIN_ROLES as readonly string[]).includes(raw) ? (raw as AdminRole) : null;
 }

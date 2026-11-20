@@ -103,6 +103,8 @@ export interface FitRecommendation {
 export interface ConciergeMessageResponse {
   thread_id: string;
   reply: string;
+  /** Issued by the backend when a new guest session is created. Persist it; never mint your own. */
+  session_token?: string;
   recommended_products: Array<{
     id: string;
     title: string;
@@ -174,7 +176,8 @@ export async function requestFitRecommendation(body: {
 
 export async function sendConciergeMessage(body: {
   message: string;
-  session_token: string;
+  /** Backend-issued signed session. Omit on the first message. */
+  session_token?: string;
   thread_id?: string;
 }): Promise<ConciergeMessageResponse | null> {
   try {

@@ -2,6 +2,7 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { ContainerRegistrationKeys, generateEntityId } from "@medusajs/framework/utils";
 import { sendEmail } from "../../../lib/email";
 import { checkReturnEligibility } from "../../../lib/returns";
+import { nextReturnDisplayId } from "../../../lib/rma-numbering";
 import { THL_MODULE } from "../../../modules/thl";
 import { actorId } from "../../../lib/auth";
 import type ThlModuleService from "../../../modules/thl/service";
@@ -155,8 +156,9 @@ export async function POST(req: MedusaRequest<Body>, res: MedusaResponse) {
     lines.push({ id: row.id, quantity: item.quantity, unit_price: Number(row.unit_price) });
   }
 
-  const countRow = await pg("return_request").count<{ count: string }[]>("id as count");
-  const displayId = `RMA-${1000 + Number(countRow[0]?.count ?? 0) + 1}`;
+  // BUG-08: numbering comes from a PostgreSQL sequence, so two concurrent requests can never
+  // allocate the same display id (the previous row-count formula could).
+  const displayId = await nextReturnDisplayId(pg);
   const refundAmount = lines.reduce((sum, line) => sum + line.unit_price * line.quantity, 0);
 
   const created = await pg.transaction(async (trx) => {

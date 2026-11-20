@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { Nav } from "../../components/nav";
 import { LogoutButton } from "../../components/logout-button";
 import { requireSessionToken, isUnauthorized } from "../../lib/backend";
-import { fetchCurrentAdmin } from "../../lib/api/auth";
+import { fetchCurrentAdmin, isNoRoleAssigned } from "../../lib/api/auth";
 import { clearSessionToken } from "../../lib/session";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
@@ -17,6 +17,33 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       await clearSessionToken();
       redirect("/login");
     }
+
+    // SEC-01: authenticated but without an explicit role. Deny, never render the console with a
+    // default role. The backend refuses the same account with 403 no_role_assigned.
+    if (isNoRoleAssigned(error)) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-canvas px-6">
+          <div className="max-w-md border border-line bg-surface p-8 text-center">
+            <span className="font-mono text-xs uppercase tracking-widest text-error">
+              Access denied
+            </span>
+            <h1 className="mt-2 font-display text-headline-lg uppercase text-ink">
+              No staff role assigned
+            </h1>
+            <p className="mt-3 font-sans text-body-sm leading-relaxed text-on-surface-variant">
+              Your account is signed in but has no role. An owner must assign one of{" "}
+              <span className="font-mono">owner</span>, <span className="font-mono">manager</span>,{" "}
+              <span className="font-mono">operations</span>, <span className="font-mono">support</span> or{" "}
+              <span className="font-mono">readonly</span> before you can use the console.
+            </p>
+            <div className="mt-6 flex justify-center">
+              <LogoutButton />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     throw error;
   }
 

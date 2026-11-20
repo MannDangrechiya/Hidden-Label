@@ -35,12 +35,10 @@ export function StyleConcierge() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    let token = localStorage.getItem("thl_concierge_session");
-    if (!token) {
-      token = "sess_" + Math.random().toString(36).slice(2, 10);
-      localStorage.setItem("thl_concierge_session", token);
-    }
-    setSessionToken(token);
+    // BUG-09: the session token is issued and signed by the backend. The browser only stores it;
+    // it is never generated here, and the server verifies the signature before accepting it.
+    const token = localStorage.getItem("thl_concierge_session");
+    if (token) setSessionToken(token);
   }, []);
 
   useEffect(() => {
@@ -66,13 +64,17 @@ export function StyleConcierge() {
 
     const res = await sendConciergeMessage({
       message: text,
-      session_token: sessionToken,
+      ...(sessionToken ? { session_token: sessionToken } : {}),
       thread_id: threadId,
     });
 
     setIsSending(false);
 
     if (res) {
+      if (res.session_token) {
+        setSessionToken(res.session_token);
+        localStorage.setItem("thl_concierge_session", res.session_token);
+      }
       if (res.thread_id) setThreadId(res.thread_id);
       const assistantMsg: ChatMessage = {
         id: "msg-" + Date.now() + "-reply",

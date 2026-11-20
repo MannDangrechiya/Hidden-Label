@@ -1,5 +1,4 @@
 import fs from "node:fs";
-import path from "node:path";
 
 function inspectEnv(filePath) {
   if (!fs.existsSync(filePath)) return { exists: false, keys: [] };
