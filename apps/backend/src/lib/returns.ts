@@ -8,6 +8,8 @@ import { requireRole } from "./admin-auth";
 import { requestMeta, writeAudit } from "./audit";
 import { computePackage } from "./package";
 import { createShiprocketReturn, isConfigured as shiprocketConfigured } from "./shiprocket";
+import { mergeRestockLines, restockReturn, type RestockLine, type RestockOutcome } from "./return-restock";
+import { resolveStockLocation } from "./stock-location";
 
 export const RETURN_WINDOW_DAYS = 7;
 
@@ -66,7 +68,13 @@ export async function processReturnAction(
   res: MedusaResponse,
   returnId: string,
 ): Promise<boolean> {
-  const body = (req.body ?? {}) as { action?: Action; note?: string; condition?: Condition };
+  const body = (req.body ?? {}) as {
+    action?: Action;
+    note?: string;
+    condition?: Condition;
+    /** R-07: optional explicit location for a restock when the business has more than one. */
+    location_id?: string;
+  };
   const action = body.action;
   if (!action || !ACTIONS.includes(action)) {
     return false;
@@ -126,6 +134,60 @@ export async function processReturnAction(
     }
   }
 
+  // R-07: resolve the destination location *before* any state changes, so an ambiguous or
+  // unknown location refuses the request instead of silently skipping the restock.
+  let restockPlan: { locationId: string; lines: RestockLine[] } | null = null;
+  if (action === "receive" && body.condition === "resellable") {
+    const rows = (await pg("return_request_item as rri")
+      .join("order_line_item as oli", "oli.id", "rri.order_item_id")
+      .where("rri.return_request_id", request.id)
+      .select("oli.variant_id as variant_id", "rri.quantity as quantity")) as {
+      variant_id: string | null;
+      quantity: number | string;
+    }[];
+
+    const variantIds = [
+      ...new Set(rows.map((row) => row.variant_id).filter((id): id is string => Boolean(id))),
+    ];
+
+    const links = variantIds.length
+      ? ((await pg("product_variant_inventory_item")
+          .whereIn("variant_id", variantIds)
+          .select("variant_id", "inventory_item_id")) as {
+          variant_id: string;
+          inventory_item_id: string;
+        }[])
+      : [];
+    const inventoryByVariant = new Map(
+      links.map((link) => [link.variant_id, link.inventory_item_id]),
+    );
+
+    const lines = mergeRestockLines(
+      rows.map((row) => ({
+        inventoryItemId: row.variant_id ? (inventoryByVariant.get(row.variant_id) ?? "") : "",
+        quantity: Number(row.quantity) || 0,
+      })),
+    );
+
+    if (lines.length > 0) {
+      const decision = await resolveStockLocation(pg, {
+        orderId: request.order_id,
+        requestedLocationId: body.location_id ?? null,
+      });
+
+      if (!decision.ok) {
+        res.status(decision.status).json({ type: decision.code, message: decision.message });
+        return true;
+      }
+
+      restockPlan = { locationId: decision.locationId, lines };
+    }
+  }
+
+  // Held in an object so TypeScript does not narrow it to `null` for code that runs after the
+  // transaction callback (it cannot know the callback always executes).
+  const restockState: { outcome: RestockOutcome | null } = { outcome: null };
+
   const nextStatus =
     action === "approve"
       ? "approved"
@@ -168,59 +230,36 @@ export async function processReturnAction(
 
     // MF-29: only a unit graded resellable goes back into sellable stock — a damaged or
     // disposed return closes the loop without ever touching inventory.
-    if (action === "receive" && body.condition === "resellable") {
-      const items = (await trx("return_request_item as rri")
-        .join("order_line_item as oli", "oli.id", "rri.order_item_id")
-        .where("rri.return_request_id", request.id)
-        .select("oli.variant_id", "rri.quantity")) as { variant_id: string | null; quantity: number }[];
+    //
+    // R-05: the row is locked here and `restockReturn` compare-and-sets `restocked_at`, so two
+    // concurrent receives cannot both add the returned units, and a retried receive never adds
+    // them again. Each increment goes through the locked `applyStockDelta`.
+    if (action === "receive" && restockPlan) {
+      const locked = (await trx("return_request")
+        .where({ id: request.id })
+        .forUpdate()
+        .first("id", "restocked_at")) as { id: string; restocked_at: Date | null } | undefined;
 
-      const location = await trx("stock_location").first("id");
-      let restockedAny = false;
+      if (locked?.restocked_at) {
+        restockState.outcome = {
+          restocked: false,
+          reason: "already_restocked",
+          locationId: restockPlan.locationId,
+          units: 0,
+          skipped: [],
+        };
+      } else {
+        restockState.outcome = await restockReturn(trx, {
+          returnRequestId: request.id,
+          displayId: request.display_id,
+          locationId: restockPlan.locationId,
+          lines: restockPlan.lines,
+          audit: { actorId: actor.id, ip: meta.ip, userAgent: meta.userAgent },
+        });
 
-      if (location) {
-        for (const item of items) {
-          if (!item.variant_id) continue;
-          const link = await trx("product_variant_inventory_item")
-            .where({ variant_id: item.variant_id })
-            .first("inventory_item_id");
-          if (!link) continue;
-
-          const level = await trx("inventory_level")
-            .where({ inventory_item_id: link.inventory_item_id, location_id: location.id })
-            .first();
-          if (!level) continue;
-
-          const quantity = Number(item.quantity) || 0;
-          if (quantity <= 0) continue;
-
-          await trx("inventory_level")
-            .where({ id: level.id })
-            .update({
-              stocked_quantity: Number(level.stocked_quantity) + quantity,
-              updated_at: new Date(),
-            });
-          restockedAny = true;
-
-          await writeAudit(trx, {
-            actorType: "admin",
-            actorId: actor.id,
-            action: "inventory.adjusted",
-            entityType: "inventory_item",
-            entityId: link.inventory_item_id,
-            summary: `Stock adjusted by +${quantity} (return_restock, RMA ${request.display_id})`,
-            changes: {
-              before: Number(level.stocked_quantity),
-              after: Number(level.stocked_quantity) + quantity,
-              reason: "return_restock",
-            },
-            ...meta,
-          });
+        if (restockState.outcome.restocked) {
+          row.restocked_at = new Date();
         }
-      }
-
-      if (restockedAny) {
-        await trx("return_request").where({ id: request.id }).update({ restocked_at: new Date() });
-        row.restocked_at = new Date();
       }
     }
 
@@ -320,12 +359,22 @@ export async function processReturnAction(
     }
   }
 
+  const restockOutcome: RestockOutcome | null = restockState.outcome;
+  const restockNote =
+    restockOutcome?.reason === "already_restocked"
+      ? "Stock was already restocked for this return; nothing was added twice."
+      : restockOutcome?.reason === "nothing_to_restock" && restockOutcome.skipped.length > 0
+        ? "Return received, but no matching inventory level was found, so stock was not changed."
+        : undefined;
+
   res.json({
     return: updated,
+    restock: restockOutcome ?? undefined,
     note:
-      action === "refund" && request.refund_amount
+      restockNote ??
+      (action === "refund" && request.refund_amount
         ? "Refund recorded. Manual payments are settled offline; card payments refund through the provider."
-        : reversePickupNote,
+        : reversePickupNote),
   });
   return true;
 }

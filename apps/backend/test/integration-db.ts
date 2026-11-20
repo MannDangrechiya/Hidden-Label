@@ -72,7 +72,54 @@ const SCHEMA_STATEMENTS = [
   `create sequence return_request_display_seq start with 1001`,
   `create table return_request (
      id text primary key,
-     display_id text not null unique
+     display_id text not null unique,
+     order_id text null,
+     customer_id text null,
+     status text not null default 'requested',
+     reason_code text null,
+     reason_note text null,
+     resolution text null,
+     refund_amount numeric(12,2) null,
+     requested_at timestamptz null,
+     approved_at timestamptz null,
+     received_at timestamptz null,
+     condition text null,
+     condition_note text null,
+     closed_at timestamptz null,
+     restocked_at timestamptz null,
+     awb text null,
+     courier text null,
+     deleted_at timestamptz null,
+     updated_at timestamptz not null default now()
+   )`,
+  `create table return_request_item (
+     id text primary key,
+     return_request_id text not null,
+     order_item_id text not null,
+     quantity integer not null
+   )`,
+  `create table order_line_item (
+     id text primary key,
+     order_id text null,
+     variant_id text null,
+     unit_price numeric(12,2) null
+   )`,
+  `create table product_variant_inventory_item (
+     variant_id text not null,
+     inventory_item_id text not null
+   )`,
+  `create table stock_location (
+     id text primary key,
+     name text not null
+   )`,
+  `create table fulfillment (
+     id text primary key,
+     location_id text null,
+     created_at timestamptz not null default now()
+   )`,
+  `create table order_fulfillment (
+     order_id text not null,
+     fulfillment_id text not null
    )`,
   `create table concierge_thread (
      id text primary key,

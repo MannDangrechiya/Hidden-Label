@@ -3,6 +3,7 @@ import { ContainerRegistrationKeys, generateEntityId } from "@medusajs/framework
 import { sendEmail } from "../../../lib/email";
 import { checkReturnEligibility } from "../../../lib/returns";
 import { nextReturnDisplayId } from "../../../lib/rma-numbering";
+import { formatPaise, toPaise } from "../../../lib/money";
 import { THL_MODULE } from "../../../modules/thl";
 import { actorId } from "../../../lib/auth";
 import type ThlModuleService from "../../../modules/thl/service";
@@ -93,7 +94,9 @@ export async function POST(req: MedusaRequest<Body>, res: MedusaResponse) {
   const deliveredAt = delivered?.delivered_at ?? null;
   const fulfillmentStatus = deliveredAt ? "delivered" : "not_fulfilled";
 
-  const lines: { id: string; quantity: number; unit_price: number }[] = [];
+  // R-06: unit prices arrive as numeric strings; they are parsed into integer paise here so the
+  // refund total is never computed with binary floating point.
+  const lines: { id: string; quantity: number; unit_price_paise: number }[] = [];
   for (const item of body.items) {
     if (!item.order_item_id || !item.quantity || item.quantity <= 0) {
       res.status(400).json({ type: "invalid_data", message: "Each return line needs a quantity." });
@@ -153,13 +156,28 @@ export async function POST(req: MedusaRequest<Body>, res: MedusaResponse) {
       return;
     }
 
-    lines.push({ id: row.id, quantity: item.quantity, unit_price: Number(row.unit_price) });
+    let unitPricePaise: number;
+    try {
+      unitPricePaise = toPaise(row.unit_price ?? "0");
+    } catch {
+      res.status(422).json({
+        type: "invalid_data",
+        message: "This order line has a price that cannot be refunded exactly. Contact support.",
+      });
+      return;
+    }
+
+    lines.push({ id: row.id, quantity: item.quantity, unit_price_paise: unitPricePaise });
   }
 
   // BUG-08: numbering comes from a PostgreSQL sequence, so two concurrent requests can never
   // allocate the same display id (the previous row-count formula could).
   const displayId = await nextReturnDisplayId(pg);
-  const refundAmount = lines.reduce((sum, line) => sum + line.unit_price * line.quantity, 0);
+  const refundPaise = lines.reduce(
+    (sum, line) => sum + line.unit_price_paise * line.quantity,
+    0,
+  );
+  const refundAmount = formatPaise(refundPaise);
 
   const created = await pg.transaction(async (trx) => {
     const [request] = await trx("return_request")
@@ -179,7 +197,7 @@ export async function POST(req: MedusaRequest<Body>, res: MedusaResponse) {
         // unit_price above is already rupees) — do not divide by 100 here. This previously
         // stored every return's refund_amount 100x too small (confirmed live: ₹21,999 became
         // "219.99").
-        refund_amount: refundAmount.toFixed(2),
+        refund_amount: refundAmount,
         requested_at: new Date(),
       })
       .returning("*");

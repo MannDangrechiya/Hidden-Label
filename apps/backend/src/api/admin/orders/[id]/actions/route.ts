@@ -15,6 +15,8 @@ import {
   reclaimFailedRefundOperation,
   refundOperationKey,
 } from "../../../../../lib/refund-operations";
+import { MoneyParseError, toPaise, toRupeesNumber } from "../../../../../lib/money";
+import { resolveStockLocation } from "../../../../../lib/stock-location";
 
 const ACTIONS = ["capture", "fulfill", "cancel", "refund"] as const;
 type Action = (typeof ACTIONS)[number];
@@ -25,6 +27,8 @@ interface Body {
   amount?: number;
   /** Explicit operator confirmation required to retry a refund that previously failed. */
   retry?: boolean;
+  /** R-07: ship from this location when the business has more than one. */
+  location_id?: string;
 }
 
 /**
@@ -100,12 +104,24 @@ export async function POST(
         return;
       }
 
-      const location = await pg("stock_location").first("id");
+      // R-07: never pick a location with an unordered `first()`. Use the one the order already
+      // ships from (or the only location); when several exist and none is known, refuse rather
+      // than move stock out of an arbitrary warehouse.
+      const decision = await resolveStockLocation(pg, {
+        orderId,
+        requestedLocationId: req.body?.location_id ?? null,
+      });
+
+      if (!decision.ok) {
+        res.status(decision.status).json({ type: decision.code, message: decision.message });
+        return;
+      }
+
       await createOrderFulfillmentWorkflow(req.scope).run({
         input: {
           order_id: orderId,
           items: pending,
-          ...(location ? { location_id: location.id } : {}),
+          location_id: decision.locationId,
         },
       });
     }
@@ -140,11 +156,34 @@ export async function POST(
         return;
       }
 
-      const amount = req.body.amount ?? Number(payment.amount);
-      if (!Number.isFinite(amount) || amount <= 0) {
+      // R-06: `payment.amount` is a numeric string. Converting it straight to a number puts
+      // binary floating point into the refund, so both sides are parsed into exact integer paise
+      // and a value the column could not hold (e.g. three decimals) is rejected, not rounded.
+      let amountPaise: number;
+      try {
+        amountPaise =
+          req.body.amount === undefined
+            ? toPaise(payment.amount as string)
+            : toPaise(req.body.amount);
+      } catch (error) {
+        res.status(400).json({
+          type: "invalid_data",
+          message:
+            error instanceof MoneyParseError
+              ? "Refund amounts must be a rupee value with at most two decimal places."
+              : "A refund amount greater than zero is required.",
+        });
+        return;
+      }
+
+      if (amountPaise <= 0) {
         res.status(400).json({ type: "invalid_data", message: "A refund amount greater than zero is required." });
         return;
       }
+
+      // Medusa's payment workflow takes rupees. This boundary conversion is exact for any
+      // 2-decimal amount; all validation above happened in integer paise.
+      const amount = toRupeesNumber(amountPaise);
 
       const intent = {
         orderId,
