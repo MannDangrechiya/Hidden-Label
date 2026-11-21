@@ -84,9 +84,9 @@ jobs:
         working-directory: apps/backend
         run: pnpm exec medusa db:migrate
 
-      # Phase 1 remediation objects must exist after a real migration run, not only in the
+      # Phase 1 and 2 remediation objects must exist after a real migration run, not only in the
       # isolated test schema.
-      - name: Assert Phase 1 schema objects
+      - name: Assert Phase 1 & 2 schema objects
         run: |
           set -euo pipefail
           psql_check() {
@@ -96,7 +96,11 @@ jobs:
           test "$(psql_check "select count(*) from pg_class where relkind='S' and relname='return_request_display_seq'")" = "1"
           test "$(psql_check "select count(*) from information_schema.columns where table_name='concierge_thread' and column_name='session_token_hash'")" = "1"
           test "$(psql_check "select count(*) from pg_indexes where tablename='refund_operation' and indexname='refund_operation_key_unique'")" = "1"
-          echo "Phase 1 schema objects present"
+          test "$(psql_check "select count(*) from information_schema.tables where table_schema='public' and table_name='payment_operation'")" = "1"
+          test "$(psql_check "select count(*) from information_schema.tables where table_schema='public' and table_name='webhook_event'")" = "1"
+          test "$(psql_check "select count(*) from pg_indexes where tablename='payment_operation' and indexname='payment_operation_key_unique'")" = "1"
+          test "$(psql_check "select count(*) from pg_indexes where tablename='webhook_event' and indexname='webhook_event_id_unique'")" = "1"
+          echo "Phase 1 & 2 schema objects present"
 
       - name: Integration tests
         run: pnpm test:integration

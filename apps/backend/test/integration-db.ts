@@ -1,5 +1,7 @@
 import knexFactory, { type Knex } from "knex";
 import { randomBytes } from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 
 /**
  * Database integration harness.
@@ -8,11 +10,32 @@ import { randomBytes } from "node:crypto";
  * keeps concurrency tests honest (separate pooled connections, real row locks, real unique
  * constraints) without touching application data.
  *
- * Set `THL_TEST_DATABASE_URL` (CI does; locally it may fall back to `DATABASE_URL`). The tests
- * fail loudly when neither is present rather than silently passing.
+ * Set `THL_TEST_DATABASE_URL` (CI does; locally it may fall back to `DATABASE_URL` or apps/backend/.env).
+ * The tests fail loudly when neither is present rather than silently passing.
  */
 export function testDatabaseUrl(): string {
-  const url = process.env.THL_TEST_DATABASE_URL ?? process.env.DATABASE_URL;
+  let url = process.env.THL_TEST_DATABASE_URL ?? process.env.DATABASE_URL;
+  if (!url) {
+    try {
+      const candidates = [
+        path.resolve(process.cwd(), "apps/backend/.env"),
+        path.resolve(process.cwd(), ".env"),
+        path.resolve(__dirname, "../.env"),
+      ];
+      for (const candidate of candidates) {
+        if (fs.existsSync(candidate)) {
+          const content = fs.readFileSync(candidate, "utf8");
+          const match = content.match(/^DATABASE_URL=(.+)$/m);
+          if (match) {
+            url = match[1].trim();
+            break;
+          }
+        }
+      }
+    } catch {
+      // Ignore errors reading local fallback .env files
+    }
+  }
   if (!url) {
     throw new Error(
       "Database integration tests need THL_TEST_DATABASE_URL (or DATABASE_URL) pointing at PostgreSQL.",
@@ -68,6 +91,48 @@ const SCHEMA_STATEMENTS = [
      actor_id text null,
      created_at timestamptz not null default now(),
      updated_at timestamptz not null default now()
+   )`,
+  `create table payment_operation (
+     id text primary key,
+     idempotency_key text not null unique,
+     cart_id text not null,
+     order_id text null,
+     razorpay_order_id text null,
+     razorpay_payment_id text null,
+     amount integer not null,
+     currency_code text not null default 'INR',
+     status text not null default 'pending'
+       check (status in ('pending', 'completed', 'failed')),
+     error text null,
+     created_at timestamptz not null default now(),
+     updated_at timestamptz not null default now()
+   )`,
+  `create table webhook_event (
+     id text primary key,
+     event_id text not null unique,
+     provider text not null,
+     event_type text not null,
+     entity_id text null,
+     payload_hash text not null,
+     status text not null default 'processed'
+       check (status in ('processed', 'ignored', 'failed')),
+     error text null,
+     created_at timestamptz not null default now(),
+     processed_at timestamptz not null default now()
+   )`,
+  `create table "order" (
+     id text primary key,
+     display_id integer null,
+     currency_code text not null default 'inr',
+     email text null,
+     status text not null default 'pending',
+     metadata jsonb null,
+     created_at timestamptz not null default now(),
+     updated_at timestamptz not null default now()
+   )`,
+  `create table order_cart (
+     order_id text not null,
+     cart_id text not null primary key
    )`,
   `create sequence return_request_display_seq start with 1001`,
   `create table return_request (

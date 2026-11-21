@@ -1051,6 +1051,17 @@ export async function completeCart(cartId: string): Promise<CompleteCartResult> 
   return request<CompleteCartResult>(`/store/carts/${cartId}/complete`, { method: "POST" });
 }
 
+/** Resolves the order created from a completed cart. Returns null if cart has no order yet. */
+export async function fetchOrderByCart(cartId: string): Promise<StoreOrder | null> {
+  try {
+    const body = await request<{ order: StoreOrder }>(`/store/carts/${cartId}/order`);
+    return body.order;
+  } catch (err) {
+    if (err instanceof MedusaError && err.status === 404) return null;
+    return null;
+  }
+}
+
 /** Attaches the Razorpay checkout result to the payment session before completing the cart. */
 export async function updatePaymentSession(
   collectionId: string,
@@ -1059,7 +1070,7 @@ export async function updatePaymentSession(
 ): Promise<PaymentCollection> {
   const body = await request<{ payment_collection: PaymentCollection }>(
     `/store/payment-collections/${collectionId}/payment-sessions/${sessionId}`,
-    { method: "POST", body: { data } },
+    { method: "POST", body: { client_data: data } },
   );
   return body.payment_collection;
 }

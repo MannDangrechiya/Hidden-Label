@@ -12,14 +12,25 @@ export interface EmailInput {
   attachments?: { filename: string; content: string }[];
 }
 
-export async function sendEmail(input: EmailInput): Promise<{ sent: boolean; reason?: string }> {
+export interface SendEmailResult {
+  sent: boolean;
+  status: "sent" | "skipped_unconfigured" | "failed";
+  reason?: string;
+  messageId?: string;
+}
+
+export async function sendEmail(input: EmailInput): Promise<SendEmailResult> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM ?? "orders@thehiddenlabel.com";
 
   if (!apiKey) {
     // Local/dev: visibly recorded, never silently dropped.
     console.info(`[email:not-configured] to=${input.to} subject="${input.subject}"`);
-    return { sent: false, reason: "RESEND_API_KEY is not configured." };
+    return {
+      sent: false,
+      status: "skipped_unconfigured",
+      reason: "RESEND_API_KEY is not configured.",
+    };
   }
 
   try {
@@ -42,13 +53,23 @@ export async function sendEmail(input: EmailInput): Promise<{ sent: boolean; rea
 
     if (!response.ok) {
       const body = await response.text();
-      return { sent: false, reason: `Resend ${response.status}: ${body.slice(0, 200)}` };
+      return {
+        sent: false,
+        status: "failed",
+        reason: `Resend ${response.status}: ${body.slice(0, 200)}`,
+      };
     }
 
-    return { sent: true };
+    const data = (await response.json().catch(() => ({}))) as { id?: string };
+    return {
+      sent: true,
+      status: "sent",
+      messageId: data.id,
+    };
   } catch (error) {
     return {
       sent: false,
+      status: "failed",
       reason: error instanceof Error ? error.message : "Email request failed.",
     };
   }

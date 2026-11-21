@@ -12,6 +12,7 @@ import {
   createPaymentCollection,
   createPaymentSession,
   fetchCart,
+  fetchOrderByCart,
   MedusaError,
   selectShippingOption,
   setCartAddress,
@@ -187,7 +188,9 @@ export async function beginRazorpayPaymentAction(options: {
 
     const collection = await createPaymentCollection(cartId);
     const withSession = await createPaymentSession(collection.id, RAZORPAY_PROVIDER);
-    const session = withSession.payment_sessions?.find((s) => s.provider_id === RAZORPAY_PROVIDER);
+    const razorpaySessions =
+      withSession.payment_sessions?.filter((s) => s.provider_id === RAZORPAY_PROVIDER) ?? [];
+    const session = razorpaySessions[razorpaySessions.length - 1];
     if (!session) {
       return { ok: false, message: "Could not start a Razorpay payment session." };
     }
@@ -217,6 +220,9 @@ export async function beginRazorpayPaymentAction(options: {
  * Called from the Razorpay handler with the signed checkout result. The provider verifies the
  * HMAC signature server-side during `completeCart`; a forged signature fails the payment session
  * and no order is created.
+ *
+ * Implements strict idempotency: if the order was already completed (e.g. concurrent submission
+ * or double click), returns the existing order ID instead of throwing.
  */
 export async function confirmRazorpayPaymentAction(input: {
   collectionId: string;
@@ -229,6 +235,14 @@ export async function confirmRazorpayPaymentAction(input: {
   if (!cartId) return { ok: false, message: "Your bag could not be found." };
 
   try {
+    // Check if cart was already completed into an order (idempotent lookup)
+    const existing = await fetchOrderByCart(cartId);
+    if (existing?.id) {
+      await clearCartId();
+      revalidatePath("/cart");
+      return { ok: true, orderId: existing.id };
+    }
+
     await updatePaymentSession(input.collectionId, input.sessionId, {
       razorpay_order_id: input.razorpay_order_id,
       razorpay_payment_id: input.razorpay_payment_id,
@@ -249,6 +263,24 @@ export async function confirmRazorpayPaymentAction(input: {
     revalidatePath("/cart");
     return { ok: true, orderId: result.order.id };
   } catch (error) {
+    // If completed concurrently by a racing callback, retrieve the created order
+    if (
+      (error instanceof Error &&
+        (error.message.includes("already completed") ||
+          error.message.includes("in progress") ||
+          error.message.includes("conflict"))) ||
+      (error instanceof MedusaError &&
+        (error.status === 409 || error.message.includes("already completed")))
+    ) {
+      await new Promise((r) => setTimeout(r, 500));
+      const existing = await fetchOrderByCart(cartId);
+      if (existing?.id) {
+        await clearCartId();
+        revalidatePath("/cart");
+        return { ok: true, orderId: existing.id };
+      }
+    }
+
     return {
       ok: false,
       message:

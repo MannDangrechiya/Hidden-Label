@@ -6,7 +6,14 @@ import {
 } from "@medusajs/framework/http";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import { defineMiddlewares } from "@medusajs/medusa";
+import type { Knex } from "knex";
 import { adminAccess, decideAdminRequest, stripPrivilegedMetadata } from "../lib/admin-auth";
+import {
+  claimPaymentOperation,
+  completePaymentOperation,
+  failPaymentOperation,
+  type PaymentOperationRow,
+} from "../lib/payment-operations";
 import { checkAuthRateLimit, resetAuthRateLimit, WRITE_RATE_LIMITS } from "../lib/rate-limit";
 import { processReturnAction } from "../lib/returns";
 import { checkUploadRequest } from "../lib/upload-validation";
@@ -179,8 +186,209 @@ async function adminPromotionBodyMiddleware(
   next();
 }
 
+/**
+ * Intercepts POST /store/carts/:id/complete to integrate `payment_operation` idempotency,
+ * atomic database locking, and duplicate protection into the authoritative checkout flow.
+ *
+ * Guarantees:
+ *  1. If cart is already linked to an order in `order_cart`, immediately returns the existing order.
+ *  2. If a Razorpay payment session exists:
+ *     - Atomically claims `payment_operation`.
+ *     - If already claimed and completed, returns existing order (`duplicate`).
+ *     - If another process is currently completing the cart, polls briefly (up to 3s) and returns order or 409 conflict.
+ *     - If marked failed and cannot retry, returns 400 with failure reason.
+ *     - If successfully claimed: wraps `res.json` to atomically mark the operation completed on order creation
+ *       or failed on error, then calls `next()`.
+ *  3. If not a Razorpay flow or missing session, proceeds directly to Medusa's core handler.
+ */
+async function cartCompletePaymentOperationMiddleware(
+  req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction,
+) {
+  const rawPath = req.originalUrl || req.path || req.url || "";
+  const match = rawPath.match(/\/store\/carts\/([^/?#]+)\/complete/);
+  const cartId = (req.params as Record<string, string | undefined>)?.id || match?.[1];
+
+  if (!cartId) {
+    next();
+    return;
+  }
+
+  const pg = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION) as Knex;
+  const logger = req.scope.resolve(ContainerRegistrationKeys.LOGGER);
+
+  try {
+    // 1. Authoritative check: has the cart already been completed into an order?
+    const existingLink = (await pg("order_cart")
+      .where({ cart_id: cartId })
+      .first("order_id")) as { order_id: string } | undefined;
+
+    if (existingLink?.order_id) {
+      const existingOrder = await pg("order")
+        .where({ id: existingLink.order_id })
+        .first("id", "display_id", "status", "currency_code", "created_at");
+
+      res.status(200).json({ type: "order", order: existingOrder });
+      return;
+    }
+
+    // 2. Inspect payment session for this cart
+    const cartCol = (await pg("cart_payment_collection")
+      .where({ cart_id: cartId })
+      .whereNull("deleted_at")
+      .first("payment_collection_id")) as { payment_collection_id: string } | undefined;
+
+    if (!cartCol?.payment_collection_id) {
+      next();
+      return;
+    }
+
+    const session = (await pg("payment_session")
+      .where({ payment_collection_id: cartCol.payment_collection_id })
+      .whereNull("deleted_at")
+      .orderBy("created_at", "desc")
+      .first()) as
+      | {
+          id: string;
+          provider_id: string;
+          amount: number | string;
+          currency_code: string;
+          data?: Record<string, unknown>;
+        }
+      | undefined;
+
+    if (!session || !session.data) {
+      next();
+      return;
+    }
+
+    const sessionData = (session.data ?? {}) as Record<string, unknown>;
+    const clientData = ((sessionData.client ?? {}) as Record<string, unknown>) ?? {};
+    const razorpayOrderId = (clientData.razorpay_order_id ?? sessionData.razorpay_order_id) as
+      | string
+      | undefined;
+    const razorpayPaymentId = (clientData.razorpay_payment_id ?? sessionData.razorpay_payment_id) as
+      | string
+      | undefined;
+
+    // Only apply payment_operation claim if Razorpay order & payment credentials are present
+    if (!razorpayOrderId || !razorpayPaymentId) {
+      next();
+      return;
+    }
+
+    const amountPaise = sessionData.amount
+      ? Number(sessionData.amount)
+      : Math.round(Number(session.amount || 0) * 100);
+
+    // 3. Atomically claim payment operation
+    const claim = await claimPaymentOperation(pg, {
+      cartId,
+      razorpayOrderId,
+      razorpayPaymentId,
+      amountPaise,
+      currencyCode: session.currency_code,
+    });
+
+    if (claim.state === "duplicate") {
+      const order = await pg("order")
+        .where({ id: claim.orderId })
+        .first("id", "display_id", "status", "currency_code", "created_at");
+      res.status(200).json({ type: "order", order });
+      return;
+    }
+
+    if (claim.state === "failed") {
+      res.status(400).json({
+        type: "payment_failed",
+        message: claim.error ?? "Payment operation has previously failed for this transaction.",
+      });
+      return;
+    }
+
+    if (claim.state === "in_progress") {
+      // Poll briefly (up to 3s) for the active operation to complete
+      const start = Date.now();
+      let resolvedOrder: unknown = null;
+      while (Date.now() - start < 3000) {
+        await new Promise((r) => setTimeout(r, 250));
+        const check = (await pg("payment_operation")
+          .where({ idempotency_key: claim.idempotencyKey })
+          .first()) as PaymentOperationRow | undefined;
+
+        if (check?.status === "completed" && check.order_id) {
+          resolvedOrder = await pg("order")
+            .where({ id: check.order_id })
+            .first("id", "display_id", "status", "currency_code", "created_at");
+          break;
+        }
+        if (check?.status === "failed") {
+          res.status(400).json({
+            type: "payment_failed",
+            message: check.error ?? "Payment completion failed.",
+          });
+          return;
+        }
+      }
+
+      if (resolvedOrder) {
+        res.status(200).json({ type: "order", order: resolvedOrder });
+        return;
+      }
+
+      res.status(409).json({
+        type: "conflict",
+        message: "Payment completion is currently in progress. Please check your order status.",
+      });
+      return;
+    }
+
+    // 4. claim.state === "claimed": wrap response handler to record completion / failure
+    const originalJson = res.json.bind(res);
+    res.json = function (body: unknown) {
+      const responseBody = body as {
+        type?: string;
+        order?: { id?: string };
+        error?: { message?: string };
+        message?: string;
+      };
+
+      if (responseBody?.type === "order" && responseBody.order?.id) {
+        void completePaymentOperation(pg, claim.idempotencyKey, responseBody.order.id).catch(
+          (err) => {
+            logger.error(`Failed to mark payment operation completed: ${err}`);
+          },
+        );
+      } else if (responseBody?.type === "cart" && responseBody.error) {
+        const errMsg = responseBody.error.message ?? JSON.stringify(responseBody.error);
+        void failPaymentOperation(pg, claim.idempotencyKey, errMsg).catch((err) => {
+          logger.error(`Failed to mark payment operation failed: ${err}`);
+        });
+      } else if (res.statusCode >= 400) {
+        const errMsg = responseBody?.message ?? `HTTP ${res.statusCode}`;
+        void failPaymentOperation(pg, claim.idempotencyKey, errMsg).catch((err) => {
+          logger.error(`Failed to mark payment operation failed: ${err}`);
+        });
+      }
+
+      return originalJson(body);
+    };
+
+    next();
+  } catch (error) {
+    logger.error(`cartCompletePaymentOperationMiddleware encountered error: ${error}`);
+    next();
+  }
+}
+
 export default defineMiddlewares({
   routes: [
+    {
+      matcher: "/store/carts/*/complete",
+      methods: ["POST"],
+      middlewares: [cartCompletePaymentOperationMiddleware],
+    },
     {
       matcher: "/auth/customer/emailpass",
       methods: ["POST"],

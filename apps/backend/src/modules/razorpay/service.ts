@@ -23,11 +23,13 @@ import type {
   WebhookActionResult,
 } from "@medusajs/framework/types";
 import crypto from "node:crypto";
+import { toPaise } from "../../lib/money";
 
 export interface RazorpayOptions {
   key_id?: string;
   key_secret?: string;
   webhook_secret?: string;
+  api_url?: string;
 }
 
 interface InjectedDependencies extends Record<string, unknown> {
@@ -42,24 +44,18 @@ interface RazorpayOrder {
 }
 
 /**
- * Scaffold for Razorpay, gated entirely by env vars (`RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`,
- * `RAZORPAY_WEBHOOK_SECRET` — see .env.example). It is registered in medusa-config.ts so the
- * code path exists and typechecks, but is only added to a region's `payment_providers` once
- * real test/live keys are supplied — see docs/BUILD_LOG.md for the exact activation steps.
+ * Razorpay Payment Provider for The Hidden Label.
  *
- * Every method that talks to Razorpay fails loudly (`MedusaError`, never a silent mock) when
- * keys are missing, so a half-configured environment cannot pretend to take a payment.
- *
- * Flow implemented here mirrors Razorpay's own "Orders API" checkout:
- *  1. initiatePayment -> creates a Razorpay order for the cart's total (paise, already the
- *     unit Medusa uses — no conversion needed).
- *  2. The storefront's Razorpay Checkout widget collects the payment and returns
- *     razorpay_order_id / razorpay_payment_id / razorpay_signature.
- *  3. authorizePayment -> verifies the HMAC-SHA256 checkout signature server-side
- *     (`order_id|payment_id` signed with the key secret) before trusting the browser.
- *  4. getWebhookActionAndData -> verifies the webhook's HMAC-SHA256 signature (raw body signed
- *     with the webhook secret) so `payment.captured` / `payment.failed` events from Razorpay's
- *     servers update the order even if the customer's browser never returns.
+ * Handles the complete prepaid payment lifecycle:
+ *  1. initiatePayment -> creates a Razorpay order with server-calculated amount in paise
+ *     and binds the Medusa session_id into order notes.
+ *  2. authorizePayment -> validates the HMAC-SHA256 signature in constant time AND queries
+ *     the Razorpay API server-side to confirm the amount and order_id match, preventing
+ *     client-side amount manipulation attacks.
+ *  3. capturePayment -> captures the authorized payment idempotently (gracefully handling
+ *     already-captured payments without failing).
+ *  4. getWebhookActionAndData -> constant-time signature verification for webhooks,
+ *     mapping payment.captured, payment.authorized, and payment.failed.
  */
 export default class RazorpayPaymentProviderService extends AbstractPaymentProvider<RazorpayOptions> {
   static identifier = "razorpay";
@@ -74,8 +70,6 @@ export default class RazorpayPaymentProviderService extends AbstractPaymentProvi
   }
 
   static validateOptions(options: Record<string, unknown>): void {
-    // Intentionally permissive: the module loads even without keys (so the app boots without
-    // Razorpay configured) and every runtime method below checks `isConfigured()` itself.
     void options;
   }
 
@@ -88,6 +82,10 @@ export default class RazorpayPaymentProviderService extends AbstractPaymentProvi
     return `Basic ${token}`;
   }
 
+  private getBaseUrl(): string {
+    return this.options.api_url || process.env.RAZORPAY_API_URL || "https://api.razorpay.com/v1";
+  }
+
   private async razorpayFetch<T>(path: string, init?: { method?: string; body?: unknown }): Promise<T> {
     if (!this.isConfigured()) {
       throw new MedusaError(
@@ -96,7 +94,8 @@ export default class RazorpayPaymentProviderService extends AbstractPaymentProvi
       );
     }
 
-    const response = await fetch(`https://api.razorpay.com/v1${path}`, {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}${path}`, {
       method: init?.method ?? "GET",
       headers: {
         authorization: this.authHeader(),
@@ -109,39 +108,60 @@ export default class RazorpayPaymentProviderService extends AbstractPaymentProvi
     const text = await response.text();
     if (!response.ok) {
       this.logger.error(`razorpay ${path} failed: ${response.status} ${text.slice(0, 300)}`);
-      throw new MedusaError(MedusaError.Types.UNEXPECTED_STATE, `Razorpay request failed (${response.status}).`);
+      throw new MedusaError(
+        MedusaError.Types.UNEXPECTED_STATE,
+        `Razorpay request failed (${response.status}): ${text.slice(0, 200)}`,
+      );
     }
     return text ? (JSON.parse(text) as T) : ({} as T);
   }
 
+  private parseAmountToPaise(inputAmount: unknown): number {
+    if (typeof inputAmount === "object" && inputAmount !== null && "value" in inputAmount) {
+      return toPaise((inputAmount as { value: string | number }).value);
+    }
+    return toPaise((inputAmount as string | number) ?? 0);
+  }
+
   async initiatePayment(input: InitiatePaymentInput): Promise<InitiatePaymentOutput> {
-    const amount = Math.round(Number(input.amount));
+    const amount = this.parseAmountToPaise(input.amount);
+    const sessionId =
+      (input.data?.session_id as string | undefined) ?? input.context?.idempotency_key ?? "";
+
     const order = await this.razorpayFetch<RazorpayOrder>("/orders", {
       method: "POST",
       body: {
         amount,
         currency: input.currency_code.toUpperCase(),
         payment_capture: 0,
-        notes: { customer_email: input.context?.customer?.email ?? "" },
+        notes: {
+          customer_email: input.context?.customer?.email ?? "",
+          session_id: sessionId,
+        },
       },
     });
 
     return {
       id: order.id,
       status: PaymentSessionStatus.PENDING,
-      data: { razorpay_order_id: order.id, amount, currency_code: input.currency_code },
+      data: {
+        razorpay_order_id: order.id,
+        amount,
+        currency_code: input.currency_code,
+        session_id: sessionId,
+      },
     };
   }
 
   async authorizePayment(input: AuthorizePaymentInput): Promise<AuthorizePaymentOutput> {
     const data = input.data ?? {};
-    const orderId = data.razorpay_order_id as string | undefined;
-    const paymentId = data.razorpay_payment_id as string | undefined;
-    const signature = data.razorpay_signature as string | undefined;
+    const client = (data.client as Record<string, unknown> | undefined) ?? {};
+    const orderId = (client.razorpay_order_id ?? data.razorpay_order_id) as string | undefined;
+    const paymentId = (client.razorpay_payment_id ?? data.razorpay_payment_id) as string | undefined;
+    const signature = (client.razorpay_signature ?? data.razorpay_signature) as string | undefined;
 
     if (!orderId || !paymentId || !signature) {
-      // Checkout has not completed in the browser yet — the cart-complete workflow treats
-      // this as "not authorized" rather than throwing, so the customer can retry payment.
+      // Checkout has not completed in browser yet: keep pending for customer retry
       return { status: PaymentSessionStatus.PENDING, data };
     }
 
@@ -149,35 +169,112 @@ export default class RazorpayPaymentProviderService extends AbstractPaymentProvi
       throw new MedusaError(MedusaError.Types.NOT_ALLOWED, "Razorpay is not configured.");
     }
 
+    // 1. Constant-time checkout signature verification
     const expected = crypto
       .createHmac("sha256", this.options.key_secret)
       .update(`${orderId}|${paymentId}`)
       .digest("hex");
 
-    if (expected !== signature) {
+    const expectedBuffer = Buffer.from(expected);
+    const providedBuffer = Buffer.from(signature);
+
+    if (
+      expectedBuffer.length !== providedBuffer.length ||
+      !crypto.timingSafeEqual(expectedBuffer, providedBuffer)
+    ) {
       this.logger.warn(`razorpay signature mismatch for order ${orderId}`);
       return { status: PaymentSessionStatus.ERROR, data };
     }
 
-    return { status: PaymentSessionStatus.AUTHORIZED, data: { ...data, verified_at: new Date().toISOString() } };
+    // 2. Server-side validation against Razorpay API to prevent amount tampering
+    try {
+      const payment = await this.razorpayFetch<{
+        id: string;
+        order_id: string;
+        amount: number;
+        currency: string;
+        status: string;
+      }>(`/payments/${paymentId}`);
+
+      const expectedAmount =
+        data.amount !== undefined
+          ? Number(data.amount)
+          : this.parseAmountToPaise((input as unknown as { amount?: unknown }).amount);
+
+      if (payment.amount !== expectedAmount) {
+        this.logger.error(
+          `razorpay payment amount manipulation detected for ${paymentId}: expected ${expectedAmount}, got ${payment.amount}`,
+        );
+        return { status: PaymentSessionStatus.ERROR, data: { ...data, error: "amount_mismatch" } };
+      }
+
+      if (payment.order_id !== orderId) {
+        this.logger.error(
+          `razorpay order mismatch for payment ${paymentId}: expected ${orderId}, got ${payment.order_id}`,
+        );
+        return { status: PaymentSessionStatus.ERROR, data: { ...data, error: "order_mismatch" } };
+      }
+
+      if (payment.status !== "authorized" && payment.status !== "captured") {
+        this.logger.error(`razorpay payment ${paymentId} has invalid status: ${payment.status}`);
+        return { status: PaymentSessionStatus.ERROR, data: { ...data, error: "invalid_status" } };
+      }
+
+      return {
+        status: PaymentSessionStatus.AUTHORIZED,
+        data: {
+          ...data,
+          verified_at: new Date().toISOString(),
+          verified_amount: payment.amount,
+        },
+      };
+    } catch (error) {
+      this.logger.error(
+        `razorpay payment lookup failed during authorization: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return { status: PaymentSessionStatus.ERROR, data };
+    }
   }
 
   async capturePayment(input: CapturePaymentInput): Promise<CapturePaymentOutput> {
     const data = input.data ?? {};
-    const paymentId = data.razorpay_payment_id as string | undefined;
+    const client = (data.client as Record<string, unknown> | undefined) ?? {};
+    const paymentId = (client.razorpay_payment_id ?? data.razorpay_payment_id) as string | undefined;
     if (!paymentId) {
       throw new MedusaError(MedusaError.Types.INVALID_DATA, "Missing Razorpay payment id to capture.");
     }
-    const amount = data.amount as number | undefined;
-    const captured = await this.razorpayFetch<Record<string, unknown>>(`/payments/${paymentId}/capture`, {
-      method: "POST",
-      body: { amount, currency: (data.currency_code as string | undefined)?.toUpperCase() ?? "INR" },
-    });
-    return { data: { ...data, captured } };
+    const amount =
+      data.amount !== undefined
+        ? Number(data.amount)
+        : this.parseAmountToPaise((input as unknown as { amount?: unknown }).amount);
+
+    // First check if already captured to ensure idempotency
+    try {
+      const existing = await this.retrievePayment(input);
+      const status = (existing.data as { status?: string })?.status;
+      if (status === "captured") {
+        return { data: { ...data, captured: existing.data } };
+      }
+
+      const captured = await this.razorpayFetch<Record<string, unknown>>(`/payments/${paymentId}/capture`, {
+        method: "POST",
+        body: { amount, currency: (data.currency_code as string | undefined)?.toUpperCase() ?? "INR" },
+      });
+      return { data: { ...data, captured } };
+    } catch (error) {
+      // If Razorpay returns that the payment is already captured, treat idempotently as success
+      if (
+        (error instanceof MedusaError && error.message.includes("already been captured")) ||
+        (error instanceof Error && error.message.includes("already been captured"))
+      ) {
+        const existing = await this.retrievePayment(input);
+        return { data: { ...data, captured: existing.data } };
+      }
+      throw error;
+    }
   }
 
   async cancelPayment(input: CancelPaymentInput): Promise<CancelPaymentOutput> {
-    // Razorpay has no "void"; an uncaptured authorization simply expires. Nothing to call.
     return { data: input.data ?? {} };
   }
 
@@ -226,12 +323,6 @@ export default class RazorpayPaymentProviderService extends AbstractPaymentProvi
     }
   }
 
-  /**
-   * Verifies the raw-body HMAC-SHA256 signature Razorpay sends on every webhook request
-   * (`X-Razorpay-Signature` header) against `RAZORPAY_WEBHOOK_SECRET`, per Razorpay's webhook
-   * documentation. Reachable once registered at `/hooks/payment/razorpay_razorpay`
-   * (see docs/BUILD_LOG.md for why the path repeats the identifier).
-   */
   async getWebhookActionAndData(payload: ProviderWebhookPayload["payload"]): Promise<WebhookActionResult> {
     const webhookSecret = this.options.webhook_secret;
     const rawData = payload.rawData;
@@ -247,14 +338,29 @@ export default class RazorpayPaymentProviderService extends AbstractPaymentProvi
       .update(rawData as Buffer)
       .digest("hex");
 
-    if (expected !== signature) {
+    const expectedBuffer = Buffer.from(expected);
+    const providedBuffer = Buffer.from(signature);
+
+    if (
+      expectedBuffer.length !== providedBuffer.length ||
+      !crypto.timingSafeEqual(expectedBuffer, providedBuffer)
+    ) {
       this.logger.warn("razorpay webhook signature mismatch; ignoring");
       return { action: PaymentActions.NOT_SUPPORTED };
     }
 
     const body = payload.data as {
       event?: string;
-      payload?: { payment?: { entity?: { id?: string; order_id?: string; amount?: number; notes?: Record<string, string> } } };
+      payload?: {
+        payment?: {
+          entity?: {
+            id?: string;
+            order_id?: string;
+            amount?: number;
+            notes?: Record<string, string>;
+          };
+        };
+      };
     };
     const entity = body.payload?.payment?.entity;
     const sessionId = entity?.notes?.session_id ?? entity?.order_id ?? "";
