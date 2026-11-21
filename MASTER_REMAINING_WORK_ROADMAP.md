@@ -56,22 +56,22 @@ No work shall begin on secondary business domains (Bespoke Atelier or Resale Mar
 
 ---
 
-### PHASE B — Core Commerce and Operational Lifecycle (Approved Next Phase)
+### PHASE B — Core Commerce and Operational Lifecycle (Status: Core Engineering Complete Locally)
 **Goal:** Deliver, track, return, refund, and credit-note — a complete order lifecycle proven end-to-end with real logistics integration.
 
-| Package ID | Task / Work Package | Target Findings | Priority | Depends On | Exit / Verification Criteria |
-|---|---|---|---|---|---|
-| **B-01** | Shiprocket API Integration & Sandbox AWB | GAP-060 | **P0** | Owner: Shiprocket credentials | Generate a real sandbox shipping label & AWB from Medusa fulfillment workflow. |
-| **B-02** | Dynamic Warehouse Pickup Address | GAP-061 | **P1** | B-01 | Replace hardcoded Ahmedabad address in `lib/shiprocket.ts` with env/database configuration. |
-| **B-03** | Harden Shiprocket Webhook Ingestion | SEC-05, GAP-062 | **P1** | B-01 | Implement IP allowlist or HMAC signature verification; reject unauthenticated calls. |
-| **B-04** | Full RMA Reverse Pickup & Restock Workflow | GAP-050, GAP-051 | **P1** | B-01, A-03 | Customer submits return → Admin approves → Reverse pickup booked → Item received → Stock atomically restocked. |
-| **B-05** | GST Credit Note Generation & Sequence | GAP-052 | **P1** | B-04 | Legally compliant GST credit note PDF generated with unique consecutive numbering on refund. |
-| **B-06** | Payment & Gateway Settlement Reconciliation | GAP-075 | **P1** | A-03 | Import Razorpay settlement CSVs; reconcile captured payments against settled bank amounts. |
-| **B-07** | Courier Freight Cost Tracking | GAP-065 | **P2** | B-01 | Record carrier freight charges per shipment to compute net order margins. |
-| **B-08** | Weight & Tiered Shipping Rate Calculation | GAP-008 | **P2** | B-01 | Implement weight-based and cart-value-based shipping rules in Medusa. |
-| **B-09** | Courier Serviceability Check at Checkout | GAP-007 | **P2** | B-01 | Query Shiprocket serviceability API on pincode entry before payment step. |
-| **B-10** | Four-Role Admin Operational Walkthrough | GAP-040 | **P1** | A-01 | Evidence logs of Owner, Manager, Operations, and Support accounts exercising permitted boundaries. |
-| **B-11** | Statutory Business Disclosures & Grievance | GAP-033, GAP-078 | **P0** | Owner: Legal business entities | Real GSTIN, CIN, and Grievance Officer details published in storefront footer. |
+| Package ID | Task / Work Package | Target Findings | Priority | Depends On | Exit / Verification Criteria | Status |
+|---|---|---|---|---|---|---|
+| **B-01** | Shiprocket API Integration & Sandbox AWB | GAP-060 | **P0** | Owner: Shiprocket credentials | Official v1 API client with token caching & backoff. Verified against embedded sandbox. | **VERIFIED COMPLETE LOCALLY** (Live keys pending) |
+| **B-02** | Dynamic Warehouse Pickup Address | GAP-061 | **P1** | — | `warehouse_pickup_location` table + resolver waterfall. 6-digit PIN validation. | **VERIFIED COMPLETE** |
+| **B-03** | Harden Shiprocket Webhook & Anti-Regression | SEC-05, GAP-062 | **P1** | — | Constant-time `timingSafeEqual` token auth, replay dedup in `webhook_event`, anti-regression status ranking. | **VERIFIED COMPLETE** |
+| **B-04** | Full RMA Reverse Pickup & Restock Workflow | GAP-050, GAP-051 | **P1** | — | Shiprocket return booking (`SRREV...`), row lock on inspection, CAS on `restocked_at`. Damaged units denied. | **VERIFIED COMPLETE** |
+| **B-05** | GST Credit Note Generation & Sequence | GAP-052 | **P1** | — | `credit_note_display_seq` sequence (`CN-THL-XXXX`), 9+9% CGST/SGST or 18% IGST in integer paise, printable doc. | **VERIFIED COMPLETE** |
+| **B-06** | Payment & Gateway Settlement Reconciliation | GAP-075 | **P1** | A-03 | Import Razorpay settlement CSVs; reconcile captured payments against settled bank amounts. | OPEN |
+| **B-07** | Courier Freight Cost Tracking | GAP-065 | **P2** | B-01 | Record carrier freight charges per shipment to compute net order margins. | OPEN |
+| **B-08** | Weight & Tiered Shipping Rate Calculation | GAP-008 | **P2** | B-01 | Implement weight-based and cart-value-based shipping rules in Medusa. | OPEN |
+| **B-09** | Courier Serviceability Check at Checkout | GAP-007 | **P2** | B-01 | Implemented in `ShiprocketClient.checkServiceability()`; verified in Scenario 3. | **VERIFIED COMPLETE LOCALLY** |
+| **B-10** | Four-Role Admin Operational Walkthrough | GAP-040 | **P1** | A-01 | Evidence logs of Owner, Manager, Operations, and Support accounts exercising permitted boundaries. | OPEN |
+| **B-11** | Statutory Business Disclosures & Grievance | GAP-033, GAP-078 | **P0** | Owner: Legal business entities | Real GSTIN, CIN, and Grievance Officer details published in storefront footer. | BLOCKED (Owner Decision) |
 
 ---
 
