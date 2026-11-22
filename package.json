@@ -17,6 +17,7 @@
     "dev:backend": "pnpm --filter @thl/backend dev",
     "dev:admin": "pnpm --filter @thl/admin dev",
     "dev:storefront": "pnpm --filter @thl/storefront dev",
+    "dev:sandbox": "node scripts/sandbox-service.mjs",
     "typecheck": "pnpm -r --no-bail typecheck",
     "lint": "eslint .",
     "test": "pnpm -r --no-bail test && vitest run scripts",
