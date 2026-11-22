@@ -19,7 +19,7 @@
     "dev:storefront": "pnpm --filter @thl/storefront dev",
     "typecheck": "pnpm -r --no-bail typecheck",
     "lint": "eslint .",
-    "test": "pnpm -r --no-bail test",
+    "test": "pnpm -r --no-bail test && vitest run scripts",
     "test:integration": "pnpm --filter @thl/backend test:integration"
   },
   "pnpm": {
@@ -28,7 +28,10 @@
       "@embedded-postgres/windows-x64",
       "@embedded-postgres/linux-x64",
       "@embedded-postgres/darwin-arm64"
-    ]
+    ],
+    "overrides": {
+      "tinypool": ">=2.1.2"
+    }
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.16",
@@ -39,6 +42,6 @@
     "eslint": "9.39.5",
     "typescript": "5.9.3",
     "typescript-eslint": "8.72.2",
-    "vitest": "3.2.4"
+    "vitest": "3.2.7"
   }
 }

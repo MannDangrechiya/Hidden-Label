@@ -9,12 +9,18 @@ This document serves as the canonical specification for every environment variab
 Environment variables are isolated into three application files and one infrastructure layer. Secrets must never be committed to git or exposed to client browsers.
 
 ```
-deploy/
-├── docker-compose.prod.yml       <-- Reads host environment or .env for Compose interpolations
+.env.production.example           <-- Template for root .env (Postgres & Redis Compose interpolation)
+docker-compose.prod.yml           <-- Production Docker Compose configuration in repo root
 apps/
-├── backend/.env.production       <-- Medusa server, database, payment, logistics, communications
-├── storefront/.env.production    <-- Next.js customer storefront, public URLs, public API keys
-└── admin/.env.production         <-- Next.js admin console, backend internal URL, session secrets
+├── backend/
+│   ├── .env.production.example   <-- Dedicated backend template
+│   └── .env.production           <-- Medusa server, database, payment, logistics, communications
+├── storefront/
+│   ├── .env.production.example   <-- Dedicated storefront template
+│   └── .env.production           <-- Next.js customer storefront, public URLs, public API keys
+└── admin/
+    ├── .env.production.example   <-- Dedicated admin template
+    └── .env.production           <-- Next.js admin console, backend internal URL, session cookies
 ```
 
 ---
@@ -78,7 +84,7 @@ Validated at boot by `apps/backend/src/lib/env-guard.ts`:
 ### E. Commercial & Resale Policies
 | Variable Name | Required? | Secret? | Format / Validation Rules | Purpose & Behavior |
 |---|---|---|---|---|
-| `CONSIGNMENT_COMMISSION_RATE`| Yes | No | Decimal (e.g. `0.12` for 12%) | Official platform fee deducted from resale consignor payouts. |
+| `THL_RESALE_COMMISSION_RATE` | No | No | Decimal (e.g. `0.095` or `0.12`) | Owner-approved platform fee deducted from resale consignor payouts. If unset, defaults to unconfigured safe status. |
 
 ---
 
@@ -91,11 +97,18 @@ Client-exposed variables are prefixed with `NEXT_PUBLIC_` and are inlined into t
 | `NODE_ENV` | No | `"production"` | Next.js production runtime. |
 | `PORT` | No | `3000` | Local port bound by Next.js container. |
 | `MEDUSA_URL` | No | `http://backend:9000` | Internal Docker network URL for server-side fetches. |
-| `NEXT_PUBLIC_SITE_URL` | **YES** | `https://thehiddenlabel.com` | Canonical site URL for metadata and OpenGraph. |
 | `NEXT_PUBLIC_MEDUSA_URL`| **YES** | `https://api.thehiddenlabel.com` | Public backend URL for client-side API calls. |
+| `MEDUSA_PUBLISHABLE_KEY` | No | `pk_prod_...` | Public API key used for server component requests. |
+| `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY` | **YES** | `pk_prod_...` | Public API key used for client component requests. |
 | `NEXT_PUBLIC_RAZORPAY_KEY_ID`| **YES**| `rzp_live_...` | Public Razorpay key consumed by `checkout.js` modal. |
 | `NEXT_PUBLIC_FEATURE_BIDDING`| **YES** | `"false"` | Gates consumer bidding. Defaults to `"false"` (Fixed-Price). |
-| `NEXT_PUBLIC_CONSIGNMENT_COMMISSION_RATE`| **YES** | `0.12` | Displays estimated payout calculations to consignors. |
+| `NEXT_PUBLIC_FEATURE_AI_LAYER` | **YES** | `"false"` | Gates experimental AI stylist concierge features. |
+| `NEXT_PUBLIC_IMAGE_HOSTS` | **YES** | Comma-separated | Allowed image remote hosts for `next/image`. |
+| `S3_PUBLIC_BASE_URL` | No | `https://cdn...` | CDN base URL for product images. |
+| `BUSINESS_LEGAL_NAME` | No | String | Indian statutory legal entity name for footer/tax. |
+| `BUSINESS_GSTIN` | No | 15-char GSTIN | Indian statutory GST registration number. |
+| `BUSINESS_CIN` | No | 21-char CIN | Corporate identification number. |
+| `GRIEVANCE_OFFICER_NAME` | No | String | Statutory Consumer Protection Grievance Officer. |
 
 ---
 
@@ -105,9 +118,10 @@ Client-exposed variables are prefixed with `NEXT_PUBLIC_` and are inlined into t
 |---|---|---|---|
 | `NODE_ENV` | No | `"production"` | Next.js production runtime. |
 | `PORT` | No | `7001` | Local port bound by Admin container. |
-| `MEDUSA_URL` | No | `http://backend:9000` | Internal Docker network URL for server-side admin fetches. |
-| `NEXT_PUBLIC_MEDUSA_URL` | **YES** | `https://api.thehiddenlabel.com` | Public backend URL for browser authentication redirects. |
-| `ADMIN_SESSION_SECRET` | No | 32-byte hex string | Encrypts admin console session cookies. |
+| `BACKEND_URL` | No | `http://backend:9000` | Internal Docker network URL for server-side admin fetches. |
+| `NEXT_PUBLIC_MEDUSA_BACKEND_URL` | **YES** | `https://api.thehiddenlabel.com` | Public backend URL for browser authentication redirects. |
+| `ADMIN_SESSION_COOKIE` | No | String (default: `thl_admin_token`) | Cookie name used for admin session tokens. |
+| `NEXT_PUBLIC_ADMIN_URL` | **YES** | `https://admin.thehiddenlabel.com` | Canonical admin console URL. |
 
 ---
 

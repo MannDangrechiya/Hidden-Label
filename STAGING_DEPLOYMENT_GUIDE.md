@@ -30,17 +30,19 @@ Staging Host (or VM):
    ```
 
 2. **Prepare Staging Environment Files:**
-   Create staging env files with sandbox keys:
+   Copy the dedicated service environment templates and configure staging credentials:
    ```bash
-   # Backend
-   cp .env.production.example apps/backend/.env.production
-   # Populate with staging DB URL and sandbox Razorpay/Shiprocket keys
-   
-   # Storefront
-   cp .env.production.example apps/storefront/.env.production
-   
-   # Admin
-   cp .env.production.example apps/admin/.env.production
+   # Root Docker Compose infrastructure file (PostgreSQL & Redis credentials)
+   cp .env.production.example .env
+
+   # Backend service (Database, Redis, Razorpay Sandbox, Shiprocket Sandbox, Keys)
+   cp apps/backend/.env.production.example apps/backend/.env.production
+
+   # Storefront service (Client & Server Backend URLs, Public Razorpay ID, Feature Flags)
+   cp apps/storefront/.env.production.example apps/storefront/.env.production
+
+   # Admin service (Backend URL, Admin Session Cookie)
+   cp apps/admin/.env.production.example apps/admin/.env.production
    ```
 
 3. **Set Safe File Permissions:**
