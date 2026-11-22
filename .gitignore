@@ -43,4 +43,7 @@ test-results/
 # Local archive (AI audit reports, temporary runner scripts, agent prompts)
 .archive/
 .audit/
+AGENTS.md
+**/AGENTS.md
+
 
