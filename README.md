@@ -50,31 +50,33 @@ The platform combines a **Medusa 2.22 commerce backend**, a high-performance **N
 
 ## Core Capabilities
 
-### 1. Resale & Bidding Marketplace
-* **Secondary Market & Consignment:** Verified resale listings for authenticated sneakers and luxury streetwear.
-* **Condition Grading:** Standardized inspection criteria (New With Box, Excellent, Good) with serial numbers.
-* **Live Inspection Viewer:** Dedicated customer verification interface (`/inspection/[serial]` and `/verify/[serial]`) showing high-res macro photography and authentication certificates.
-* **Orderbook Bidding:** Real-time bid and ask placement with seller/buyer matching mechanisms.
+### 1. Luxury Multi-Brand Retail Vault
+* **Curated Catalog:** Multi-brand luxury apparel, footwear, and accessories with size-specific inventory tracking.
+* **Instant Stock & Restock Clarity:** Clear real-time stock feedback, low-stock indicators (≤ 3 units), and atelier restock enquiry prompts for out-of-stock sizes.
+* **Pincode Delivery Check:** Live 6-digit Indian pincode lookup on product pages with estimated dispatch times (2–4 days) and city/state serviceability.
 
-### 2. Bespoke Tailoring & Fit Studio
-* **Precision Metric Sizing:** Millimeter-based foot length and silhouette volumetric analysis across key footwear silhouettes (Air Jordan 1, Samba OG, Dunk Low, 990v6).
-* **Custom Measurement Profiles:** Bespoke sizing drawers on the storefront capturing tailored apparel dimensions.
-* **Fit Rules Engine:** Admin-configurable sizing rule overrides per brand and silhouette.
+### 2. Bespoke Made-to-Measure Atelier
+* **Custom Measurement Profiles:** Interactive made-to-measure drawer capturing body measurements in inches (chest, waist, shoulder, arm length, inseam) and fit preferences (slim, regular, relaxed).
+* **Master Tailor Pipeline:** Dedicated Admin workflow tracking custom pieces through 5 verified atelier stages: *Measurements Verified → Fabric Cutting → Stitching → QC Passed → Ready for Pickup / Dispatched*.
+* **Statutory Non-Returnable Policy:** Clear consumer notices and programmatic enforcement ensuring custom garments cut to client body measurements cannot be cancelled or returned once cutting commences, with 14-day boutique alterations included.
 
-### 3. Indian Payments Stack
-* **Razorpay Gateway:** Native support for Credit/Debit Cards, NetBanking, and UPI Intent & QR flows.
-* **Hardened Cash on Delivery (COD):** Server-side risk validation, order amount ceilings, pincode eligibility checks, and tamper-resistant state transitions.
-* **Idempotency & Webhooks:** Cryptographically verified webhook handling with replay protection and automatic refund reconciliation.
+### 3. Prepaid Indian Payments (UPI & Cards)
+* **Razorpay Gateway:** Native checkout supporting Instant UPI (Intent & QR) and Credit/Debit Cards.
+* **Prepaid Only:** Clean digital payment architecture with zero Cash-on-Delivery (COD) risk or complex RTO verification hurdles.
+* **Idempotency & Cryptographic Webhooks:** Verified Razorpay webhook signature validation with deduplication and automated payment state reconciliation.
 
 ### 4. Logistics & Shipping (Shiprocket)
-* **Automated Dispatch:** Real-time courier serviceability checks, AWB assignment, and shipping label generation.
-* **Multi-Carrier Fulfillment:** Routing between Indian express logistics providers via Shiprocket APIs.
-* **Warehouse & Store Pickup:** Omnichannel pickup support with return pickup scheduling and restock workflows.
+* **Automated Dispatch:** Express domestic logistics integration with automated courier serviceability, AWB assignment, and shipping label generation.
+* **Tracking & Reverse RMA:** Granular milestone tracking for customers and automated reverse pickup scheduling for eligible unworn returns.
 
-### 5. Indian GST Tax & Compliance
-* **Automated Slab Calculation:** Dynamic 12% (footwear < ₹1,000) and 18% (footwear ≥ ₹1,000 / apparel) GST assignment with HSN code classification.
-* **Tax Invoicing:** Compliant B2C and B2B invoices displaying CGST + SGST (intra-state) or IGST (inter-state) breakdowns.
-* **Credit Notes & Reporting:** Automated credit note generation for returns/cancellations and monthly GSTR-ready CSV/JSON exports in Admin.
+### 5. Indian GST Tax & Legal Compliance
+* **Automated Slab Calculation:** Dynamic 12% / 18% GST calculation with automatic HSN code classification.
+* **B2C GST Invoices:** Compliant tax invoices displaying Gujarat GSTIN, optional CIN, seller address, customer place of supply, and intra-state (CGST + SGST) vs. inter-state (IGST) breakdowns.
+* **Grievance Redressal:** Statutory Grievance Officer channel operating under the Consumer Protection (E-Commerce) Rules, 2020 (48h acknowledgment, 30-day resolution).
+
+### 6. Resale & Consignment Infrastructure (Optional / Gated)
+* **Turnkey Resale Engine:** Secondary market orderbook, consignment listing, and 360° inspection viewer infrastructure are fully built and tested.
+* **Disabled by Default:** Controlled cleanly via `NEXT_PUBLIC_ENABLE_RESALE=false` so customers and staff remain focused purely on Retail and Bespoke operations until owner activation.
 
 ---
 
@@ -160,17 +162,50 @@ pnpm dev:storefront
 
 ## Production & Staging Deployment
 
-### Docker Orchestration
+### Staging Deployment Guide (Step-by-Step for Mann)
 
-For production environments, use `docker-compose.prod.yml`:
-
+#### Option A: Docker Compose (Isolated Container Staging)
 ```bash
-# Validate production environment configuration
+# 1. Prepare environment configuration from templates
 cp .env.production.example .env.production
-# Edit .env.production with live credentials
+cp apps/backend/.env.production.example apps/backend/.env.production
+cp apps/admin/.env.production.example apps/admin/.env.production
+cp apps/storefront/.env.production.example apps/storefront/.env.production
 
-# Build and start the production stack
+# 2. Add staging/live secrets in the .env.production files:
+#    - PostgreSQL password & Redis secret
+#    - Razorpay keys (RAZORPAY_KEY_ID / SECRET)
+#    - Shiprocket credentials (SHIPROCKET_EMAIL / PASSWORD)
+#    - Business GSTIN, address, and Grievance Officer details
+
+# 3. Build and launch all application containers
 docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+
+# 4. Initialize database schema & baseline data
+docker compose -f docker-compose.prod.yml exec backend pnpm db:migrate
+docker compose -f docker-compose.prod.yml exec backend pnpm db:seed
+```
+
+#### Option B: Standalone Node.js & PM2 Staging
+```bash
+# 1. Install workspace dependencies
+pnpm install --frozen-lockfile
+
+# 2. Run migrations and initialize Indian tax/payment configurations
+pnpm db:migrate
+pnpm db:seed
+pnpm db:setup-tax
+pnpm db:setup-payments
+
+# 3. Compile optimized production bundles
+pnpm --filter @thl/backend build
+pnpm --filter @thl/admin build
+pnpm --filter @thl/storefront build
+
+# 4. Run application instances:
+#    - Backend:    apps/backend     -> pnpm start (port 9000)
+#    - Admin:      apps/admin       -> pnpm start (port 7001)
+#    - Storefront: apps/storefront  -> pnpm start (port 3000)
 ```
 
 ### Reverse Proxy & Security
