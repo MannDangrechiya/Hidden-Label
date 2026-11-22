@@ -104,6 +104,37 @@ export async function updateAdminResaleAsk(
   return ask;
 }
 
+export async function publishAdminResaleAsk(
+  id: string,
+  location_id?: string,
+): Promise<{ ok: boolean; message: string; stocked_quantity: number }> {
+  return await backendFetch<{ ok: boolean; message: string; stocked_quantity: number }>(
+    `/admin/resale/asks/${id}/publish-inventory`,
+    {
+      method: "POST",
+      body: { location_id },
+    },
+  );
+}
+
+export async function settleAdminResaleAsk(
+  id: string,
+  body: {
+    sold_amount_rupees: number;
+    commission_rate?: number;
+    payout_reference?: string;
+    order_id?: string;
+  },
+): Promise<{ settlement: Record<string, unknown>; message: string }> {
+  return await backendFetch<{ settlement: Record<string, unknown>; message: string }>(
+    `/admin/resale/asks/${id}/settle`,
+    {
+      method: "POST",
+      body,
+    },
+  );
+}
+
 export async function fetchAdminResaleBids(): Promise<AdminResaleBid[]> {
   const { bids } = await backendFetch<{ bids: AdminResaleBid[] }>("/admin/resale/bids");
   return bids;

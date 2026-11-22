@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { ErrorState } from "@thl/ui";
 import { fetchAdminResaleAsks, fetchAdminResaleBids } from "../../../lib/api/resale";
+import { fetchCurrentAdmin, roleAtLeast } from "../../../lib/api/auth";
 import { BackendError } from "../../../lib/backend";
+import { ResaleAsksTable } from "./resale-asks-table";
 
 export const metadata: Metadata = { title: "Resale Orderbook" };
 
@@ -9,10 +11,14 @@ export const metadata: Metadata = { title: "Resale Orderbook" };
 export default async function ResalePage() {
   let asks;
   let bids;
+  let canWrite = false;
   try {
-    [asks, bids] = await Promise.all([
+    [asks, bids, canWrite] = await Promise.all([
       fetchAdminResaleAsks(),
       fetchAdminResaleBids(),
+      fetchCurrentAdmin()
+        .then((a) => roleAtLeast(a.role, "operations"))
+        .catch(() => false),
     ]);
   } catch (error) {
     const message = error instanceof BackendError ? error.message : "Could not load orderbook.";
@@ -38,51 +44,7 @@ export default async function ResalePage() {
             <span className="font-mono text-xs text-muted">Sellers / Consignors</span>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left font-sans text-xs">
-              <thead className="border-b border-line bg-surface-container/40 font-mono text-[10px] uppercase text-muted">
-                <tr>
-                  <th className="p-2">Product &amp; Size</th>
-                  <th className="p-2">Ask (INR)</th>
-                  <th className="p-2">Grade</th>
-                  <th className="p-2">Status</th>
-                  <th className="p-2">Seller</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {asks.slice(0, 25).map((ask) => (
-                  <tr key={ask.id}>
-                    <td className="p-2">
-                      <span className="font-medium text-ink block truncate max-w-[180px]">
-                        {ask.product_title}
-                      </span>
-                      <span className="font-mono text-[10px] text-muted">{ask.variant_title}</span>
-                    </td>
-                    <td className="p-2 font-mono font-semibold text-emerald-800">
-                      ₹{Number(ask.ask_price).toLocaleString("en-IN")}
-                    </td>
-                    <td className="p-2 font-mono text-[11px]">{ask.condition_grade}</td>
-                    <td className="p-2">
-                      <span className={`inline-block px-1.5 py-0.5 font-mono text-[10px] uppercase rounded ${
-                        ask.status === "active"
-                          ? "bg-emerald-50 text-emerald-700 border border-emerald-300"
-                          : ask.status === "authenticated"
-                          ? "bg-blue-50 text-blue-700 border border-blue-300"
-                          : ask.status === "sold"
-                          ? "bg-purple-50 text-purple-700 border border-purple-300"
-                          : "bg-surface-container text-muted"
-                      }`}>
-                        {ask.status}
-                      </span>
-                    </td>
-                    <td className="p-2 font-mono text-[10px] text-muted truncate max-w-[120px]">
-                      {ask.seller_email}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ResaleAsksTable initialAsks={asks} canWrite={canWrite} />
         </div>
 
         {/* Bids Column */}
