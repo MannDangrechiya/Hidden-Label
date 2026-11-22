@@ -71,6 +71,8 @@ export function PriceIndexCard({
   };
 
   const isUp = currentVariant.change_pct_30d >= 0;
+  const biddingEnabled = process.env.NEXT_PUBLIC_FEATURE_BIDDING === "true";
+  const effectiveTab = biddingEnabled ? activeTab : "chart";
 
   return (
     <div className="border border-line bg-surface p-5 sm:p-6">
@@ -86,24 +88,26 @@ export function PriceIndexCard({
             type="button"
             onClick={() => setActiveTab("chart")}
             className={`font-mono text-xs uppercase px-2.5 py-1 border ${
-              activeTab === "chart"
+              effectiveTab === "chart"
                 ? "border-ink bg-ink text-surface"
                 : "border-line text-muted hover:text-ink"
             }`}
           >
             Market Trend
           </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("bid")}
-            className={`font-mono text-xs uppercase px-2.5 py-1 border ${
-              activeTab === "bid"
-                ? "border-ink bg-ink text-surface"
-                : "border-line text-muted hover:text-ink"
-            }`}
-          >
-            Place Bid
-          </button>
+          {biddingEnabled ? (
+            <button
+              type="button"
+              onClick={() => setActiveTab("bid")}
+              className={`font-mono text-xs uppercase px-2.5 py-1 border ${
+                effectiveTab === "bid"
+                  ? "border-ink bg-ink text-surface"
+                  : "border-line text-muted hover:text-ink"
+              }`}
+            >
+              Place Bid
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -129,7 +133,7 @@ export function PriceIndexCard({
         ))}
       </div>
 
-      {activeTab === "chart" ? (
+      {effectiveTab === "chart" ? (
         <div className="space-y-4">
           {/* Key Secondary Metrics */}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -199,13 +203,15 @@ export function PriceIndexCard({
             <span className="font-mono text-[11px] text-muted">
               {currentVariant.active_asks_count} active asks · {currentVariant.active_bids_count} active bids
             </span>
-            <button
-              type="button"
-              onClick={() => setActiveTab("bid")}
-              className="font-mono text-xs underline text-ink hover:text-muted"
-            >
-              Want to bid? Click here
-            </button>
+            {biddingEnabled ? (
+              <button
+                type="button"
+                onClick={() => setActiveTab("bid")}
+                className="font-mono text-xs underline text-ink hover:text-muted"
+              >
+                Want to bid? Click here
+              </button>
+            ) : null}
           </div>
         </div>
       ) : (

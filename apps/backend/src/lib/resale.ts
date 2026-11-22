@@ -139,10 +139,34 @@ export function computeOrderbookSpread(
 
 export function calculateConsignorPayout(
   askPriceRupees: number,
-  platformFeeRate: number = 0.095,
-): { platform_fee_rupees: number; estimated_payout_rupees: number } {
+  platformFeeRate?: number | null,
+): {
+  configured: boolean;
+  platform_fee_rupees: number | null;
+  estimated_payout_rupees: number | null;
+} {
+  const envRate = process.env.CONSIGNMENT_COMMISSION_RATE
+    ? Number(process.env.CONSIGNMENT_COMMISSION_RATE)
+    : null;
+  const rate =
+    typeof platformFeeRate === "number" && Number.isFinite(platformFeeRate)
+      ? platformFeeRate
+      : envRate;
+
+  if (rate === null || !Number.isFinite(rate)) {
+    return {
+      configured: false,
+      platform_fee_rupees: null,
+      estimated_payout_rupees: null,
+    };
+  }
+
   const ask = Math.max(0, Math.round(askPriceRupees));
-  const fee = Math.round(ask * platformFeeRate);
+  const fee = Math.round(ask * rate);
   const payout = Math.max(0, ask - fee);
-  return { platform_fee_rupees: fee, estimated_payout_rupees: payout };
+  return {
+    configured: true,
+    platform_fee_rupees: fee,
+    estimated_payout_rupees: payout,
+  };
 }

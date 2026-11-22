@@ -1,7 +1,14 @@
 import { moneyFromRupees, formatINR } from "@thl/shared";
 import { ErrorState } from "@thl/ui";
 import Link from "next/link";
-import { backendUrl, fetchProducts, MedusaError, type StoreProduct } from "@/lib/medusa";
+import {
+  backendUrl,
+  fetchBrands,
+  fetchProducts,
+  fetchStock,
+  MedusaError,
+  type StoreProduct,
+} from "@/lib/medusa";
 
 export const dynamic = "force-dynamic";
 
@@ -10,29 +17,53 @@ function priceOf(product: StoreProduct) {
   return amount === null || amount === undefined ? null : moneyFromRupees(amount);
 }
 
-const BRANDS = [
-  { name: "Jordan", handle: "jordan", count: "12 Silhouettes" },
-  { name: "Nike", handle: "nike", count: "18 Silhouettes" },
-  { name: "Adidas", handle: "adidas", count: "14 Silhouettes" },
-  { name: "New Balance", handle: "new-balance", count: "8 Silhouettes" },
-  { name: "Salomon", handle: "salomon", count: "6 Silhouettes" },
-  { name: "ASICS", handle: "asics", count: "5 Silhouettes" },
-];
-
 const POPULAR_SIZES = ["UK 6.0", "UK 7.0", "UK 7.5", "UK 8.0", "UK 8.5", "UK 9.0", "UK 9.5", "UK 10.0", "UK 11.0"];
 
 export default async function HomePage() {
   let products: StoreProduct[] = [];
   let error: string | null = null;
+  let stockMap: Record<string, { available: number }> = {};
+  let brandList: Array<{ name: string; handle: string; count: string }> = [];
 
   try {
     const data = await fetchProducts({ limit: 8 });
     products = data.products;
+
+    // Fetch real-time stock availability for variants to prevent false in-stock claims (BUG-07)
+    const variantIds = products.flatMap((p) => (p.variants ?? []).map((v) => v.id));
+    if (variantIds.length > 0) {
+      stockMap = await fetchStock(variantIds).catch(() => ({}));
+    }
   } catch (caught) {
     error =
       caught instanceof MedusaError
         ? caught.message
         : `Unexpected error: ${caught instanceof Error ? caught.message : String(caught)}`;
+  }
+
+  try {
+    // Dynamic brand discovery querying published product counts (BUG-06)
+    const { brands } = await fetchBrands();
+    if (brands.length > 0) {
+      brandList = brands.slice(0, 12).map((b) => ({
+        name: b.name,
+        handle: b.handle,
+        count: `${b.product_count} ${b.product_count === 1 ? "Silhouette" : "Silhouettes"}`,
+      }));
+    }
+  } catch {
+    // Fall back to documented catalogue brands if backend is warming up
+  }
+
+  if (brandList.length === 0) {
+    brandList = [
+      { name: "Jordan", handle: "jordan", count: "Vault Series" },
+      { name: "Nike", handle: "nike", count: "Vault Series" },
+      { name: "Adidas", handle: "adidas", count: "Vault Series" },
+      { name: "New Balance", handle: "new-balance", count: "Vault Series" },
+      { name: "Salomon", handle: "salomon", count: "Vault Series" },
+      { name: "ASICS", handle: "asics", count: "Vault Series" },
+    ];
   }
 
   return (
@@ -132,6 +163,12 @@ export default async function HomePage() {
               // D2: never fabricate a price when the real calculated price is missing.
               const formattedPrice = price ? formatINR(price) : "Price unavailable";
 
+              const isAvailable = (product.variants ?? []).some((v) => {
+                const stock = stockMap[v.id]?.available;
+                if (typeof stock === "number") return stock > 0;
+                return v.inventory_quantity === undefined || v.inventory_quantity === null || v.inventory_quantity > 0;
+              });
+
               return (
                 <Link
                   key={product.id}
@@ -166,8 +203,12 @@ export default async function HomePage() {
                       <span className="block font-mono text-[9px] uppercase text-muted">Lowest Ask</span>
                       <span className="font-sans text-sm font-bold text-ink">{formattedPrice}</span>
                     </div>
-                    <span className="font-mono text-[10px] uppercase text-emerald-700 font-semibold">
-                      In Stock →
+                    <span
+                      className={`font-mono text-[10px] uppercase font-semibold ${
+                        isAvailable ? "text-emerald-700" : "text-muted"
+                      }`}
+                    >
+                      {isAvailable ? "In Stock →" : "Sold Out"}
                     </span>
                   </div>
                 </Link>
@@ -185,7 +226,7 @@ export default async function HomePage() {
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          {BRANDS.map((b) => (
+          {brandList.map((b) => (
             <Link
               key={b.handle}
               href={`/brands/${b.handle}`}

@@ -9,6 +9,7 @@ import { WishlistButton } from "@/components/wishlist-button";
 import { PriceIndexCard } from "@/components/price-index-card";
 import { InspectionViewer } from "@/components/inspection-viewer";
 import { FitStudioWidget } from "@/components/fit-studio-widget";
+import { ProductReviews } from "@/components/product-reviews";
 import {
   fetchResaleProductIndex,
   fetchInspectionCertificate,
@@ -17,6 +18,7 @@ import {
 import {
   fetchProduct,
   fetchWishlist,
+  fetchProductReviews,
   isVariantAvailable,
   knownStock,
   MedusaError,
@@ -118,6 +120,11 @@ export default async function ProductPage({ params }: PageProps) {
       wishlistVariantIds = new Set();
     }
   }
+
+  const reviewData = await fetchProductReviews(product.id).catch(() => ({
+    reviews: [],
+    stats: { count: 0, average_rating: 0, distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } },
+  }));
 
   return (
     <main className="mx-auto w-full max-w-page px-margin py-sp-4 sm:px-margin-tablet lg:px-margin-desktop">
@@ -236,9 +243,10 @@ export default async function ProductPage({ params }: PageProps) {
             <dl className="m-0 grid grid-cols-[150px_1fr] gap-y-1 font-sans text-body-sm text-on-surface-variant">
               <dt className="font-mono text-[11px] uppercase text-muted">Country of origin</dt>
               <dd className="m-0">
-                {typeof product.metadata?.country_of_origin === "string"
+                {typeof product.metadata?.country_of_origin === "string" &&
+                product.metadata.country_of_origin.trim()
                   ? product.metadata.country_of_origin
-                  : "India"}
+                  : "Declaration pending verification"}
               </dd>
               <dt className="font-mono text-[11px] uppercase text-muted">Net quantity</dt>
               <dd className="m-0">1 unit</dd>
@@ -278,6 +286,31 @@ export default async function ProductPage({ params }: PageProps) {
           </div>
         </div>
       </div>
+
+      {/* Verified Client Reviews & Ratings (Phase 5) */}
+      <ProductReviews
+        productId={product.id}
+        initialReviews={reviewData.reviews}
+        initialStats={reviewData.stats}
+      />
+
+      {reviewData.stats.count > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Product",
+              name: product.title,
+              aggregateRating: {
+                "@type": "AggregateRating",
+                ratingValue: reviewData.stats.average_rating,
+                reviewCount: reviewData.stats.count,
+              },
+            }),
+          }}
+        />
+      )}
     </main>
   );
 }

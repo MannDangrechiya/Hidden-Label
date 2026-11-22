@@ -24,6 +24,10 @@ interface CatalogClientProps {
   initialProducts: StoreProduct[];
   initialSizeFilter?: string;
   initialCategory?: CategoryKey;
+  totalCount?: number;
+  currentPage?: number;
+  totalPages?: number;
+  basePath?: string;
 }
 
 function initialSizeTokens(filter?: string): string[] {
@@ -39,6 +43,10 @@ export function CatalogClient({
   initialProducts,
   initialSizeFilter,
   initialCategory = "all",
+  totalCount,
+  currentPage = 1,
+  totalPages = 1,
+  basePath = "/collections/all",
 }: CatalogClientProps) {
   const [category, setCategory] = useState<CategoryKey>(initialCategory);
   const [brands, setBrands] = useState<string[]>([]);
@@ -405,6 +413,42 @@ export function CatalogClient({
             );
           })}
         </div>
+      )}
+
+      {totalPages > 1 && (
+        <nav
+          aria-label="Catalogue pagination"
+          className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-line pt-6"
+        >
+          <Link
+            href={`${basePath}?page=${currentPage - 1}${initialSizeFilter ? `&size=${encodeURIComponent(initialSizeFilter)}` : ""}`}
+            className={`flex min-h-11 items-center border px-4 font-mono text-label-caps uppercase tracking-[0.1em] transition-colors ${
+              currentPage <= 1
+                ? "pointer-events-none opacity-40 border-line text-muted"
+                : "border-line bg-surface text-ink hover:border-ink hover:bg-surface-container"
+            }`}
+            aria-disabled={currentPage <= 1}
+          >
+            ← Previous Page
+          </Link>
+
+          <span className="font-mono text-xs uppercase text-muted">
+            Page {currentPage} of {totalPages}
+            {totalCount !== undefined ? ` · ${totalCount} Total Items` : ""}
+          </span>
+
+          <Link
+            href={`${basePath}?page=${currentPage + 1}${initialSizeFilter ? `&size=${encodeURIComponent(initialSizeFilter)}` : ""}`}
+            className={`flex min-h-11 items-center border px-4 font-mono text-label-caps uppercase tracking-[0.1em] transition-colors ${
+              currentPage >= totalPages
+                ? "pointer-events-none opacity-40 border-line text-muted"
+                : "border-line bg-surface text-ink hover:border-ink hover:bg-surface-container"
+            }`}
+            aria-disabled={currentPage >= totalPages}
+          >
+            Next Page →
+          </Link>
+        </nav>
       )}
 
       {quickViewProduct ? (

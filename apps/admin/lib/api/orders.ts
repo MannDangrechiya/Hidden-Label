@@ -11,6 +11,11 @@ export interface OrderListItem {
   currency_code: string;
   total: number;
   created_at: string;
+  shipping_address?: {
+    province?: string | null;
+    city?: string | null;
+    country_code?: string | null;
+  } | null;
 }
 
 export interface OrderListResult {

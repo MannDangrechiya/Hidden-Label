@@ -30,6 +30,12 @@ export default async function CancelOrderPage({ params }: PageProps) {
     order.fulfillment_status === "shipped" ||
     order.fulfillment_status === "delivered";
 
+  const bespokeStage =
+    typeof order.metadata?.bespoke_stage === "string" ? order.metadata.bespoke_stage : null;
+  const isBespokeCut =
+    bespokeStage !== null &&
+    ["fabric_cutting", "stitching", "qc_passed", "ready_for_pickup"].includes(bespokeStage);
+
   return (
     <main className="mx-auto w-full max-w-page px-margin py-sp-5 sm:px-margin-tablet lg:px-margin-desktop">
       <header className="mb-sp-4 border-b border-line pb-sp-3">
@@ -70,6 +76,32 @@ export default async function CancelOrderPage({ params }: PageProps) {
           >
             Track order status
           </Link>
+        </div>
+      ) : isBespokeCut ? (
+        <div className="border border-line bg-surface p-6">
+          <p className="font-display text-headline-sm uppercase text-ink">Bespoke Atelier Production in Progress</p>
+          <p className="mt-2 font-sans text-body-sm text-on-surface-variant leading-relaxed">
+            This order contains Made-to-Measure garments that have already entered the{" "}
+            <strong>{bespokeStage?.replace(/_/g, " ")}</strong> stage at our Sindhu Bhavan Road atelier. 
+            Because luxury fabrics are custom-cut to individual anatomical measurements, automated self-service cancellation is locked once fabric cutting commences.
+          </p>
+          <p className="mt-3 font-sans text-body-sm text-muted">
+            Please contact our concierge desk directly for bespoke inquiries, fitting adjustments, or atelier consultation.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Link
+              href={`/support?order=THL-${order.display_id}`}
+              className="inline-flex min-h-12 items-center justify-center border border-ink bg-ink px-5 py-2 font-mono text-xs uppercase tracking-wider text-surface hover:bg-ink/90 no-underline"
+            >
+              Contact Concierge Desk →
+            </Link>
+            <Link
+              href={`/account/orders/${order.id}`}
+              className="inline-flex min-h-12 items-center justify-center border border-line px-5 py-2 font-mono text-xs uppercase tracking-wider text-ink hover:border-ink no-underline"
+            >
+              Back to Order Details
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="flex flex-col gap-6 max-w-2xl">

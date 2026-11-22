@@ -1102,3 +1102,35 @@ export async function createSupportTicket(
     : request("/store/support/tickets", { method: "POST", body: input });
 }
 
+export interface StoreProductReview {
+  id: string;
+  rating: number;
+  title: string;
+  body: string;
+  author_name: string;
+  verified_purchase: boolean;
+  created_at: string;
+}
+
+export interface StoreReviewStats {
+  count: number;
+  average_rating: number;
+  distribution: Record<number, number>;
+}
+
+export async function fetchProductReviews(
+  productId: string,
+): Promise<{ reviews: StoreProductReview[]; stats: StoreReviewStats }> {
+  try {
+    return await request<{ reviews: StoreProductReview[]; stats: StoreReviewStats }>(
+      `/store/products/${productId}/reviews`,
+    );
+  } catch {
+    return {
+      reviews: [],
+      stats: { count: 0, average_rating: 0, distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } },
+    };
+  }
+}
+
+

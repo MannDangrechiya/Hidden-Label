@@ -93,6 +93,17 @@ export async function fetchAdminResaleAsks(): Promise<AdminResaleAsk[]> {
   return asks;
 }
 
+export async function updateAdminResaleAsk(
+  id: string,
+  body: { status: string; notes?: string },
+): Promise<AdminResaleAsk> {
+  const { ask } = await backendFetch<{ ask: AdminResaleAsk }>(`/admin/resale/asks/${id}`, {
+    method: "POST",
+    body,
+  });
+  return ask;
+}
+
 export async function fetchAdminResaleBids(): Promise<AdminResaleBid[]> {
   const { bids } = await backendFetch<{ bids: AdminResaleBid[] }>("/admin/resale/bids");
   return bids;

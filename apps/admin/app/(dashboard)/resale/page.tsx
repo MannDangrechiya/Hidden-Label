@@ -45,6 +45,7 @@ export default async function ResalePage() {
                   <th className="p-2">Product &amp; Size</th>
                   <th className="p-2">Ask (INR)</th>
                   <th className="p-2">Grade</th>
+                  <th className="p-2">Status</th>
                   <th className="p-2">Seller</th>
                 </tr>
               </thead>
@@ -61,6 +62,19 @@ export default async function ResalePage() {
                       ₹{Number(ask.ask_price).toLocaleString("en-IN")}
                     </td>
                     <td className="p-2 font-mono text-[11px]">{ask.condition_grade}</td>
+                    <td className="p-2">
+                      <span className={`inline-block px-1.5 py-0.5 font-mono text-[10px] uppercase rounded ${
+                        ask.status === "active"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-300"
+                          : ask.status === "authenticated"
+                          ? "bg-blue-50 text-blue-700 border border-blue-300"
+                          : ask.status === "sold"
+                          ? "bg-purple-50 text-purple-700 border border-purple-300"
+                          : "bg-surface-container text-muted"
+                      }`}>
+                        {ask.status}
+                      </span>
+                    </td>
                     <td className="p-2 font-mono text-[10px] text-muted truncate max-w-[120px]">
                       {ask.seller_email}
                     </td>

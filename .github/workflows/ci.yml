@@ -40,9 +40,18 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
-      # The storefront is dynamic, so the build must not require a running backend.
+      # The storefront and admin are dynamic Next.js apps, so builds must not require a running backend.
       - name: Build storefront
         run: pnpm --filter @thl/storefront build
+
+      - name: Build admin
+        run: pnpm --filter @thl/admin build
+
+      - name: Build backend
+        run: pnpm --filter @thl/backend build
+
+      - name: Dependency security audit (SEC-11)
+        run: pnpm audit --audit-level=high
 
   integration:
     name: database integration tests

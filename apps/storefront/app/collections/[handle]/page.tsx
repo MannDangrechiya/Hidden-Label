@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ handle: string }>;
-  searchParams: Promise<{ size?: string }>;
+  searchParams: Promise<{ size?: string; page?: string }>;
 }
 
 function resolveCategory(handle: string): CategoryKey {
@@ -36,16 +36,24 @@ export default async function CollectionHandlePage({ params, searchParams }: Pag
   const { handle } = await params;
   if (handle === "all") redirect("/collections/all");
 
-  const { size } = await searchParams;
+  const { size, page } = await searchParams;
+  const PAGE_SIZE = 24;
+  const currentPage = Math.max(1, Number(page || 1));
+  const offset = (currentPage - 1) * PAGE_SIZE;
+
   const initialCategory = resolveCategory(handle);
   const categoryLabel = CATEGORIES.find((c) => c.key === initialCategory)?.label ?? handle;
 
   let products: StoreProduct[] = [];
+  let totalCount = 0;
+  let totalPages = 1;
   let error: string | null = null;
 
   try {
-    const data = await fetchProducts({ limit: 48 });
+    const data = await fetchProducts({ limit: PAGE_SIZE, offset });
     products = data.products;
+    totalCount = data.count ?? products.length;
+    totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   } catch (caught) {
     error =
       caught instanceof MedusaError
@@ -75,6 +83,10 @@ export default async function CollectionHandlePage({ params, searchParams }: Pag
           initialProducts={products}
           initialSizeFilter={size}
           initialCategory={initialCategory}
+          totalCount={totalCount}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          basePath={`/collections/${handle}`}
         />
       )}
     </main>

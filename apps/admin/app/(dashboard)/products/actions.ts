@@ -31,8 +31,15 @@ export async function createProductAction(
   const priceRupees = Number(formData.get("price_rupees"));
   const categoryId = String(formData.get("category_id") ?? "");
   const thumbnail = String(formData.get("thumbnail") ?? "").trim();
+  const brand = String(formData.get("brand") ?? "").trim();
+  const countryOfOrigin = String(formData.get("country_of_origin") ?? "").trim();
+  const hsn = String(formData.get("hsn") ?? "").trim();
+  const gender = String(formData.get("gender") ?? "").trim();
 
   if (!title) return { error: "A title is required." };
+  if (!countryOfOrigin) {
+    return { error: "Country of Origin is mandatory under Legal Metrology regulations." };
+  }
   if (!Number.isFinite(priceRupees) || priceRupees <= 0) {
     return { error: "A positive price is required." };
   }
@@ -48,6 +55,13 @@ export async function createProductAction(
   // making the product display as ₹99,900 instead of ₹999 everywhere it's shown.
   const amount = Math.round(priceRupees);
 
+  const metadata: Record<string, unknown> = {
+    country_of_origin: countryOfOrigin,
+  };
+  if (brand) metadata.brand = brand;
+  if (hsn) metadata.hsn = hsn;
+  if (gender) metadata.gender = gender;
+
   try {
     const channel = await fetchDefaultSalesChannel();
     const product = await createProduct({
@@ -62,6 +76,7 @@ export async function createProductAction(
         options: { Size: size },
         prices: [{ currency_code: "inr", amount }],
       })),
+      metadata,
     });
     revalidatePath("/products");
     redirect(`/products/${product.id}`);
@@ -79,11 +94,26 @@ export async function updateProductAction(
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const thumbnail = String(formData.get("thumbnail") ?? "").trim();
+  const brand = String(formData.get("brand") ?? "").trim();
+  const countryOfOrigin = String(formData.get("country_of_origin") ?? "").trim();
+  const hsn = String(formData.get("hsn") ?? "").trim();
+  const gender = String(formData.get("gender") ?? "").trim();
 
   if (!title) return { error: "A title is required." };
 
+  const metadata: Record<string, unknown> = {};
+  if (countryOfOrigin) metadata.country_of_origin = countryOfOrigin;
+  if (brand) metadata.brand = brand;
+  if (hsn) metadata.hsn = hsn;
+  if (gender) metadata.gender = gender;
+
   try {
-    await updateProduct(id, { title, description: description || null, thumbnail: thumbnail || null });
+    await updateProduct(id, {
+      title,
+      description: description || null,
+      thumbnail: thumbnail || null,
+      metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+    });
   } catch (error) {
     return { error: error instanceof BackendError ? error.message : "Could not save changes." };
   }

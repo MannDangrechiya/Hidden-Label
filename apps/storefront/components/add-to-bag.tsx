@@ -184,17 +184,19 @@ export function AddToBag({
           </span>
         </button>
 
-        {/* Place Bid Secondary CTA */}
-        <button
-          type="button"
-          onClick={handleBidClick}
-          className="min-h-14 sm:w-48 border border-ink bg-surface px-5 py-3.5 font-mono text-xs uppercase tracking-[0.12em] text-ink transition-colors hover:bg-surface-container active:scale-[0.99] flex flex-col items-center justify-center gap-0.5"
-        >
-          <span className="font-semibold">Place Bid</span>
-          <span className="text-[10px] text-muted tracking-normal normal-case font-sans">
-            {currentBid ? `High: ${formatPrice(currentBid)}` : "Make an offer"}
-          </span>
-        </button>
+        {/* Place Bid Secondary CTA — disabled by default unless explicitly enabled via NEXT_PUBLIC_FEATURE_BIDDING */}
+        {process.env.NEXT_PUBLIC_FEATURE_BIDDING === "true" ? (
+          <button
+            type="button"
+            onClick={handleBidClick}
+            className="min-h-14 sm:w-48 border border-ink bg-surface px-5 py-3.5 font-mono text-xs uppercase tracking-[0.12em] text-ink transition-colors hover:bg-surface-container active:scale-[0.99] flex flex-col items-center justify-center gap-0.5"
+          >
+            <span className="font-semibold">Place Bid</span>
+            <span className="text-[10px] text-muted tracking-normal normal-case font-sans">
+              {currentBid ? `High: ${formatPrice(currentBid)}` : "Make an offer"}
+            </span>
+          </button>
+        ) : null}
       </div>
 
       {/* Sell / Consign This Pair CTA */}

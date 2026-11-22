@@ -65,8 +65,12 @@ export function SellClient({
   }, [products, searchQuery]);
 
   const askPriceNum = Number(askPriceStr) || 0;
-  const platformFee = Math.round(askPriceNum * 0.095); // 9.5% consignment fee
-  const sellerPayout = Math.max(0, askPriceNum - platformFee);
+  const configuredFeeRate = process.env.NEXT_PUBLIC_CONSIGNMENT_COMMISSION_RATE
+    ? Number(process.env.NEXT_PUBLIC_CONSIGNMENT_COMMISSION_RATE)
+    : null;
+  const hasFeeRate = typeof configuredFeeRate === "number" && Number.isFinite(configuredFeeRate);
+  const platformFee = hasFeeRate ? Math.round(askPriceNum * configuredFeeRate) : null;
+  const sellerPayout = hasFeeRate && platformFee !== null ? Math.max(0, askPriceNum - platformFee) : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,7 +145,9 @@ export function SellClient({
           </div>
           <div className="flex justify-between">
             <span className="text-muted">Estimated Payout:</span>
-            <span className="font-mono font-bold text-emerald-600">{formatINR(moneyFromRupees(sellerPayout))}</span>
+            <span className="font-mono font-bold text-emerald-600">
+              {sellerPayout !== null ? formatINR(moneyFromRupees(sellerPayout)) : "Pending agreement"}
+            </span>
           </div>
         </div>
 
@@ -382,8 +388,16 @@ export function SellClient({
               </span>
             </div>
             <div className="flex justify-between text-muted">
-              <span>Platform &amp; Authentication Fee (9.5%):</span>
-              <span className="font-mono">- {formatINR(moneyFromRupees(platformFee))}</span>
+              <span>
+                {hasFeeRate && configuredFeeRate !== null
+                  ? `Platform & Authentication Fee (${(configuredFeeRate * 100).toFixed(1)}%):`
+                  : "Consignment Commission:"}
+              </span>
+              <span className="font-mono">
+                {hasFeeRate && platformFee !== null
+                  ? `- ${formatINR(moneyFromRupees(platformFee))}`
+                  : "Finalized upon listing review"}
+              </span>
             </div>
             <div className="flex justify-between text-muted">
               <span>In-Lab Authentication:</span>
@@ -396,7 +410,9 @@ export function SellClient({
             <div className="flex justify-between pt-2 border-t border-line font-mono text-sm font-bold text-ink">
               <span>Your Estimated Payout:</span>
               <span className="text-emerald-600 text-base">
-                {formatINR(moneyFromRupees(sellerPayout))}
+                {sellerPayout !== null
+                  ? formatINR(moneyFromRupees(sellerPayout))
+                  : "Disbursed per consignment agreement"}
               </span>
             </div>
           </div>

@@ -17,12 +17,18 @@ export const metadata = {
 };
 
 interface PageProps {
-  searchParams: Promise<{ size?: string; category?: string }>;
+  searchParams: Promise<{ size?: string; category?: string; page?: string }>;
 }
 
 export default async function CatalogPage({ searchParams }: PageProps) {
-  const { size, category } = await searchParams;
+  const { size, category, page } = await searchParams;
+  const PAGE_SIZE = 24;
+  const currentPage = Math.max(1, Number(page || 1));
+  const offset = (currentPage - 1) * PAGE_SIZE;
+
   let products: StoreProduct[] = [];
+  let totalCount = 0;
+  let totalPages = 1;
   let error: string | null = null;
   let activeCategoryName: string | null = null;
 
@@ -34,8 +40,10 @@ export default async function CatalogPage({ searchParams }: PageProps) {
       categoryId = node?.id;
       activeCategoryName = node?.name ?? null;
     }
-    const data = await fetchProducts({ limit: 48, categoryId });
+    const data = await fetchProducts({ limit: PAGE_SIZE, offset, categoryId });
     products = data.products;
+    totalCount = data.count ?? products.length;
+    totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   } catch (caught) {
     error =
       caught instanceof MedusaError
@@ -72,7 +80,14 @@ export default async function CatalogPage({ searchParams }: PageProps) {
       {error ? (
         <ErrorState title="Could not load the catalogue" message={error} />
       ) : (
-        <CatalogClient initialProducts={products} initialSizeFilter={size} />
+        <CatalogClient
+          initialProducts={products}
+          initialSizeFilter={size}
+          totalCount={totalCount}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          basePath="/collections/all"
+        />
       )}
     </main>
   );

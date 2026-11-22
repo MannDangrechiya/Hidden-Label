@@ -32,6 +32,7 @@ export interface AdminProduct {
   options?: { id: string; title: string; values?: { value: string }[] }[];
   variants?: AdminVariant[];
   categories?: { id: string; name: string }[];
+  metadata?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }
@@ -46,7 +47,7 @@ export interface ProductListResult {
 const LIST_FIELDS =
   "id,title,handle,status,thumbnail,created_at,updated_at,*categories,*variants,*variants.inventory_quantity";
 const DETAIL_FIELDS =
-  "*variants,*variants.prices,*variants.options,*options,*options.values,*categories,*images";
+  "id,title,handle,subtitle,description,status,thumbnail,metadata,*variants,*variants.prices,*variants.options,*options,*options.values,*categories,*images";
 
 export async function fetchProducts(params?: {
   limit?: number;
@@ -88,6 +89,7 @@ export interface ProductInput {
     options?: Record<string, string>;
     prices: { currency_code: string; amount: number }[];
   }[];
+  metadata?: Record<string, unknown> | null;
 }
 
 export async function createProduct(input: ProductInput): Promise<AdminProduct> {
@@ -106,6 +108,7 @@ export interface ProductUpdateInput {
   thumbnail?: string | null;
   images?: { url: string }[];
   categories?: { id: string }[];
+  metadata?: Record<string, unknown> | null;
 }
 
 export async function updateProduct(id: string, input: ProductUpdateInput): Promise<AdminProduct> {

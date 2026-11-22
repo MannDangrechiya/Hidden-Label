@@ -51,6 +51,19 @@ export async function POST(
     return;
   }
 
+  // Check if bespoke production has commenced
+  const bespokeStage = (order.metadata as Record<string, unknown> | null)?.bespoke_stage;
+  if (
+    typeof bespokeStage === "string" &&
+    ["fabric_cutting", "stitching", "qc_passed", "ready_for_pickup"].includes(bespokeStage)
+  ) {
+    res.status(422).json({
+      type: "invalid_state",
+      message: `Made-to-measure production is already in progress (${bespokeStage.replace(/_/g, " ")}). Custom-cut garments cannot be cancelled once fabric cutting commences. Please contact our Sindhu Bhavan Road atelier concierge.`,
+    });
+    return;
+  }
+
   const reason = req.body?.reason || "Customer requested cancellation";
 
   try {

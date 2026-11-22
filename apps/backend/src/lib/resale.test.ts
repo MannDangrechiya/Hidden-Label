@@ -126,20 +126,23 @@ describe("Resale & Fit Studio Calculations (apps/backend/src/lib/resale.ts)", ()
   });
 
   describe("calculateConsignorPayout", () => {
-    it("calculates standard 9.5% consignment fee and net seller payout correctly", () => {
+    it("returns unconfigured when no platform fee rate is provided or configured in env", () => {
       const payout = calculateConsignorPayout(20000);
-      expect(payout.platform_fee_rupees).toBe(1900); // 20000 * 0.095 = 1900
-      expect(payout.estimated_payout_rupees).toBe(18100);
+      expect(payout.configured).toBe(false);
+      expect(payout.platform_fee_rupees).toBeNull();
+      expect(payout.estimated_payout_rupees).toBeNull();
     });
 
-    it("handles custom platform fee rate", () => {
+    it("handles explicit owner-approved platform fee rate", () => {
       const payout = calculateConsignorPayout(10000, 0.05); // 5% fee
+      expect(payout.configured).toBe(true);
       expect(payout.platform_fee_rupees).toBe(500);
       expect(payout.estimated_payout_rupees).toBe(9500);
     });
 
-    it("handles zero and negative amounts safely", () => {
-      const payout = calculateConsignorPayout(0);
+    it("handles zero and negative amounts safely with configured rate", () => {
+      const payout = calculateConsignorPayout(0, 0.095);
+      expect(payout.configured).toBe(true);
       expect(payout.platform_fee_rupees).toBe(0);
       expect(payout.estimated_payout_rupees).toBe(0);
     });

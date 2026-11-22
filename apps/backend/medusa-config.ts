@@ -31,6 +31,14 @@ module.exports = defineConfig({
         min: Number(process.env.DB_POOL_MIN ?? 2),
         max: Number(process.env.DB_POOL_MAX ?? 20),
       },
+      connection:
+        process.env.DATABASE_SSL === "true"
+          ? {
+              ssl: {
+                rejectUnauthorized: process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== "false",
+              },
+            }
+          : undefined,
     },
     // Redis backs the event bus, workflow engine and caching. Left unset in local dev so the
     // in-memory modules are used when no Redis is available.

@@ -30,6 +30,8 @@ export default async function CustomerBidsPage() {
     bids = [];
   }
 
+  const biddingEnabled = process.env.NEXT_PUBLIC_FEATURE_BIDDING === "true";
+
   return (
     <main className="mx-auto w-full max-w-page px-margin py-sp-5 sm:px-margin-tablet lg:px-margin-desktop">
       <div className="mb-6 flex flex-wrap items-center justify-between border-b border-line pb-4">
@@ -50,7 +52,22 @@ export default async function CustomerBidsPage() {
         </div>
       </div>
 
-      <CustomerBidsClient initialBids={bids} token={session.token} />
+      {!biddingEnabled ? (
+        <div className="border border-line bg-surface p-8 text-center space-y-3">
+          <p className="font-display text-base uppercase text-ink">Bidding Mode Inactive</p>
+          <p className="font-sans text-xs text-muted max-w-md mx-auto">
+            Marketplace bidding is currently disabled in this environment. All secondary market listings operate on a verified fixed-price consignment basis.
+          </p>
+          <Link
+            href="/collections/all"
+            className="inline-flex min-h-12 items-center justify-center border border-ink bg-ink px-6 py-3 font-mono text-xs uppercase text-surface hover:bg-ink/90 no-underline"
+          >
+            Browse Verified Pairs
+          </Link>
+        </div>
+      ) : (
+        <CustomerBidsClient initialBids={bids} token={session.token} />
+      )}
     </main>
   );
 }

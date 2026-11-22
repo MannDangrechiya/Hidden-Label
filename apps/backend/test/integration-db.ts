@@ -121,6 +121,7 @@ const SCHEMA_STATEMENTS = [
    )`,
   `create table "order" (
      id text primary key,
+     customer_id text null,
      display_id integer null,
      currency_code text not null default 'inr',
      email text null,
@@ -137,6 +138,20 @@ const SCHEMA_STATEMENTS = [
   `create table order_cart (
      order_id text not null,
      cart_id text not null primary key
+   )`,
+  `create table order_payment_collection (
+     order_id text not null,
+     payment_collection_id text not null
+   )`,
+  `create table payment (
+     id text primary key,
+     payment_collection_id text not null,
+     amount numeric(12,2) not null,
+     currency_code text not null default 'inr',
+     captured_at timestamptz null,
+     canceled_at timestamptz null,
+     created_at timestamptz not null default now(),
+     updated_at timestamptz not null default now()
    )`,
   `create table order_address (
      id text primary key,
@@ -358,9 +373,136 @@ const SCHEMA_STATEMENTS = [
      id text primary key,
      name text not null
    )`,
+  `create table resale_ask (
+     id text primary key,
+     variant_id text not null,
+     seller_id text not null,
+     ask_price numeric(12,2) not null,
+     condition_grade text not null default 'deadstock',
+     box_condition text not null default 'perfect',
+     status text not null default 'active',
+     expires_at timestamptz null,
+     created_at timestamptz not null default now(),
+     updated_at timestamptz not null default now()
+   )`,
   `create table product_brand (
      product_id text not null,
      brand_id text not null
+   )`,
+  `create table product_review (
+     id text primary key,
+     product_id text not null,
+     customer_id text not null,
+     rating integer not null check (rating between 1 and 5),
+     title text not null,
+     body text not null,
+     author_name text not null,
+     verified_purchase boolean not null default false,
+     status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+     moderated_by text null,
+     moderated_at timestamptz null,
+     created_at timestamptz not null default now(),
+     updated_at timestamptz not null default now()
+   )`,
+  `create table supplier (
+     id text primary key,
+     name text not null,
+     contact_email text not null,
+     contact_phone text null,
+     gstin text null,
+     address text null,
+     status text not null default 'active',
+     created_at timestamptz not null default now(),
+     updated_at timestamptz not null default now()
+   )`,
+  `create sequence purchase_order_display_seq start with 1001`,
+  `create table purchase_order (
+     id text primary key,
+     display_id text not null unique,
+     supplier_id text not null references supplier(id) on delete restrict,
+     status text not null default 'draft',
+     total_cost_rupees numeric(12,2) not null default 0,
+     notes text null,
+     created_at timestamptz not null default now(),
+     updated_at timestamptz not null default now()
+   )`,
+  `create table purchase_order_item (
+     id text primary key,
+     purchase_order_id text not null references purchase_order(id) on delete cascade,
+     product_id text not null,
+     variant_id text not null,
+     quantity integer not null check (quantity > 0),
+     received_quantity integer not null default 0,
+     unit_cost_rupees numeric(12,2) not null,
+     created_at timestamptz not null default now(),
+     updated_at timestamptz not null default now()
+   )`,
+  `create sequence goods_receipt_display_seq start with 1001`,
+  `create table goods_receipt (
+     id text primary key,
+     display_id text not null unique,
+     purchase_order_id text not null references purchase_order(id) on delete restrict,
+     received_by text not null,
+     received_at timestamptz not null default now(),
+     notes text null,
+     created_at timestamptz not null default now(),
+     updated_at timestamptz not null default now()
+   )`,
+  `create table stock_movement (
+     id text primary key,
+     inventory_item_id text not null,
+     location_id text not null,
+     delta integer not null,
+     movement_type text not null,
+     reference_id text null,
+     actor_id text null,
+     notes text null,
+     balance_after integer not null,
+     created_at timestamptz not null default now()
+   )`,
+  `create table consignor_settlement (
+     id text primary key,
+     ask_id text not null unique,
+     order_id text null,
+     seller_id text not null,
+     sold_amount_rupees numeric(12,2) not null,
+     commission_rate numeric(5,4) not null,
+     commission_rupees numeric(12,2) not null,
+     payout_amount_rupees numeric(12,2) not null,
+     hold_until timestamptz not null,
+     status text not null default 'pending',
+     disbursed_at timestamptz null,
+     payout_reference text null,
+     created_at timestamptz not null default now(),
+     updated_at timestamptz not null default now()
+   )`,
+  `create table consultation_booking (
+     id text primary key,
+     customer_id text null,
+     customer_name text not null,
+     customer_email text not null,
+     customer_phone text not null,
+     scheduled_at timestamptz not null,
+     service_type text not null default 'bespoke_fitting',
+     status text not null default 'scheduled',
+     notes text null,
+     created_at timestamptz not null default now(),
+     updated_at timestamptz not null default now()
+   )`,
+  `create table fabric_swatch (
+     id text primary key,
+     name text not null,
+     code text not null unique,
+     mill text not null,
+     composition text not null,
+     weight_gsm integer not null,
+     color text not null,
+     image_url text null,
+     surcharge_tier text not null default 'standard',
+     surcharge_rupees numeric(12,2) not null default 0,
+     is_available boolean not null default true,
+     created_at timestamptz not null default now(),
+     updated_at timestamptz not null default now()
    )`,
 ];
 
