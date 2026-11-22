@@ -45,7 +45,7 @@ export default async function OrderInvoicePage({ params }: PageProps) {
   const sellerGstin = process.env.BUSINESS_GSTIN ?? "";
   const sellerLegalName = process.env.BUSINESS_LEGAL_NAME ?? "The Hidden Label Luxury Retail Pvt Ltd";
   const sellerAddress =
-    process.env.BUSINESS_ADDRESS ?? "Sindhu Bhavan Road, Bodakdev, Ahmedabad, Gujarat 380054, India";
+    process.env.BUSINESS_ADDRESS ?? "Steller, 205, 2nd Floor, Sindhu Bhavan Road, Bodakdev, Ahmedabad, Gujarat 380059, India";
 
   const buyerStateCode = gstStateCode(addr?.province) ?? null;
   const gst = computeInclusiveGst({

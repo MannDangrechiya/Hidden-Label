@@ -528,7 +528,7 @@ const PAGES = [
     slug: "about",
     kind: "page",
     title: "About The Hidden Label",
-    body: `## A retailer, not a marketplace\n\nWe buy, hold and ship every item ourselves. One retailer, many brands — no third-party sellers, no drop-shipping.\n\n## How we buy\n\nOur buying team works directly with brand accounts and authorised distributors. Each pair is checked on arrival for condition, box and labelling before it is listed.\n\n## Where we are\n\nMumbai, India. Orders ship nationwide from our own warehouse.`,
+    body: `## A retailer, not a marketplace\n\nWe buy, hold and ship every item ourselves. One retailer, many brands — no third-party sellers, no drop-shipping.\n\n## How we buy\n\nOur buying team works directly with brand accounts and authorised distributors. Each pair is checked on arrival for condition, box and labelling before it is listed.\n\n## Where we are\n\nSteller, Sindhu Bhavan Road, Bodakdev, Ahmedabad, Gujarat, India. Orders ship nationwide from our boutique and atelier warehouse.`,
   },
   {
     slug: "support",
@@ -644,7 +644,7 @@ export default async function seed({ container }: ExecArgs) {
         locations: [
           {
             name: "The Hidden Label Warehouse",
-            address: { address_1: "—", city: "Mumbai", country_code: "in" },
+            address: { address_1: "Steller, 205, Sindhu Bhavan Road, Bodakdev", city: "Ahmedabad", country_code: "in" },
           },
         ],
       },

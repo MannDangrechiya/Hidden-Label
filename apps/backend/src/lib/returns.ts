@@ -21,6 +21,7 @@ export interface ReturnEligibilityInput {
   itemQuantity: number;
   alreadyReturned: number;
   finalSale?: boolean;
+  isCustom?: boolean;
 }
 
 export interface ReturnEligibility {
@@ -31,6 +32,9 @@ export interface ReturnEligibility {
 export function checkReturnEligibility(input: ReturnEligibilityInput): ReturnEligibility {
   if (input.finalSale) {
     return { eligible: false, reason: "Final-sale items cannot be returned." };
+  }
+  if (input.isCustom) {
+    return { eligible: false, reason: "Custom made-to-measure bespoke items cannot be returned." };
   }
   if (input.orderStatus !== "delivered") {
     return {

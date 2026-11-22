@@ -111,7 +111,7 @@ export async function POST(req: MedusaRequest<Body>, res: MedusaResponse) {
     const row = await pg("order_item as oi")
       .join("order_line_item as oli", "oli.id", "oi.item_id")
       .where({ "oi.item_id": item.order_item_id, "oi.order_id": order.id })
-      .first("oi.id", "oi.quantity", "oli.unit_price", "oi.metadata");
+      .first("oi.id", "oi.quantity", "oli.unit_price", "oi.metadata", "oli.metadata as line_metadata");
 
     if (!row) {
       res.status(400).json({ type: "invalid_data", message: "An item does not belong to this order." });
@@ -129,6 +129,13 @@ export async function POST(req: MedusaRequest<Body>, res: MedusaResponse) {
     // Medusa's bigNumber columns (order_item.quantity) come back as numeric strings.
     const rowQuantity = Number(row.quantity);
 
+    const isCustom = Boolean(
+      row.metadata?.is_custom ||
+      row.metadata?.custom_measurements ||
+      row.line_metadata?.is_custom ||
+      row.line_metadata?.custom_measurements,
+    );
+
     // "delivered" is a *fulfillment* status (Medusa's OrderFulfillmentStatus), never a value of
     // order.status (OrderStatus is pending/completed/draft/archived/canceled/requires_action) —
     // checking order.status here meant no return could ever become eligible. See
@@ -138,6 +145,7 @@ export async function POST(req: MedusaRequest<Body>, res: MedusaResponse) {
       deliveredAt,
       itemQuantity: rowQuantity,
       alreadyReturned: Number(already?.total ?? 0),
+      isCustom,
     });
 
     if (!eligibility.eligible) {

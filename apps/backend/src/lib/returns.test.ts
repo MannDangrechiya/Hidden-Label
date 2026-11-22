@@ -87,4 +87,17 @@ describe("Return Eligibility Engine (apps/backend/src/lib/returns.ts)", () => {
     });
     expect(result.eligible).toBe(true);
   });
+
+  it("rejects returns for made-to-measure bespoke custom items", () => {
+    const yesterday = new Date(Date.now() - ONE_DAY_MS);
+    const result = checkReturnEligibility({
+      orderStatus: "delivered",
+      deliveredAt: yesterday,
+      itemQuantity: 1,
+      alreadyReturned: 0,
+      isCustom: true,
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reason).toContain("bespoke");
+  });
 });
