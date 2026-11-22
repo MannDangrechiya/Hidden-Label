@@ -167,6 +167,16 @@ export default async function OrderDetailPage({ params }: PageProps) {
                     </li>
                   ))}
                 </ol>
+                {bespokeIndex >= 1 ? (
+                  <div className="mt-2 border border-line bg-surface-container/20 p-3 font-sans text-xs text-muted">
+                    <p className="font-mono text-label-caps uppercase text-ink font-semibold m-0">
+                      Atelier Notice · Production in Progress
+                    </p>
+                    <p className="mt-1 m-0">
+                      Fabric cutting has commenced at our boutique atelier. Made-to-measure garments are custom-cut to your inches and cannot be cancelled or returned once cutting begins. Complimentary alterations are provided for 14 days following delivery.
+                    </p>
+                  </div>
+                ) : null}
               </div>
             </>
           ) : null}
@@ -213,8 +223,11 @@ export default async function OrderDetailPage({ params }: PageProps) {
             </div>
             <div className="mt-2 flex justify-between border-t border-line pt-3">
               <dt className="font-mono text-label-caps uppercase text-ink">Total</dt>
-              <dd className="m-0">
+              <dd className="m-0 text-right">
                 <Price value={moneyFromRupees(order.total)} size="lg" />
+                <span className="block font-mono text-[10px] text-muted uppercase tracking-wider">
+                  Incl. of all taxes &amp; GST
+                </span>
               </dd>
             </div>
           </dl>

@@ -38,13 +38,22 @@ export async function publishResaleAskAction(id: string, locationId?: string) {
 export async function settleResaleAskAction(
   id: string,
   soldAmountRupees: number,
-  commissionRate = 0.10,
+  commissionRate?: number,
   payoutRef?: string,
 ) {
   try {
+    const defaultRate = process.env.CONSIGNMENT_COMMISSION_RATE
+      ? Number(process.env.CONSIGNMENT_COMMISSION_RATE)
+      : process.env.THL_RESALE_COMMISSION_RATE
+      ? Number(process.env.THL_RESALE_COMMISSION_RATE)
+      : 0.15;
+    const effectiveRate =
+      typeof commissionRate === "number" && Number.isFinite(commissionRate)
+        ? commissionRate
+        : defaultRate;
     const res = await settleAdminResaleAsk(id, {
       sold_amount_rupees: soldAmountRupees,
-      commission_rate: commissionRate,
+      commission_rate: effectiveRate,
       payout_reference: payoutRef,
     });
     revalidatePath("/resale");

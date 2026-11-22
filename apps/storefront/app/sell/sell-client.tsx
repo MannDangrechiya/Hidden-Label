@@ -65,9 +65,11 @@ export function SellClient({
   }, [products, searchQuery]);
 
   const askPriceNum = Number(askPriceStr) || 0;
-  const configuredFeeRate = process.env.NEXT_PUBLIC_CONSIGNMENT_COMMISSION_RATE
-    ? Number(process.env.NEXT_PUBLIC_CONSIGNMENT_COMMISSION_RATE)
-    : null;
+  const rawFeeRate =
+    process.env.NEXT_PUBLIC_CONSIGNMENT_COMMISSION_RATE ??
+    process.env.NEXT_PUBLIC_THL_RESALE_COMMISSION_RATE ??
+    "0.15";
+  const configuredFeeRate = rawFeeRate ? Number(rawFeeRate) : 0.15;
   const hasFeeRate = typeof configuredFeeRate === "number" && Number.isFinite(configuredFeeRate);
   const platformFee = hasFeeRate ? Math.round(askPriceNum * configuredFeeRate) : null;
   const sellerPayout = hasFeeRate && platformFee !== null ? Math.max(0, askPriceNum - platformFee) : null;

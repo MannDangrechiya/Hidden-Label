@@ -129,15 +129,14 @@ export function AddToBag({
                   setAdded(false);
                   setMessage(null);
                 }}
-                disabled={!size.available}
                 aria-pressed={isSelected}
                 className={[
                   "relative flex flex-col items-center justify-center border p-3 font-mono transition-all",
-                  size.available
-                    ? isSelected
-                      ? "border-ink bg-ink text-surface shadow-md"
-                      : "border-line bg-surface text-ink hover:border-ink hover:bg-surface-container/40"
-                    : "cursor-not-allowed border-line/50 bg-line/30 text-muted opacity-50",
+                  isSelected
+                    ? "border-ink bg-ink text-surface shadow-md"
+                    : size.available
+                      ? "border-line bg-surface text-ink hover:border-ink hover:bg-surface-container/40"
+                      : "border-line/40 bg-line/20 text-muted hover:border-line hover:text-ink/80",
                 ].join(" ")}
               >
                 {size.isLowestPriceInRun && size.available && (
@@ -149,19 +148,51 @@ export function AddToBag({
                     Lowest
                   </span>
                 )}
-                <span className="font-bold text-sm tracking-wide">{size.label}</span>
                 <span
-                  className={`text-xs mt-0.5 ${
-                    isSelected ? "text-emerald-300 font-semibold" : "text-muted"
+                  className={`font-bold text-sm tracking-wide ${
+                    !size.available && !isSelected ? "line-through opacity-70" : ""
                   }`}
                 >
-                  {price ? formatPrice(price) : "Make Bid"}
+                  {size.label}
+                </span>
+                <span
+                  className={`text-xs mt-0.5 ${
+                    isSelected
+                      ? "text-emerald-300 font-semibold"
+                      : size.available
+                        ? "text-muted"
+                        : "text-amber-700 font-mono text-[10px] uppercase font-semibold"
+                  }`}
+                >
+                  {size.available ? (price ? formatPrice(price) : "Make Bid") : "Sold Out"}
                 </span>
               </button>
             );
           })}
         </div>
       </fieldset>
+
+      {/* Stock Availability Feedback Banner */}
+      {chosen && !chosen.available && (
+        <div className="border border-line bg-surface-container/30 p-3 text-xs flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
+            <span className="font-mono text-label-caps uppercase font-bold text-ink">
+              Size {chosen.label} · Out of Stock
+            </span>
+          </div>
+          <p className="font-sans text-[11px] text-muted m-0">
+            Atelier restock is underway. For priority allocation or custom made-to-measure sizing, contact our concierge at concierge@thehiddenlabel.com.
+          </p>
+        </div>
+      )}
+
+      {chosen && chosen.available && typeof chosen.quantity === "number" && chosen.quantity > 0 && chosen.quantity <= 3 && (
+        <div className="flex items-center gap-2 font-mono text-label-caps uppercase text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1.5 text-[11px]">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-600 animate-pulse" />
+          Only {chosen.quantity} unit{chosen.quantity > 1 ? "s" : ""} available in stock · Dispatched promptly
+        </div>
+      )}
 
       {/* CultureCircle Dual Action CTA Bar */}
       <div className="flex flex-col sm:flex-row gap-3 pt-2">
@@ -175,12 +206,14 @@ export function AddToBag({
           <span className="font-bold">
             {pending
               ? "Securing Pair..."
-              : currentPrice
-              ? `Buy Now — ${formatPrice(currentPrice)}`
-              : "Add to Bag"}
+              : !chosen?.available
+                ? "Out of Stock — Restock Underway"
+                : currentPrice
+                  ? `Buy Now — ${formatPrice(currentPrice)}`
+                  : "Add to Bag"}
           </span>
           <span className="text-[10px] text-surface/70 tracking-normal normal-case font-sans">
-            Instant Dispatch
+            {!chosen?.available ? "Notify concierge when restocked" : "Instant Dispatch · Guaranteed Authentic"}
           </span>
         </button>
 

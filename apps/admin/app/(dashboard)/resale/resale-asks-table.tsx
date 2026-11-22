@@ -70,7 +70,7 @@ export function ResaleAsksTable({
     setErrorMessage(null);
     setSuccessMessage(null);
     try {
-      const res = await settleResaleAskAction(id, Number(askPrice), 0.10, ref || undefined);
+      const res = await settleResaleAskAction(id, Number(askPrice), undefined, ref || undefined);
       if (res.success) {
         setAsks((prev) =>
           prev.map((a) => (a.id === id ? { ...a, status: "settled" } : a)),
