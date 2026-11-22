@@ -11,7 +11,7 @@
 To maintain complete financial and operational safety, smoke tests are strictly divided into two authorization tiers:
 
 - **Tier 1 (Non-Destructive / Zero-Cost):** Can be executed immediately on staging or production without special financial authorization. Tests browsing, session auth, validation, cart state, and read-only admin dashboards.
-- **Tier 2 (Authorized Live Financial Drill):** Executed only during the scheduled go-live cutover window with explicit business owner authorization. Involves a single ₹1 real UPI/Card payment, real email receipt, live Shiprocket AWB simulation, and immediate refund.
+- **Tier 2 (Authorized Live Financial Drill — Production Only):** Executed ONLY during the scheduled production go-live cutover window with explicit business owner authorization. **STAGING REHEARSALS MUST NEVER USE LIVE CREDENTIALS OR EXECUTE REAL TRANSACTIONS.** In staging, all payment drills use Razorpay Sandbox (`rzp_test_*`). Tier 2 real-money validation (₹1 UPI/Card) is restricted to final production preflight under owner supervision.
 
 ---
 

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { assertProductionEnv, isWeakSecret, validateProductionEnv } from "./env-guard";
+import {
+  assertNonProductionEnv,
+  assertProductionEnv,
+  isWeakSecret,
+  validateNonProductionEnv,
+  validateProductionEnv,
+} from "./env-guard";
 
 const STRONG_A = "a".repeat(48);
 const STRONG_B = "b".repeat(48);
@@ -16,7 +22,7 @@ function variables(env: Record<string, string | undefined>): string[] {
   return validateProductionEnv(env).map((issue) => issue.variable);
 }
 
-describe("Production configuration assertions (GAP-116)", () => {
+describe("Production configuration assertions (GAP-116, SEC-12)", () => {
   it("accepts a complete, strong production environment", () => {
     expect(validateProductionEnv(validEnv)).toEqual([]);
     expect(() => assertProductionEnv(validEnv)).not.toThrow();
@@ -29,15 +35,33 @@ describe("Production configuration assertions (GAP-116)", () => {
     );
   });
 
-  it("rejects the development defaults", () => {
+  it("rejects the development defaults and placeholders", () => {
     expect(isWeakSecret("local_dev_jwt_secret")).toBe(true);
     expect(isWeakSecret("local_dev_cookie_secret")).toBe(true);
+    expect(isWeakSecret("PROD_RANDOM_JWT_SECRET_HEX_32_BYTES_MINIMUM")).toBe(true);
+    expect(isWeakSecret("PROD_RANDOM_COOKIE_SECRET_HEX_32_BYTES_MINIMUM")).toBe(true);
     expect(
       variables({
         ...validEnv,
         MEDUSA_JWT_SECRET: "local_dev_jwt_secret",
       }),
     ).toContain("MEDUSA_JWT_SECRET");
+  });
+
+  it("rejects unconfigured placeholders in database and redis URLs", () => {
+    expect(
+      variables({
+        ...validEnv,
+        DATABASE_URL: "postgres://user:PROD_STRONG_PASSWORD@host:5432/db",
+      }),
+    ).toContain("DATABASE_URL");
+
+    expect(
+      variables({
+        ...validEnv,
+        REDIS_URL: "redis://:PROD_REDIS_PASSWORD@host:6379",
+      }),
+    ).toContain("REDIS_URL");
   });
 
   it("rejects secrets that are too short", () => {
@@ -71,6 +95,29 @@ describe("Production configuration assertions (GAP-116)", () => {
     expect(variables({ ...validEnv, OTP_DEV_ECHO: "true" })).toContain("OTP_DEV_ECHO");
   });
 
+  it("rejects test Razorpay keys and placeholders in production", () => {
+    expect(
+      variables({
+        ...validEnv,
+        RAZORPAY_KEY_ID: "rzp_test_1234567890",
+      }),
+    ).toContain("RAZORPAY_KEY_ID");
+
+    expect(
+      variables({
+        ...validEnv,
+        RAZORPAY_KEY_ID: "rzp_live_PROD_KEY_ID",
+      }),
+    ).toContain("RAZORPAY_KEY_ID");
+
+    expect(
+      variables({
+        ...validEnv,
+        RAZORPAY_KEY_SECRET: "PROD_RAZORPAY_KEY_SECRET",
+      }),
+    ).toContain("RAZORPAY_KEY_SECRET");
+  });
+
   it("throws with variable names but never with secret values", () => {
     let message = "";
     try {
@@ -80,5 +127,31 @@ describe("Production configuration assertions (GAP-116)", () => {
     }
     expect(message).toContain("MEDUSA_JWT_SECRET");
     expect(message).not.toContain("local_dev_jwt_secret");
+  });
+
+  describe("Non-production environment validation", () => {
+    it("strictly rejects live Razorpay keys in staging or development", () => {
+      const issues = validateNonProductionEnv({
+        RAZORPAY_KEY_ID: "rzp_live_realSecretKey123",
+      });
+      expect(issues.map((i) => i.variable)).toContain("RAZORPAY_KEY_ID");
+      expect(() =>
+        assertNonProductionEnv({
+          RAZORPAY_KEY_ID: "rzp_live_realSecretKey123",
+        }),
+      ).toThrow("live Razorpay keys");
+    });
+
+    it("allows test keys in staging or development", () => {
+      const issues = validateNonProductionEnv({
+        RAZORPAY_KEY_ID: "rzp_test_sandboxKey123",
+      });
+      expect(issues).toEqual([]);
+      expect(() =>
+        assertNonProductionEnv({
+          RAZORPAY_KEY_ID: "rzp_test_sandboxKey123",
+        }),
+      ).not.toThrow();
+    });
   });
 });

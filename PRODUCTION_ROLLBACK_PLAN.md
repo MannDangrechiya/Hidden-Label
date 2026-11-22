@@ -70,9 +70,9 @@ Used when a migration corrupts database relations or schema integrity is comprom
    ```
 
 2. **Execute Database Restore from Pre-Deployment Dump:**
-   Locate the pre-cutover dump file and run the restore script:
+   Locate the pre-cutover dump file and run the restore script (requires `ALLOW_PRODUCTION_RESTORE=true` for production database targets):
    ```bash
-   ./scripts/db-restore.sh /var/backups/thehiddenlabel/thl_pre_cutover_backup.dump
+   ALLOW_PRODUCTION_RESTORE=true ./scripts/db-restore.sh /var/backups/thehiddenlabel/thl_pre_cutover_backup.dump
    ```
    *Note: Operator must type `RESTORE` when prompted.*
 

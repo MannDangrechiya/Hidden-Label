@@ -149,3 +149,43 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
   ```bash
   chmod 600 apps/*/.env.production
   ```
+
+---
+
+## 7. Monitoring, Log Sanitization & Operational Safety
+
+### A. Application Health Checks
+The production stack exposes dedicated, unauthenticated health probes monitored by Docker Compose and reverse proxy:
+- **Backend API:** `GET http://backend:9000/healthz` (Interval: 10s, Timeout: 5s, Retries: 3). Verifies Medusa server process is accepting connections.
+- **Storefront:** `GET http://storefront:3000/api/health` (Interval: 10s, Timeout: 5s, Retries: 3). Verifies Next.js edge runtime and SSR response.
+- **Admin Console:** `GET http://admin:7001/api/health` (Interval: 10s, Timeout: 5s, Retries: 3). Verifies Admin Next.js response.
+- **PostgreSQL:** `pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB` (Interval: 5s, Timeout: 5s, Retries: 5).
+- **Redis:** `redis-cli -a "$$REDIS_PASSWORD" ping` (Interval: 5s, Timeout: 5s, Retries: 5).
+
+### B. Log Sanitization Standard
+Production logging strictly adheres to zero-leakage principles:
+1. **Passports, Cards & Bank Details:** Full card numbers, CVVs, card expiry dates, netbanking credentials, and UPI MPINs never touch application servers (processed exclusively within Razorpay's PCI-DSS Level 1 iframe).
+2. **Secrets & Tokens:** JWT secrets, cookie secrets, API keys, and auth headers (`Authorization: Basic/Bearer ...`) are excluded or truncated in logs.
+3. **Database URLs:** Shell and maintenance scripts (`clean-test-fixtures.ts`, `db-backup.sh`, `db-restore.sh`) route connection strings through password-masking sanitizers before logging.
+4. **Nginx Access Logs:** JSON-structured access logs record `$remote_addr`, `$status`, `$request_time`, and `$upstream_response_time`, excluding request bodies and sensitive query strings.
+
+### C. Backup Monitoring & Health Alerting
+1. **Backup Verification:** `scripts/db-backup.sh` enforces custom-format archive integrity testing (`pg_restore --list`) and non-empty file validation. Failures immediately exit with code 1.
+2. **Alert Trigger:** Configure automated alerting (via UptimeRobot, Datadog, or Sentry Cron) to notify the on-call engineer if `/var/backups/thehiddenlabel/` does not receive a verified backup within 25 hours.
+3. **Uptime Monitoring:** External synthetic pingers (e.g. BetterStack, Pingdom) should monitor `https://thehiddenlabel.com`, `https://api.thehiddenlabel.com/healthz`, and `https://admin.thehiddenlabel.com`.
+
+### D. Credential Rotation Procedures
+1. **JWT & Cookie Secrets:**
+   - Generate new 32-byte hex secrets.
+   - Update `MEDUSA_JWT_SECRET` and `MEDUSA_COOKIE_SECRET` in `apps/backend/.env.production`.
+   - Restart backend container: `docker compose -f docker-compose.prod.yml restart backend`.
+   - *Customer Impact:* Existing customer and admin sessions will expire, requiring re-login.
+2. **Database & Redis Passwords:**
+   - Update password in database/redis master via `ALTER USER ... WITH PASSWORD ...` or `CONFIG SET requirepass ...`.
+   - Update `POSTGRES_PASSWORD` / `REDIS_PASSWORD` in root `.env` and `DATABASE_URL` / `REDIS_URL` in `apps/backend/.env.production`.
+   - Restart services gracefully in order: DB/Redis -> Backend.
+3. **Razorpay API Keys:**
+   - In Razorpay Dashboard, generate new Key ID/Secret with 24-hour overlapping grace period.
+   - Update `apps/backend/.env.production` and `apps/storefront/.env.production`.
+   - Restart backend and storefront containers.
+   - Revoke old key in Razorpay Dashboard.

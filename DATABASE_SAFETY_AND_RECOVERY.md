@@ -52,44 +52,45 @@ WHERE name LIKE 'Audit Brand%'
 ```
 Currently in the local development database, **14 audit fixture records** match this pattern. Zero real luxury brands (e.g. Dior, Balenciaga, Jacquemus, Saint Laurent) match this criteria.
 
-### B. Dry-Run Capability & Safeguards
+### B. Dry-Run Capability & Multi-Layer Safeguards
 By default, executing the script runs in **READ-ONLY INSPECTION MODE**:
 ```bash
 npx tsx scripts/clean-test-fixtures.ts
 ```
 - It inspects the database, logs every matching fixture ID and handle, and exits without mutating any tables.
-- **Foreign Key Guard:** It executes a count check on `product_brand`:
+- **Fail-Closed Environment Validation:** Rejects execution if `NODE_ENV=production` or missing. Requires `--confirm-environment=<env>` where `<env>` strictly matches `NODE_ENV` (e.g. `NODE_ENV=development --confirm-environment=development` or `NODE_ENV=staging --confirm-environment=staging`).
+- **Production Host and DB Block:** Rejects execution against any database host matching production indicators (`thehiddenlabel.com`, `rds.amazonaws.com`, `cloudsql`, etc.) or database names containing `prod`.
+- **Catalogue & Foreign Key Guard:** It executes a count check on `product_brand`:
   ```sql
   SELECT count(*) FROM product_brand WHERE brand_id IN (...);
   ```
-- If any test brand has active products attached to it, the script prints an explicit warning and **aborts execution immediately**, refusing to delete the brand unless the `--force` flag is deliberately supplied.
+  If any test brand has active products attached to it, the script prints an explicit warning and **aborts execution immediately**. To prevent accidental catalogue corruption, `--force` has been decommissioned.
 - **Transaction Encapsulation:** If `--execute` is supplied, deletions execute inside a Knex transaction:
   ```typescript
   await db.transaction(async (trx) => {
-    await trx("product_brand").whereIn("brand_id", brandIds).delete();
     const deleted = await trx("brand").whereIn("id", brandIds).delete();
     console.log(`Successfully deleted ${deleted} test brand fixture(s).`);
   });
   ```
   If a network blip or lock contention occurs, the transaction rolls back completely.
+- **Credential Sanitization:** All logged database URLs automatically mask passwords.
 
-### C. Recommended Safe Production Cleanup Procedure
-1. **Never run `--execute` blind.**
-2. Run the dry-run first and review the logged IDs:
+### C. Recommended Safe Staging/Dev Cleanup Procedure
+1. Run the dry-run first and review the logged IDs:
    ```bash
-   npx tsx scripts/clean-test-fixtures.ts
+   NODE_ENV=development npx tsx scripts/clean-test-fixtures.ts
    ```
-3. Take a database backup before applying any mutation:
+2. Take a database backup before applying any mutation:
    ```bash
    ./scripts/db-backup.sh
    ```
-4. Only after inspecting the dry-run log and taking a backup, execute the deletion:
+3. Only after inspecting the dry-run log and taking a backup, execute the deletion with matching confirmation:
    ```bash
-   npx tsx scripts/clean-test-fixtures.ts --execute
+   NODE_ENV=development npx tsx scripts/clean-test-fixtures.ts --execute --confirm-environment=development
    ```
-5. Confirm zero test fixtures remain:
+4. Confirm zero test fixtures remain:
    ```bash
-   npx tsx scripts/clean-test-fixtures.ts
+   NODE_ENV=development npx tsx scripts/clean-test-fixtures.ts
    # Expected output: "No test fixtures found in database. Clean state confirmed."
    ```
 
@@ -104,16 +105,11 @@ BACKUP_DIR=/var/backups/thehiddenlabel ./scripts/db-backup.sh
 ```
 **Safety Mechanisms Built In:**
 - Script runs with `set -euo pipefail` (halts immediately on any error).
-- **Integrity Validation:** Before reporting success, the script runs a non-empty size check:
-  ```bash
-  if [ -s "${BACKUP_FILE}" ]; then
-    echo "Backup successful: ${BACKUP_FILE}"
-  else
-    echo "ERROR: Backup file is empty!" >&2
-    exit 1
-  fi
-  ```
-- **Automated Retention:** Automatically prunes dumps older than 14 days (`find ... -mtime +14 -delete`), preventing disk exhaustion.
+- **Tool Availability Check:** Verifies `pg_dump` exists before attempting execution, failing safely with a clean message.
+- **Restrictive File Permissions:** Sets `chmod 700` on the backup directory and `chmod 600` on the generated `.dump` file so only the file owner can access database dumps.
+- **Masked Credentials:** Database URLs are sanitized in all log statements to prevent password leakage into terminal/logs.
+- **Integrity Validation:** Validates non-empty size and executes `pg_restore --list "${BACKUP_FILE}"` to confirm archive header and table table of contents integrity before reporting success.
+- **Automated Retention:** Automatically prunes dumps older than 14 days (`find ... -name "thl_backup_*.dump" -mtime +14 -delete`), preventing disk exhaustion.
 
 ### B. Recommended Cron Automation
 Install this cron job on the production database host:
@@ -127,20 +123,24 @@ Install this cron job on the production database host:
 ## 4. Database Restoration Procedure (`scripts/db-restore.sh`)
 
 ### A. Execution & Operator Confirmation Gate
-To prevent catastrophic accidental database overwrites, the restore script implements an interactive safety gate:
+To prevent catastrophic accidental database overwrites, the restore script implements strict safety checks and an interactive gate:
 ```bash
 ./scripts/db-restore.sh /var/backups/thehiddenlabel/thl_backup_20261122_020000.dump
 ```
-**Operator Gate:**
-The script pauses and requires the operator to explicitly type the word **`RESTORE`**:
-```
-=============================================================================
-WARNING: This will restore database from '.../thl_backup_20261122_020000.dump'.
-Target Database: postgres://...
-=============================================================================
-Are you sure you want to proceed with restore? (type 'RESTORE'):
-```
-If anything other than `RESTORE` is entered, the process aborts instantly.
+**Safety Mechanisms:**
+- **Tool Check:** Verifies `pg_restore` and `psql` exist before starting.
+- **Pre-flight Integrity Verification:** Runs `pg_restore --list` on the backup file to guarantee the dump is uncorrupted before touching any database.
+- **Production Guard:** If target database or `NODE_ENV` indicates production, the script immediately halts unless `ALLOW_PRODUCTION_RESTORE=true` is explicitly exported in the environment.
+- **Interactive Operator Gate:** Requires typing the word **`RESTORE`** exactly to proceed:
+  ```
+  =============================================================================
+  WARNING: This will restore database from '.../thl_backup_20261122_020000.dump'.
+  Target Database: postgres://thl_prod_user:***@localhost:5432/the_hidden_label
+  Target Environment: development
+  =============================================================================
+  Are you sure you want to proceed with restore? (type 'RESTORE'):
+  ```
+- **Credential Masking:** Target URL password is masked.
 
 ### B. Restoration Execution
 Once confirmed, the script executes:
@@ -170,4 +170,51 @@ docker compose -f docker-compose.prod.yml exec postgres psql -U thl_prod_user -d
 # 3. Check for transaction lock contentions
 docker compose -f docker-compose.prod.yml exec postgres psql -U thl_prod_user -d the_hidden_label -c \
   "SELECT pid, locktype, mode, granted FROM pg_locks WHERE NOT granted;"
+```
+
+---
+
+## 6. Isolated Test Restoration Procedure (Dry-Run Drill)
+
+To verify disaster recovery readiness without impacting production or staging:
+
+### Step 1: Spin up an isolated disposable PostgreSQL instance
+```bash
+# Using Docker on a separate test port (e.g. 5439)
+docker run --name thl-test-restore -e POSTGRES_PASSWORD=test_restore_pwd -p 5439:5432 -d postgres:18-alpine
+```
+
+### Step 2: Create a fresh target database
+```bash
+docker exec -i thl-test-restore psql -U postgres -c "CREATE DATABASE thl_restore_drill;"
+```
+
+### Step 3: Run the restore script against the test target
+```bash
+DATABASE_URL="postgres://postgres:test_restore_pwd@localhost:5439/thl_restore_drill" \
+  ./scripts/db-restore.sh /var/backups/thehiddenlabel/thl_backup_YYYYMMDD_HHMMSS.dump
+```
+When prompted, type `RESTORE`.
+
+### Step 4: Run Data Integrity & Consistency Verification Queries
+Verify key tables and records restored successfully:
+```sql
+-- 1. Verify schema tables count (expect ~60+ tables across Medusa core + THL custom modules)
+SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public';
+
+-- 2. Verify applied migrations
+SELECT id, name, executed_at FROM mikro_orm_migrations ORDER BY id DESC LIMIT 5;
+
+-- 3. Verify core entities exist
+SELECT count(*) AS product_count FROM product;
+SELECT count(*) AS brand_count FROM brand;
+SELECT count(*) AS order_count FROM "order";
+
+-- 4. Verify no corrupted null foreign keys on custom relations
+SELECT count(*) AS orphaned_receipts FROM goods_receipt WHERE supplier_id IS NULL;
+```
+
+### Step 5: Teardown test container
+```bash
+docker rm -f thl-test-restore
 ```

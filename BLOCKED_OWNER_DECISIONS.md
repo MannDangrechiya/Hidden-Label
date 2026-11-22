@@ -1,94 +1,140 @@
 # THE HIDDEN LABEL — BLOCKED OWNER DECISIONS & BUSINESS BOUNDARIES
 
-**Date:** 2026-11-21  
-**Status:** Awaiting Executive Ratification  
-**Author:** Autonomous Project Orchestrator
+**Date:** 2026-11-22  
+**Status:** Pre-Launch Executive Ratification Required  
+**Author:** Production Engineering & Compliance Auditor  
 
-This document records all strategic business decisions, statutory declarations, commercial policies, and production service credentials that **cannot and must not be autonomously invented by engineering agents**. 
+This document details all commercial policies, statutory declarations, and live production credentials that **cannot and must not be autonomously invented or assumed by engineering agents**.
 
-All technical implementations have been prepared with safe, secure defaults (e.g., bidding disabled by default, test fixtures quarantined, 0 unauthorized disbursements), pending owner sign-off.
-
----
-
-## 1. Strategic Commercial Decisions
-
-### Decision 1: Resale Platform Model (BD-1)
-- **Context:** THE HIDDEN LABEL resale pillar supports both fixed-price consignment listings and two-sided stockbook bidding (offers & asks).
-- **Engineering State:** Bidding UI elements and actions have been **strictly disabled by default** (`NEXT_PUBLIC_FEATURE_BIDDING=false`). The secondary marketplace operates exclusively in fixed-price consignment mode.
-- **Owner Action Required:** Confirm whether to:
-  - **Option A (Recommended for Luxury Positioning):** Launch with Fixed-Price Verified Consignment only. Maintains curated exclusivity, avoids penny-bidding, and simplifies financial operations.
-  - **Option B:** Launch Two-Sided StockX-style Bidding with automated order matching.
-  - **Option C:** Hybrid model where bidding is enabled only for select archival/collector sneaker releases.
-
-### Decision 2: Consignment Commission Rates & Settlement Schedule (BD-3)
-- **Context:** When a consignor's pair sells, the platform retains a commission before disbursing the payout.
-- **Engineering State:** `apps/backend/src/lib/resale.ts` contains a default calculation parameter `platformFeeRate = 0.095` (9.5%).
-- **Owner Action Required:** Specify:
-  1. Standard platform commission percentage (e.g., 9.5%, 12%, or 15%).
-  2. Tiered commission schedule (e.g., reduced commission on items priced over ₹50,000).
-  3. Payout hold window: Immediate upon courier delivery vs 48-hour post-delivery inspection window.
-
-### Decision 3: Bespoke Tailoring Surcharges & Cancellation Milestones
-- **Context:** Made-to-Measure (MTM) garments are currently priced at the product's catalog retail price with ₹0 custom cutting surcharge.
-- **Owner Action Required:** Specify:
-  1. Made-to-measure pattern modification fee (flat fee or percentage).
-  2. Statutory non-cancellation milestone: Formalize in customer terms that bespoke garments become strictly non-refundable once the master tailor advances the order to `fabric_cutting`.
+Every item listed below requires formal sign-off or credential provisioning by the business owner / executive authority before public launch.
 
 ---
 
-## 2. Statutory Legal & Regulatory Disclosures
+## 1. The Six Required Owner Decisions (D1 – D6)
 
-Under the **Consumer Protection (E-Commerce) Rules, 2020** and the **Legal Metrology (Packaged Commodities) Rules, 2011**, Indian e-commerce entities must publish registered corporate identity parameters.
-
-The following values currently use development placeholders and must be supplied by the legal entity owner:
-
-| Declaration Field | Statutory Mandate | Current Placeholder in Code | Required Real Value |
-|---|---|---|---|
-| **Business Legal Entity Name** | Ministry of Corporate Affairs | `The Hidden Label Luxury Retail Pvt Ltd` | Official MCA Certificate Name |
-| **GSTIN** | Central Goods & Services Tax Act | `24AAACT0000A1Z5` (Template) | Real 15-character Gujarat GSTIN |
-| **CIN** | Companies Act, 2013 | `U74999GJ2026PTC000000` | 21-character Corporate Identity No. |
-| **Registered Office Address** | Consumer Protection Act | Sindhu Bhavan Road, Ahmedabad | Complete registered address |
-| **Grievance Officer Name** | Rule 5(3)(b) Consumer Protection | "Grievance Officer" | Designated executive's full name |
-| **Grievance Officer Contact** | Rule 5(3)(b) Consumer Protection | `grievance@thehiddenlabel.com` | Official email & direct phone |
-
----
-
-## 3. Production Service Credentials & Infrastructure Provisioning
-
-The monorepo contains production templates ([.env.production.example](file:///c:/Users/ASUS/Documents/Hidden%20Label/.env.production.example)) and multi-stage Docker containerization. Live production deployment requires provisioning the following external service accounts:
-
-### 3.1 Payment Processing (Razorpay)
-- `RAZORPAY_KEY_ID`: Live key from Razorpay Dashboard (Format: `rzp_live_...`).
-- `RAZORPAY_KEY_SECRET`: Live secret key.
-- `RAZORPAY_WEBHOOK_SECRET`: Secret configured in Razorpay Webhook settings for event URL `https://api.thehiddenlabel.com/webhooks/razorpay`.
-
-### 3.2 Logistics & Reverse Logistics (Shiprocket)
-- `SHIPROCKET_EMAIL`: Registered Shiprocket merchant account email.
-- `SHIPROCKET_PASSWORD`: Merchant account password.
-- `SHIPROCKET_WEBHOOK_TOKEN`: Pre-shared secret header configured in Shiprocket webhook settings for `https://api.thehiddenlabel.com/webhooks/shiprocket`.
-- **Default Warehouse ID:** Registered warehouse pickup location ID in Shiprocket dashboard.
-
-### 3.3 Transactional Communications (Resend & SMS)
-- `RESEND_API_KEY`: API key with domain verification for `orders@thehiddenlabel.com`.
-- **DLT Registration (India SMS):** If SMS OTP is activated, DLT-registered Entity ID and Sender ID from MSG91 or Twilio.
-
-### 3.4 Cloud Object Storage (S3 / Cloudflare R2)
-- `S3_BUCKET`: Private or public media bucket.
-- `S3_ENDPOINT`: Storage API endpoint.
-- `S3_KEY` & `S3_SECRET`: Read/write IAM access credentials.
-
-### 3.5 Monitoring & Intelligence
-- `SENTRY_DSN`: Production project DSN for backend and Next.js applications.
-- `GEMINI_API_KEY`: Google AI Studio API key for Aura-7 Style Concierge LLM replies.
+### Decision D1: Resale Consignment Commission Rate & Payout Policy
+- **Category:** Commercial & Financial Model
+- **Current Implementation Default:** 
+  - Code default in `apps/backend/src/lib/resale.ts`: `platformFeeRate = 0.095` (9.5% commission).
+  - Bidding / two-sided stockbook offers are gated and disabled (`NEXT_PUBLIC_FEATURE_BIDDING=false`). Secondary market operates as curated fixed-price consignment.
+- **Impact if Launched with Default:** 
+  - All consigned luxury goods will deduct exactly 9.5% platform fee upon sale. If the business intends a 12% or tiered rate (e.g. 12% standard, 8% above ₹50,000), revenue will be lower than budgeted.
+- **Steps Owner Must Take to Resolve:**
+  1. Determine final consignment commission rate structure (flat percentage or tiered schedule).
+  2. Decide consignor payout hold period: instant release upon delivery vs. 48-hour return/inspection hold.
+- **Code / Config Changes Needed:**
+  - Set `THL_RESALE_COMMISSION_RATE` in `apps/backend/.env.production` (e.g. `0.12`).
+  - If tiered rates or custom hold rules are required, approve the tier schedule for engineering to set in `apps/backend/src/lib/resale.ts`.
 
 ---
 
-## 4. Summary Table of Actionable Next Steps
+### Decision D2: Shipping Pricing Policy & Free Shipping Threshold
+- **Category:** Logistics & Pricing
+- **Current Implementation Default:**
+  - Flat shipping fee of ₹250 applies to orders below ₹5,000.
+  - Free insured express shipping on orders of ₹5,000 and above.
+- **Impact if Launched with Default:**
+  - Orders under ₹5,000 will be billed ₹250 shipping; orders over ₹5,000 will receive complimentary luxury insured shipping. If courier costs exceed ₹250 on inter-state heavy parcels, margins will be impacted.
+- **Steps Owner Must Take to Resolve:**
+  1. Review Shiprocket courier rate cards for Ahmedabad HQ origin to Pan-India zones.
+  2. Confirm whether ₹5,000 is the approved free-shipping threshold or if it should be ₹10,000+.
+  3. Confirm COD (Cash on Delivery) availability and COD handling fee (currently prepaid-only recommended for high-ticket luxury).
+- **Code / Config Changes Needed:**
+  - Update shipping options and thresholds in Medusa admin / database setup (`apps/backend/src/scripts/setup-shipping.ts` or via Admin Dashboard > Settings > Regions > India > Shipping Options).
 
-| # | Action Item | Owner / Department | Status | Technical Readiness |
+---
+
+### Decision D3: Customer Return, Exchange Window & Fee Policy
+- **Category:** Customer Service & Reverse Logistics
+- **Current Implementation Default:**
+  - 7-day return window from delivery date for unworn products with intact luxury security tags.
+  - Bespoke / Made-to-Measure (MTM) garments become non-cancellable and non-returnable once cutting begins (`fabric_cutting` stage).
+  - Reverse logistics shipping fee: ₹300 deducted from refund unless return is due to authenticity dispute or transit defect.
+- **Impact if Launched with Default:**
+  - Customers requesting returns within 7 days get automated RMA authorization with ₹300 reverse shipping deduction. If owner intended a "final sale / no returns on luxury sneakers" or 14-day window, policy mismatch will occur.
+- **Steps Owner Must Take to Resolve:**
+  1. Formalize the return policy: 3 days, 7 days, or exchange-only for footwear and bespoke goods.
+  2. Decide whether return shipping is free or deducted from refund.
+  3. Approve the customer-facing return policy copy for `/policies/returns`.
+- **Code / Config Changes Needed:**
+  - Update `apps/storefront/app/policies/returns/page.tsx` with finalized legal text.
+  - Configure RMA return window constant in `apps/backend/src/modules/rma/service.ts`.
+
+---
+
+### Decision D4: Statutory Business Entity Credentials & Tax Identity
+- **Category:** Legal & Statutory Compliance (India E-Commerce Rules)
+- **Current Implementation Default:**
+  - Legal Entity: *The Hidden Label Luxury Retail Pvt Ltd*
+  - GSTIN Placeholder: `24AABCT0000A1Z5` (Gujarat State Code 24)
+  - CIN Placeholder: `U52100GJ2024PTC123456`
+  - Registered Address: *Steller, 205, 2nd Floor, Sindhu Bhavan Road, Bodakdev, Ahmedabad, Gujarat 380059*
+- **Impact if Launched with Default:**
+  - **ILLEGAL IN PRODUCTION.** Generating B2C Tax Invoices with a dummy or unverified GSTIN violates the Central Goods & Services Tax (CGST) Act, 2017. Publishing placeholder CIN on website violates Companies Act, 2013.
+- **Steps Owner Must Take to Resolve:**
+  1. Provide the registered MCA Certificate of Incorporation with exact registered entity name and CIN.
+  2. Provide the verified Gujarat GSTIN certificate and principal place of business address.
+  3. Provide official bank account details linked to GSTIN for invoice generation.
+- **Code / Config Changes Needed:**
+  - Set `BUSINESS_LEGAL_NAME`, `BUSINESS_GSTIN`, `BUSINESS_CIN`, `BUSINESS_ADDRESS`, `BUSINESS_STATE_CODE=24` in `apps/backend/.env.production` and `apps/storefront/.env.production`.
+  - Re-run invoice template test to confirm valid tax breakdown (CGST+SGST for Gujarat, IGST for outside Gujarat).
+
+---
+
+### Decision D5: Grievance Officer Statutory Designation (Consumer Protection Act)
+- **Category:** Statutory Consumer Protection & DPDP Compliance
+- **Current Implementation Default:**
+  - Officer Name: *Grievance Officer* (Generic placeholder)
+  - Email: `grievance@thehiddenlabel.com`
+  - Phone: `+917900000000` (Placeholder)
+  - Working Hours: *Monday to Saturday, 10:00–19:00 IST*
+  - Address: *Steller, 205, 2nd Floor, Sindhu Bhavan Road, Bodakdev, Ahmedabad, Gujarat 380059*
+- **Impact if Launched with Default:**
+  - Violation of Rule 5(3)(b) of the *Consumer Protection (E-Commerce) Rules, 2020* and the *Digital Personal Data Protection (DPDP) Act, 2023*, which require publication of a real designated natural person's name, direct phone number, and physical office address.
+- **Steps Owner Must Take to Resolve:**
+  1. Officially designate an executive or customer care head as the Grievance Officer.
+  2. Allocate a monitored corporate email (`grievance@thehiddenlabel.com`) and phone line.
+- **Code / Config Changes Needed:**
+  - Set `GRIEVANCE_OFFICER_NAME`, `GRIEVANCE_OFFICER_EMAIL`, `GRIEVANCE_OFFICER_PHONE`, `GRIEVANCE_OFFICER_ADDRESS`, `GRIEVANCE_OFFICER_HOURS` in `apps/storefront/.env.production`.
+
+---
+
+### Decision D6: Live Payment, Logistics & Communications Accounts
+- **Category:** Production Credentials & Third-Party Gateways
+- **Current Implementation Default:**
+  - Razorpay: Emulated sandbox test mode (`rzp_test_*`). Live keys are strictly blocked from test/staging environments.
+  - Shiprocket: Mock logistics adapter.
+  - Resend: Development console logger fallback.
+  - SMS OTP: Mock echo mode (`OTP_DEV_ECHO=false` on production, pending real keys).
+- **Impact if Launched with Default:**
+  - Platform cannot process real customer credit cards, debit cards, UPI, or netbanking payments. No couriers can be booked; no real shipping labels can be printed; no transactional emails or SMS OTPs will be delivered to customers.
+- **Steps Owner Must Take to Resolve:**
+  1. **Razorpay Live Activation:** Complete merchant KYC on https://dashboard.razorpay.com, activate international & UPI rails, generate Live Key ID (`rzp_live_*`) and Key Secret, and configure webhook endpoint `https://api.thehiddenlabel.com/webhooks/razorpay`.
+  2. **Shiprocket Live Account:** Complete KYC, add wallet recharge balance, configure Ahmedabad HQ pickup location, and configure tracking webhook for `https://api.thehiddenlabel.com/webhooks/shiprocket`.
+  3. **Resend Live Account:** Add domain `thehiddenlabel.com`, configure DNS SPF, DKIM, and DMARC records on Cloudflare/Route53, and generate Live API Key (`re_*`).
+  4. **DLT SMS Registration (India):** Complete DLT telemarketer registration (e.g. Jio/Airtel/Vil DLT portal), register Entity ID, Sender ID (`THLBL`), and approved SMS OTP templates with MSG91.
+- **Code / Config Changes Needed:**
+  - Populate production values in `apps/backend/.env.production` on the production server (never in git repository).
+
+---
+
+## 2. Statutory Placeholder Protection Mechanism
+
+To prevent accidental publication of placeholder values as real claims:
+1. `apps/storefront/components/site-footer.tsx` checks environment variables and falls back to `"—"` rather than displaying hardcoded mock numbers if unset.
+2. `apps/backend/src/lib/env-guard.ts` verifies that template placeholder strings (`PROD_STRONG_PASSWORD`, `PROD_KEY_ID`, `rzp_live_PROD_KEY_ID`, etc.) cause backend initialization to abort immediately with exit code 1 when `NODE_ENV=production`.
+3. In `apps/backend/src/modules/razorpay/service.ts`, `validateOptions` prevents `rzp_test_*` keys in production and prevents `rzp_live_*` keys in staging/dev.
+4. Database fixture cleaner (`scripts/clean-test-fixtures.ts`) strictly rejects execution in `NODE_ENV=production` and requires exact `--confirm-environment` match.
+
+---
+
+## 3. Summary Sign-Off Status
+
+| Decision ID | Description | Responsible Party | Status | Technical Readiness |
 |---|---|---|---|---|
-| 1 | Ratify Resale Model (Fixed-price vs Bidding) | Founder / CEO | Awaiting Sign-off | Code implemented; bidding gated behind env flag |
-| 2 | Supply Legal Disclosures (GSTIN, CIN, Grievance Officer) | Legal / Compliance | Awaiting Data | Admin & Storefront templates ready |
-| 3 | Confirm Consignment Fee Rate & Hold Periods | Finance | Awaiting Policy | Resale math parameterized |
-| 4 | Supply Live Razorpay & Shiprocket Credentials | Operations / DevOps | Awaiting Provisioning | Emulators & sandbox suites verified |
-| 5 | Provision Production Cloud Infrastructure (PostgreSQL 16+, Redis 7, Nginx) | DevOps | Awaiting Cloud Account | Docker, Nginx, and Compose ready |
+| **D1** | Resale Commission Rate (9.5% vs 12%) | Founder / CFO | **Awaiting Decision** | Code implemented; param in backend env |
+| **D2** | Shipping Thresholds (₹5,000 free shipping) | Operations / CEO | **Awaiting Decision** | Configurable in Medusa admin / DB |
+| **D3** | Return & Exchange Policy (7-day window) | Customer Support Head | **Awaiting Decision** | Policy page and RMA engine ready |
+| **D4** | Real GSTIN, CIN & Registered Address | Legal & Compliance | **Awaiting Data** | Invoice generator and footers ready |
+| **D5** | Grievance Officer Designation | HR & Compliance | **Awaiting Data** | Grievance page and footer ready |
+| **D6** | Live Razorpay, Shiprocket & MSG91 Accounts | Operations & DevOps | **Awaiting Provisioning** | Integration services ready & tested |

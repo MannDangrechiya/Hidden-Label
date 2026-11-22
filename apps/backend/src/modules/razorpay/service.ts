@@ -70,7 +70,31 @@ export default class RazorpayPaymentProviderService extends AbstractPaymentProvi
   }
 
   static validateOptions(options: Record<string, unknown>): void {
-    void options;
+    const keyId = typeof options.key_id === "string" ? options.key_id.trim() : "";
+    const keySecret = typeof options.key_secret === "string" ? options.key_secret.trim() : "";
+    const nodeEnv = (process.env.NODE_ENV || "").toLowerCase();
+
+    if (nodeEnv === "production") {
+      if (keyId.startsWith("rzp_test_")) {
+        throw new MedusaError(
+          MedusaError.Types.INVALID_DATA,
+          "Razorpay test keys (rzp_test_*) are strictly forbidden in production mode.",
+        );
+      }
+      if (keyId.includes("PROD_KEY_ID") || keySecret.includes("PROD_RAZORPAY")) {
+        throw new MedusaError(
+          MedusaError.Types.INVALID_DATA,
+          "Razorpay options contain unconfigured template placeholders.",
+        );
+      }
+    } else if (["staging", "development", "test"].includes(nodeEnv)) {
+      if (keyId.startsWith("rzp_live_")) {
+        throw new MedusaError(
+          MedusaError.Types.INVALID_DATA,
+          "Razorpay live keys (rzp_live_*) are strictly forbidden in non-production environments to prevent accidental real charges.",
+        );
+      }
+    }
   }
 
   private isConfigured(): boolean {

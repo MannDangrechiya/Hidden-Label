@@ -243,4 +243,82 @@ describe("RazorpayPaymentProviderService (apps/backend/src/modules/razorpay/serv
       expect(actionResult.data).toEqual({ session_id: "payses_failed_01", amount: 99900 });
     });
   });
+
+  describe("validateOptions", () => {
+    const originalEnv = process.env.NODE_ENV;
+
+    it("throws MedusaError if test key is provided in production mode", () => {
+      process.env.NODE_ENV = "production";
+      try {
+        expect(() => {
+          RazorpayPaymentProviderService.validateOptions({
+            key_id: "rzp_test_1234567890",
+            key_secret: "secret123",
+          });
+        }).toThrow(/Razorpay test keys \(rzp_test_\*\) are strictly forbidden in production mode/);
+      } finally {
+        process.env.NODE_ENV = originalEnv;
+      }
+    });
+
+    it("throws MedusaError if template placeholder is provided in production mode", () => {
+      process.env.NODE_ENV = "production";
+      try {
+        expect(() => {
+          RazorpayPaymentProviderService.validateOptions({
+            key_id: "rzp_live_PROD_KEY_ID",
+            key_secret: "PROD_RAZORPAY_KEY_SECRET",
+          });
+        }).toThrow(/unconfigured template placeholders/);
+      } finally {
+        process.env.NODE_ENV = originalEnv;
+      }
+    });
+
+    it("allows valid live keys in production mode", () => {
+      process.env.NODE_ENV = "production";
+      try {
+        expect(() => {
+          RazorpayPaymentProviderService.validateOptions({
+            key_id: "rzp_live_realprod123",
+            key_secret: "realprodsecret_45678",
+          });
+        }).not.toThrow();
+      } finally {
+        process.env.NODE_ENV = originalEnv;
+      }
+    });
+
+    it("throws MedusaError if live key is provided in staging or development mode", () => {
+      for (const env of ["staging", "development", "test"]) {
+        process.env.NODE_ENV = env;
+        try {
+          expect(() => {
+            RazorpayPaymentProviderService.validateOptions({
+              key_id: "rzp_live_realprod123",
+              key_secret: "realprodsecret_45678",
+            });
+          }).toThrow(/Razorpay live keys \(rzp_live_\*\) are strictly forbidden in non-production environments/);
+        } finally {
+          process.env.NODE_ENV = originalEnv;
+        }
+      }
+    });
+
+    it("allows test keys in non-production mode", () => {
+      for (const env of ["staging", "development", "test"]) {
+        process.env.NODE_ENV = env;
+        try {
+          expect(() => {
+            RazorpayPaymentProviderService.validateOptions({
+              key_id: "rzp_test_mockkey123",
+              key_secret: "testsecret_45678",
+            });
+          }).not.toThrow();
+        } finally {
+          process.env.NODE_ENV = originalEnv;
+        }
+      }
+    });
+  });
 });
