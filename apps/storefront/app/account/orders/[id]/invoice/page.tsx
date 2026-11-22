@@ -96,6 +96,11 @@ export default async function OrderInvoicePage({ params }: PageProps) {
               {sellerLegalName}<br />
               {sellerAddress}<br />
               <strong>GSTIN:</strong> {sellerGstin || "Registration not configured"}<br />
+              {process.env.BUSINESS_CIN ? (
+                <>
+                  <strong>CIN:</strong> {process.env.BUSINESS_CIN}<br />
+                </>
+              ) : null}
               <strong>State Code:</strong> {sellerStateCode} ({sellerStateName})
             </p>
           </div>

@@ -37,9 +37,11 @@ export function SiteFooter() {
           <Link href="/brands" className="font-sans text-body-sm text-white no-underline hover:underline">
             Brands Vault
           </Link>
-          <Link href="/sell" className="font-sans text-body-sm text-white no-underline hover:underline">
-            Sell / Consign
-          </Link>
+          {process.env.NEXT_PUBLIC_ENABLE_RESALE === "true" ? (
+            <Link href="/sell" className="font-sans text-body-sm text-white no-underline hover:underline">
+              Sell / Consign
+            </Link>
+          ) : null}
           <Link href="/fit-studio" className="font-sans text-body-sm text-white no-underline hover:underline">
             Fit Studio (AI-04)
           </Link>

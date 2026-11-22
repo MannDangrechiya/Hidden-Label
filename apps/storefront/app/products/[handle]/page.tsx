@@ -205,7 +205,7 @@ export default async function ProductPage({ params }: PageProps) {
           />
 
           {/* Secondary Market Orderbook & The Price Index (AI-02) */}
-          {resaleData && resaleData.variants.length > 0 ? (
+          {process.env.NEXT_PUBLIC_ENABLE_RESALE === "true" && resaleData && resaleData.variants.length > 0 ? (
             <PriceIndexCard
               variants={resaleData.variants}
               selectedVariantId={firstAvailable?.id}

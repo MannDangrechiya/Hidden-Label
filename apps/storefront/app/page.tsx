@@ -97,12 +97,14 @@ export default async function HomePage() {
             >
               Explore The Vault →
             </Link>
-            <Link
-              href="/sell"
-              className="inline-flex min-h-12 items-center justify-center border border-emerald-600 bg-emerald-50 px-6 py-3.5 font-mono text-label-caps uppercase tracking-[0.12em] text-emerald-800 no-underline transition-colors hover:bg-emerald-100"
-            >
-              Sell / Consign
-            </Link>
+            {process.env.NEXT_PUBLIC_ENABLE_RESALE === "true" ? (
+              <Link
+                href="/sell"
+                className="inline-flex min-h-12 items-center justify-center border border-emerald-600 bg-emerald-50 px-6 py-3.5 font-mono text-label-caps uppercase tracking-[0.12em] text-emerald-800 no-underline transition-colors hover:bg-emerald-100"
+              >
+                Sell / Consign
+              </Link>
+            ) : null}
             <Link
               href="/fit-studio"
               className="inline-flex min-h-12 items-center justify-center border border-ink bg-transparent px-6 py-3.5 font-mono text-label-caps uppercase tracking-[0.12em] text-ink no-underline transition-colors hover:bg-surface-container"

@@ -36,10 +36,16 @@ const ITEMS: NavItem[] = [
 
 export function Nav({ role }: { role: AdminRole }) {
   const pathname = usePathname();
+  const enableResale = process.env.NEXT_PUBLIC_ENABLE_RESALE === "true";
 
   return (
     <nav aria-label="Admin sections" className="flex flex-col">
-      {ITEMS.filter((item) => roleAtLeast(role, item.minimum)).map((item) => {
+      {ITEMS.filter((item) => {
+        if (!enableResale && (item.href === "/resale" || item.href === "/inspections")) {
+          return false;
+        }
+        return roleAtLeast(role, item.minimum);
+      }).map((item) => {
         const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
         return (
           <Link

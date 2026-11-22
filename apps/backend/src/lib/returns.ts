@@ -11,7 +11,7 @@ import { createShiprocketReturn, isConfigured as shiprocketConfigured } from "./
 import { mergeRestockLines, restockReturn, type RestockLine, type RestockOutcome } from "./return-restock";
 import { resolveStockLocation } from "./stock-location";
 
-export const RETURN_WINDOW_DAYS = 7;
+export const RETURN_WINDOW_DAYS = Number(process.env.RETURN_WINDOW_DAYS ?? 7);
 
 export interface ReturnEligibilityInput {
   /** The order's *fulfillment* status (Medusa's OrderFulfillmentStatus) — "delivered" lives

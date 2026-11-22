@@ -164,7 +164,13 @@ export function AddToBag({
                         : "text-amber-700 font-mono text-[10px] uppercase font-semibold"
                   }`}
                 >
-                  {size.available ? (price ? formatPrice(price) : "Make Bid") : "Sold Out"}
+                  {size.available
+                    ? price
+                      ? formatPrice(price)
+                      : process.env.NEXT_PUBLIC_ENABLE_RESALE === "true"
+                        ? "Make Bid"
+                        : "Available"
+                    : "Sold Out"}
                 </span>
               </button>
             );
@@ -233,16 +239,18 @@ export function AddToBag({
       </div>
 
       {/* Sell / Consign This Pair CTA */}
-      <div className="flex items-center justify-between text-xs font-mono pt-0.5 px-0.5">
-        <span className="text-muted">Got a pair in this silhouette?</span>
-        <a
-          href={`/sell?product=${encodeURIComponent(productHandle ?? "")}&size=${encodeURIComponent(chosen?.label ?? "")}`}
-          className="font-bold text-ink hover:underline uppercase inline-flex items-center gap-1"
-        >
-          {/* D2: never fabricate a price when the real current price is missing. */}
-          {currentPrice ? `Sell from ${formatPrice(currentPrice)} →` : "List this pair →"}
-        </a>
-      </div>
+      {process.env.NEXT_PUBLIC_ENABLE_RESALE === "true" ? (
+        <div className="flex items-center justify-between text-xs font-mono pt-0.5 px-0.5">
+          <span className="text-muted">Got a pair in this silhouette?</span>
+          <a
+            href={`/sell?product=${encodeURIComponent(productHandle ?? "")}&size=${encodeURIComponent(chosen?.label ?? "")}`}
+            className="font-bold text-ink hover:underline uppercase inline-flex items-center gap-1"
+          >
+            {/* D2: never fabricate a price when the real current price is missing. */}
+            {currentPrice ? `Sell from ${formatPrice(currentPrice)} →` : "List this pair →"}
+          </a>
+        </div>
+      ) : null}
 
       {message && (
         <p

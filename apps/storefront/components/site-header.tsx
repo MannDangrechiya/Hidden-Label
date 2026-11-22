@@ -27,8 +27,9 @@ export async function SiteHeader() {
     fetchBrands().catch(() => ({ brands: [], count: 0 })),
   ]);
 
+  const enableResale = process.env.NEXT_PUBLIC_ENABLE_RESALE === "true";
   const nav = [
-    { label: "Sell", href: "/sell" },
+    ...(enableResale ? [{ label: "Sell", href: "/sell" }] : []),
     { label: "Fit Studio", href: "/fit-studio" },
   ];
 
