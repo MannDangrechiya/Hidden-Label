@@ -148,8 +148,11 @@ export default async function CartPage() {
                 <dd className="m-0 text-muted">Calculated at checkout</dd>
               </div>
               <div className="mt-2 flex justify-between border-t border-line pt-3">
-                <dt className="font-mono text-label-caps uppercase text-ink">Total</dt>
-                <dd className="m-0">
+                <div>
+                  <dt className="font-mono text-label-caps uppercase text-ink">Total</dt>
+                  <p className="font-mono text-[11px] text-muted m-0">Incl. of all taxes &amp; GST</p>
+                </div>
+                <dd className="m-0 text-right">
                   <Price value={moneyFromRupees(cart?.total ?? 0)} size="lg" />
                 </dd>
               </div>

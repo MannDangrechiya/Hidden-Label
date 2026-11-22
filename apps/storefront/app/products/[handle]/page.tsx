@@ -10,6 +10,7 @@ import { PriceIndexCard } from "@/components/price-index-card";
 import { InspectionViewer } from "@/components/inspection-viewer";
 import { FitStudioWidget } from "@/components/fit-studio-widget";
 import { ProductReviews } from "@/components/product-reviews";
+import { DeliveryChecker } from "@/components/delivery-checker";
 import {
   fetchResaleProductIndex,
   fetchInspectionCertificate,
@@ -279,10 +280,11 @@ export default async function ProductPage({ params }: PageProps) {
 
           <div className="border-t border-line pt-sp-3">
             <h2 className="mb-2 font-mono text-label-caps uppercase text-muted">Shipping &amp; returns</h2>
-            <p className="font-sans text-body-sm text-on-surface-variant">
-              Dispatched in 2–4 working days. Returns accepted within the policy window if the item
+            <p className="font-sans text-body-sm text-on-surface-variant mb-3">
+              Dispatched in 2–4 working days. Returns accepted within the 7-day policy window if the item
               is unworn with tags. All prices in INR, inclusive of duties and GST.
             </p>
+            <DeliveryChecker />
           </div>
         </div>
       </div>

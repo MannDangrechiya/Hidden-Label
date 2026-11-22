@@ -3,6 +3,8 @@ import Link from "next/link";
 import { EmptyState, ErrorState } from "@thl/ui";
 import { BackendError } from "../../../lib/backend";
 import { fetchSupportTickets } from "../../../lib/api/support";
+import { fetchCurrentAdmin, roleAtLeast } from "../../../lib/api/auth";
+import { SupportTicketList } from "./support-ticket-list";
 
 export const metadata: Metadata = { title: "Support inbox" };
 
@@ -17,8 +19,14 @@ export default async function SupportPage({
   const { status } = await searchParams;
 
   let tickets;
+  let canWrite = false;
   try {
-    tickets = await fetchSupportTickets(status);
+    [tickets, canWrite] = await Promise.all([
+      fetchSupportTickets(status),
+      fetchCurrentAdmin()
+        .then((a) => roleAtLeast(a.role, "operations"))
+        .catch(() => false),
+    ]);
   } catch (error) {
     const message = error instanceof BackendError ? error.message : "Could not load support tickets.";
     return <ErrorState message={message} />;
@@ -56,56 +64,7 @@ export default async function SupportPage({
       {tickets.length === 0 ? (
         <EmptyState title="No tickets" description="No support requests match this filter yet." />
       ) : (
-        <ul className="m-0 flex list-none flex-col gap-3 p-0">
-          {tickets.map((ticket) => (
-            <li key={ticket.id} className="border border-line p-sp-3">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-body-sm font-semibold uppercase text-ink">
-                    {ticket.display_id}
-                  </span>
-                  <span className="border border-line px-2 py-0.5 font-mono text-[10px] uppercase text-muted">
-                    {ticket.category}
-                  </span>
-                  <span
-                    className={[
-                      "px-2 py-0.5 font-mono text-[10px] uppercase",
-                      ticket.priority === "high"
-                        ? "bg-error-container text-error"
-                        : "bg-surface-container text-ink",
-                    ].join(" ")}
-                  >
-                    {ticket.priority}
-                  </span>
-                </div>
-                <span className="font-mono text-label-caps uppercase text-muted">
-                  {ticket.status.replace(/_/g, " ")}
-                </span>
-              </div>
-
-              <h2 className="mt-2 font-display text-headline-sm uppercase">{ticket.subject}</h2>
-              <p className="mt-1 whitespace-pre-line font-sans text-body-sm text-on-surface-variant">
-                {ticket.message}
-              </p>
-
-              <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-line pt-2 font-mono text-[11px] uppercase text-muted">
-                <span>{ticket.name}</span>
-                <a href={`mailto:${ticket.email}`} className="underline">
-                  {ticket.email}
-                </a>
-                {ticket.phone ? <span>{ticket.phone}</span> : null}
-                {ticket.order_id ? <span>Order {ticket.order_id}</span> : null}
-                <span>{new Date(ticket.created_at).toLocaleString("en-IN")}</span>
-              </div>
-
-              {ticket.resolution ? (
-                <p className="mt-2 border-l-2 border-ink pl-3 font-sans text-body-sm text-ink">
-                  Resolution: {ticket.resolution}
-                </p>
-              ) : null}
-            </li>
-          ))}
-        </ul>
+        <SupportTicketList initialTickets={tickets} canWrite={canWrite} />
       )}
     </div>
   );

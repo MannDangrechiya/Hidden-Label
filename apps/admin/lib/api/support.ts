@@ -26,3 +26,15 @@ export async function fetchSupportTickets(status?: string): Promise<SupportTicke
   const { tickets } = await backendFetch<{ tickets: SupportTicket[] }>(`/admin/support/tickets${qs}`);
   return tickets;
 }
+
+/** POST /admin/support/tickets/:id — updates ticket status, priority, or resolution. */
+export async function updateSupportTicket(
+  id: string,
+  patch: { status?: string; priority?: string; resolution?: string; assigned_to?: string },
+): Promise<SupportTicket> {
+  const { ticket } = await backendFetch<{ ticket: SupportTicket }>(`/admin/support/tickets/${id}`, {
+    method: "POST",
+    body: patch,
+  });
+  return ticket;
+}

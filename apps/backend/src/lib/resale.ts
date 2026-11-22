@@ -145,9 +145,8 @@ export function calculateConsignorPayout(
   platform_fee_rupees: number | null;
   estimated_payout_rupees: number | null;
 } {
-  const envRate = process.env.CONSIGNMENT_COMMISSION_RATE
-    ? Number(process.env.CONSIGNMENT_COMMISSION_RATE)
-    : null;
+  const rawRate = process.env.CONSIGNMENT_COMMISSION_RATE ?? process.env.THL_RESALE_COMMISSION_RATE;
+  const envRate = rawRate ? Number(rawRate) : null;
   const rate =
     typeof platformFeeRate === "number" && Number.isFinite(platformFeeRate)
       ? platformFeeRate
