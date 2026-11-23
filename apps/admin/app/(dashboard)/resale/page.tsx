@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { ErrorState } from "@thl/ui";
 import { fetchAdminResaleAsks, fetchAdminResaleBids } from "../../../lib/api/resale";
 import { fetchCurrentAdmin, roleAtLeast } from "../../../lib/api/auth";
@@ -9,6 +10,9 @@ export const metadata: Metadata = { title: "Resale Orderbook" };
 
 /** A-19 — Secondary market asks & bids orderbook. */
 export default async function ResalePage() {
+  // Resale is a separately gated rollout; the nav hides it, this stops a direct URL visit.
+  if (process.env.NEXT_PUBLIC_ENABLE_RESALE !== "true") notFound();
+
   let asks;
   let bids;
   let canWrite = false;

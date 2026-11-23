@@ -108,6 +108,32 @@ async function uploadRequestGuard(
 }
 
 /**
+ * Resale/consignment rollout gate.
+ *
+ * Hiding the storefront "Sell" link and the admin nav entries is presentation, not
+ * authorisation: with resale switched off a signed-in customer could still POST
+ * /store/resale/asks, place bids or read the orderbook, and staff could still publish stock
+ * from and settle consignor asks. Enabled only when explicitly set to "true";
+ * `NEXT_PUBLIC_ENABLE_RESALE` is the fallback because that is the flag the apps already read.
+ */
+function resaleEnabled(): boolean {
+  const flag = process.env.ENABLE_RESALE ?? process.env.NEXT_PUBLIC_ENABLE_RESALE;
+  return flag === "true";
+}
+
+async function resaleGateMiddleware(
+  _req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction,
+) {
+  if (resaleEnabled()) {
+    next();
+    return;
+  }
+  res.status(404).json({ type: "not_found", message: "Resale is not enabled on this store." });
+}
+
+/**
  * Intercepts POST /admin/returns/:id to execute return actions before Medusa's strict core validator rejects them.
  */
 async function adminReturnsMiddleware(
@@ -437,6 +463,28 @@ export default defineMiddlewares({
       methods: ["POST"],
       bodyParser: { preserveRawBody: true },
       middlewares: [],
+    },
+
+    // ---- Resale rollout gate (server-side, not just hidden links) ------------------------------
+    {
+      matcher: "/store/resale/asks*",
+      middlewares: [resaleGateMiddleware],
+    },
+    {
+      matcher: "/store/resale/bids*",
+      middlewares: [resaleGateMiddleware],
+    },
+    {
+      matcher: "/store/resale/products*",
+      middlewares: [resaleGateMiddleware],
+    },
+    {
+      matcher: "/admin/resale*",
+      middlewares: [resaleGateMiddleware],
+    },
+    {
+      matcher: "/admin/inspections*",
+      middlewares: [resaleGateMiddleware],
     },
 
     // ---- Write rate limits (public / authenticated) ------------------------------------------

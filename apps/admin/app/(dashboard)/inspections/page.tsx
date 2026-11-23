@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { ErrorState } from "@thl/ui";
 import { fetchAdminInspections } from "../../../lib/api/resale";
 import { fetchCurrentAdmin, roleAtLeast } from "../../../lib/api/auth";
@@ -9,6 +10,9 @@ export const metadata: Metadata = { title: "Condition Inspections" };
 
 /** A-18 — Physical unit inspection and condition verification queue (AI-03). */
 export default async function InspectionsPage() {
+  // Resale is a separately gated rollout; the nav hides it, this stops a direct URL visit.
+  if (process.env.NEXT_PUBLIC_ENABLE_RESALE !== "true") notFound();
+
   let inspections;
   let canWrite = false;
   try {

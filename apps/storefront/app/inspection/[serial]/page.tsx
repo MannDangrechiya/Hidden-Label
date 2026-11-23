@@ -17,6 +17,9 @@ export async function generateMetadata({ params }: PageProps) {
 }
 
 export default async function InspectionCertificatePage({ params }: PageProps) {
+  // Authentication certificates belong to the resale programme and must not render when it is off.
+  if (process.env.NEXT_PUBLIC_ENABLE_RESALE !== "true") notFound();
+
   const { serial } = await params;
   const inspection = await fetchInspectionCertificate(serial);
 
