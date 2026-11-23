@@ -199,12 +199,22 @@ export async function beginRazorpayPaymentAction(options: {
     if (typeof razorpayOrderId !== "string" || !razorpayOrderId) {
       return { ok: false, message: "The payment gateway did not return an order reference." };
     }
+    // The razorpay module stores the order amount in paise on the session data.
+    const rawSessionAmount = (session.data as { amount?: unknown } | undefined)?.amount;
+    const sessionAmountPaise =
+      typeof rawSessionAmount === "number" && Number.isSafeInteger(rawSessionAmount) && rawSessionAmount > 0
+        ? rawSessionAmount
+        : null;
 
     return {
       ok: true,
       keyId,
       razorpayOrderId,
-      amountPaise: Math.round((cart.total ?? 0) * 100),
+      // GAP-PAY-02: the paise amount is set by the backend razorpay module when it created the
+      // Razorpay order (parseAmountToPaise at the provider boundary). Reuse that exact value
+      // instead of re-deriving paise from `cart.total` here, so the gateway checkout dialog,
+      // the Razorpay order and the persisted order total can never disagree.
+      amountPaise: sessionAmountPaise ?? Math.round((cart.total ?? 0) * 100),
       collectionId: collection.id,
       sessionId: session.id,
     };

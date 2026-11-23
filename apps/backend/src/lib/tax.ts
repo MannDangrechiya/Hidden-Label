@@ -10,6 +10,14 @@ import { generateEntityId } from "@medusajs/framework/utils";
  *    because the catalogue is luxury apparel and footwear;
  *  - idempotent: re-running never duplicates a region or a slab.
  *
+ * It also seeds the pricing module's `price_preference` for INR as tax-inclusive. The catalogue
+ * is priced tax-inclusive (₹8,490 is what the customer pays, GST included — see the storefront
+ * copy "Inclusive of duties and GST" and `packages/shared/src/gst.ts` which splits inclusive
+ * totals). Without this preference Medusa defaults `is_tax_inclusive` to false and the tax
+ * engine stacks 18% on top of already-inclusive prices, which is exactly the ₹8,490 × 2 →
+ * ₹16,980 → ₹20,036.40 reconciliation bug. With it, the cart, checkout, order and Razorpay
+ * amount all reconcile to the tax-inclusive total and GST is applied exactly once.
+ *
  * Rate values are percentages, the unit Medusa stores and divides by 100 when it computes a
  * tax line.
  */
@@ -26,6 +34,8 @@ export interface TaxSeedResult {
   regionId: string;
   createdRates: string[];
   existingRates: string[];
+  /** True when the INR price preference had to be created or corrected. */
+  pricePreferenceUpdated: boolean;
 }
 
 export async function ensureIndiaTaxSetup(pg: Knex): Promise<TaxSeedResult> {
@@ -82,5 +92,42 @@ export async function ensureIndiaTaxSetup(pg: Knex): Promise<TaxSeedResult> {
     .whereNot({ code: "GST18" })
     .update({ is_default: false, updated_at: new Date() });
 
-  return { regionId: region.id, createdRates: created, existingRates: existing };
+  const pricePreferenceUpdated = await ensureIndiaPricePreference(pg);
+
+  return { regionId: region.id, createdRates: created, existingRates: existing, pricePreferenceUpdated };
+}
+
+/**
+ * Marks every INR price as tax-inclusive via the pricing module's `price_preference` table.
+ *
+ * Medusa resolves tax inclusivity per currency/region preference and falls back to
+ * `false` (tax-exclusive) when no preference row exists — so by default the GST18 slab is
+ * added on top of catalogue prices that already contain GST. This row makes the pricing
+ * module report `is_tax_inclusive: true`, which the cart module then carries onto line items
+ * and shipping methods, so `calculateTaxTotal` divides the inclusive price instead of
+ * stacking tax on top of it.
+ *
+ * Idempotent: creates the row once; corrects a row that exists with the wrong value.
+ */
+export async function ensureIndiaPricePreference(pg: Knex): Promise<boolean> {
+  const existing = await pg("price_preference")
+    .where({ attribute: "currency_code", value: "inr" })
+    .whereNull("deleted_at")
+    .first<{ id: string; is_tax_inclusive: boolean }>("id", "is_tax_inclusive");
+
+  if (existing) {
+    if (existing.is_tax_inclusive) return false;
+    await pg("price_preference")
+      .where({ id: existing.id })
+      .update({ is_tax_inclusive: true, updated_at: new Date() });
+    return true;
+  }
+
+  await pg("price_preference").insert({
+    id: generateEntityId(undefined, "prpref"),
+    attribute: "currency_code",
+    value: "inr",
+    is_tax_inclusive: true,
+  });
+  return true;
 }

@@ -355,6 +355,53 @@ const SCHEMA_STATEMENTS = [
      content text not null,
      recommended_product_ids jsonb null
    )`,
+  `create table price_preference (
+     id text primary key,
+     attribute text not null,
+     value text null,
+     is_tax_inclusive boolean not null default false,
+     created_at timestamptz not null default now(),
+     updated_at timestamptz not null default now(),
+     deleted_at timestamptz null
+   )`,
+  `create unique index price_preference_attribute_value
+     on price_preference (attribute, value) where deleted_at is null`,
+  // Real Medusa tax-module DDL (module @medusajs/tax migrations), mirrored here so the tax
+  // seeding code under test runs against the same shape it targets in production.
+  `create table tax_provider (
+     id text primary key,
+     is_enabled boolean not null default true
+   )`,
+  `create table tax_region (
+     id text primary key,
+     provider_id text null,
+     country_code text not null,
+     province_code text null,
+     parent_id text null,
+     metadata jsonb null,
+     created_at timestamptz not null default now(),
+     updated_at timestamptz not null default now(),
+     created_by text null,
+     deleted_at timestamptz null
+   )`,
+  `create unique index tax_region_unique_country_province
+     on tax_region (country_code, province_code) where deleted_at is null`,
+  `create table tax_rate (
+     id text primary key,
+     rate real null,
+     code text not null,
+     name text not null,
+     is_default boolean not null default false,
+     is_combinable boolean not null default false,
+     tax_region_id text not null,
+     metadata jsonb null,
+     created_at timestamptz not null default now(),
+     updated_at timestamptz not null default now(),
+     created_by text null,
+     deleted_at timestamptz null
+   )`,
+  `create unique index single_default_region
+     on tax_rate (tax_region_id) where is_default = true and deleted_at is null`,
   `create table "user" (
      id text primary key,
      email text null,
