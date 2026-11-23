@@ -24,6 +24,7 @@ export default async function HomePage() {
   // bids, price history or the concierge is only rendered when the matching flag is actually on.
   const resaleEnabled = process.env.NEXT_PUBLIC_ENABLE_RESALE === "true";
   const aiLayerEnabled = process.env.NEXT_PUBLIC_FEATURE_AI_LAYER === "true";
+  const fitStudioEnabled = process.env.NEXT_PUBLIC_FEATURE_FIT_STUDIO === "true";
 
   let products: StoreProduct[] = [];
   let error: string | null = null;
@@ -73,7 +74,7 @@ export default async function HomePage() {
 
   return (
     <main className="space-y-16 pb-16">
-      {/* CultureCircle Hero Section */}
+      {/* Hero */}
       <section className="border-b border-line bg-surface">
         <div className="mx-auto flex w-full max-w-page flex-col gap-6 px-margin py-12 sm:px-margin-tablet lg:px-margin-desktop lg:py-20">
           <div className="flex flex-wrap items-center gap-2">
@@ -112,12 +113,14 @@ export default async function HomePage() {
                 Sell / Consign
               </Link>
             ) : null}
-            <Link
-              href="/fit-studio"
-              className="inline-flex min-h-12 items-center justify-center border border-ink bg-transparent px-6 py-3.5 font-mono text-label-caps uppercase tracking-[0.12em] text-ink no-underline transition-colors hover:bg-surface-container"
-            >
-              Fit Studio (AI-04)
-            </Link>
+            {fitStudioEnabled ? (
+              <Link
+                href="/fit-studio"
+                className="inline-flex min-h-12 items-center justify-center border border-ink bg-transparent px-6 py-3.5 font-mono text-label-caps uppercase tracking-[0.12em] text-ink no-underline transition-colors hover:bg-surface-container"
+              >
+                Fit Studio
+              </Link>
+            ) : null}
           </div>
 
           {/* Quick Shop by Size Filter Bar */}
@@ -170,7 +173,10 @@ export default async function HomePage() {
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {products.map((product) => {
               const price = priceOf(product);
-              const brand = typeof product.metadata?.brand === "string" ? product.metadata.brand : "Sneaker Vault";
+              const brand =
+                typeof product.metadata?.brand === "string"
+                  ? product.metadata.brand
+                  : "The Hidden Label";
               // D2: never fabricate a price when the real calculated price is missing.
               const formattedPrice = price ? formatINR(price) : "Price unavailable";
 
@@ -211,7 +217,7 @@ export default async function HomePage() {
 
                   <div className="mt-2 pt-2 border-t border-line/60 flex items-baseline justify-between">
                     <div>
-                      <span className="block font-mono text-[9px] uppercase text-muted">Lowest Ask</span>
+                      <span className="block font-mono text-[9px] uppercase text-muted">Price</span>
                       <span className="font-sans text-sm font-bold text-ink">{formattedPrice}</span>
                     </div>
                     <span

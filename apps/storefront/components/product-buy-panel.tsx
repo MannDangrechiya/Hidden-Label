@@ -151,7 +151,7 @@ export function ProductBuyPanel({
                 {selected ? selected.label : "Select a size"}
               </span>
               <span className="font-mono text-currency-md tabular text-ink">
-                {stickyPrice ?? "Bid available"}
+                {stickyPrice ?? "Price at checkout"}
               </span>
             </div>
             <button

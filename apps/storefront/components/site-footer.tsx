@@ -42,9 +42,11 @@ export function SiteFooter() {
               Sell / Consign
             </Link>
           ) : null}
-          <Link href="/fit-studio" className="font-sans text-body-sm text-white no-underline hover:underline">
-            Fit Studio (AI-04)
-          </Link>
+          {process.env.NEXT_PUBLIC_FEATURE_FIT_STUDIO === "true" ? (
+            <Link href="/fit-studio" className="font-sans text-body-sm text-white no-underline hover:underline">
+              Fit Studio
+            </Link>
+          ) : null}
         </nav>
 
         <nav aria-label="The House" className="flex flex-col gap-2">

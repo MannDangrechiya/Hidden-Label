@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { ErrorState } from "@thl/ui";
 import { fetchAdminFitRules } from "../../../lib/api/resale";
 import { fetchCurrentAdmin, roleAtLeast } from "../../../lib/api/auth";
@@ -9,6 +10,9 @@ export const metadata: Metadata = { title: "Fit Studio Rules" };
 
 /** A-20 — Fit Studio silhouette sizing rules. */
 export default async function FitRulesPage() {
+  // Add-on: only reachable once NEXT_PUBLIC_FEATURE_FIT_STUDIO is explicitly enabled.
+  if (process.env.NEXT_PUBLIC_FEATURE_FIT_STUDIO !== "true") notFound();
+
   let rules;
   let canWrite = false;
   try {

@@ -27,7 +27,7 @@ const ITEMS: NavItem[] = [
   { href: "/promotions", label: "Promotions", code: "A-13", minimum: "support" },
   { href: "/content", label: "Content & CMS", code: "A-14", minimum: "support" },
   { href: "/reports", label: "Reports", code: "A-15", minimum: "support" },
-  { href: "/inspections", label: "Inspections (AI-03)", code: "A-18", minimum: "support" },
+  { href: "/inspections", label: "Inspections", code: "A-18", minimum: "support" },
   { href: "/resale", label: "Resale Orderbook", code: "A-19", minimum: "support" },
   { href: "/fit-rules", label: "Fit Studio Rules", code: "A-20", minimum: "support" },
   { href: "/settings", label: "Settings", code: "A-16", minimum: "manager" },
@@ -37,11 +37,15 @@ const ITEMS: NavItem[] = [
 export function Nav({ role }: { role: AdminRole }) {
   const pathname = usePathname();
   const enableResale = process.env.NEXT_PUBLIC_ENABLE_RESALE === "true";
+  const fitStudioEnabled = process.env.NEXT_PUBLIC_FEATURE_FIT_STUDIO === "true";
 
   return (
     <nav aria-label="Admin sections" className="flex flex-col">
       {ITEMS.filter((item) => {
         if (!enableResale && (item.href === "/resale" || item.href === "/inspections")) {
+          return false;
+        }
+        if (!fitStudioEnabled && item.href === "/fit-rules") {
           return false;
         }
         return roleAtLeast(role, item.minimum);

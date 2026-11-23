@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { FitStudioWidget } from "@/components/fit-studio-widget";
 
 export const metadata = {
@@ -14,10 +15,13 @@ const SILHOUETTES = [
 ];
 
 export default function FitStudioPage() {
+  // Add-on: opened only once NEXT_PUBLIC_FEATURE_FIT_STUDIO is explicitly enabled.
+  if (process.env.NEXT_PUBLIC_FEATURE_FIT_STUDIO !== "true") notFound();
+
   return (
     <main className="mx-auto w-full max-w-4xl px-margin py-sp-5 sm:px-margin-tablet lg:px-margin-desktop">
       <div className="mb-8 border-b border-line pb-6">
-        <span className="font-mono text-label-caps uppercase text-muted">AI-04 Architecture</span>
+        <span className="font-mono text-label-caps uppercase text-muted">Sizing</span>
         <h1 className="mt-1 font-display text-headline-xl uppercase text-ink">
           The Fit Studio
         </h1>

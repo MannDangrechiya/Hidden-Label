@@ -105,11 +105,11 @@ export function AddToBag({
 
   return (
     <div className="flex flex-col gap-5">
-      {/* CultureCircle Size-Wise Pricing Selector */}
+      {/* Size selector */}
       <fieldset className="flex flex-col gap-2">
         <div className="flex items-center justify-between mb-1">
           <legend className="font-mono text-label-caps uppercase text-ink font-semibold">
-            Select Size &amp; Instant Market Value:
+            Select Size &amp; Price:
           </legend>
           {/* D2: dropped the blanket "verified authentic" claim — the real per-unit
               authentication report (when one exists) renders separately below via
@@ -201,7 +201,7 @@ export function AddToBag({
         </div>
       )}
 
-      {/* CultureCircle Dual Action CTA Bar */}
+      {/* Buy CTA bar */}
       <div className="flex flex-col sm:flex-row gap-3 pt-2">
         {/* Buy Now Primary CTA */}
         <button

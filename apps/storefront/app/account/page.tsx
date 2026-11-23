@@ -117,12 +117,14 @@ export default async function AccountPage() {
             >
               Wishlist
             </Link>
-            <Link
-              href="/fit-studio"
-              className="border border-ink px-4 py-2 font-mono text-label-caps uppercase text-ink no-underline hover:bg-ink hover:text-white"
-            >
-              Fit Studio
-            </Link>
+            {process.env.NEXT_PUBLIC_FEATURE_FIT_STUDIO === "true" ? (
+              <Link
+                href="/fit-studio"
+                className="border border-ink px-4 py-2 font-mono text-label-caps uppercase text-ink no-underline hover:bg-ink hover:text-white"
+              >
+                Fit Studio
+              </Link>
+            ) : null}
             <Link
               href="/account/addresses"
               className="border border-ink px-4 py-2 font-mono text-label-caps uppercase text-ink no-underline hover:bg-ink hover:text-white"

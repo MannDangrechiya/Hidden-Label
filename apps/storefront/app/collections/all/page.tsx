@@ -12,8 +12,8 @@ import { CatalogClient } from "./catalog-client";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "The Vault Catalogue — Curated Footwear & Streetwear | The Hidden Label",
-  description: "Browse multi-brand footwear and streetwear with real-time size valuation in INR.",
+  title: "The Vault Catalogue — Curated Footwear & Apparel | The Hidden Label",
+  description: "Browse multi-brand footwear, apparel and made-to-measure tailoring from The Hidden Label.",
 };
 
 interface PageProps {
@@ -22,6 +22,7 @@ interface PageProps {
 
 export default async function CatalogPage({ searchParams }: PageProps) {
   const { size, category, page } = await searchParams;
+  const resaleEnabled = process.env.NEXT_PUBLIC_ENABLE_RESALE === "true";
   const PAGE_SIZE = 24;
   const currentPage = Math.max(1, Number(page || 1));
   const offset = (currentPage - 1) * PAGE_SIZE;
@@ -57,15 +58,16 @@ export default async function CatalogPage({ searchParams }: PageProps) {
         <div className="flex items-center gap-2">
           <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
           <span className="font-mono text-label-caps uppercase text-muted">
-            Secondary Marketplace Orderbook
+            {resaleEnabled ? "Secondary Marketplace Orderbook" : "The Vault"}
           </span>
         </div>
         <h1 className="font-display text-headline-xl uppercase text-ink">The Vault Catalogue</h1>
         <p className="font-sans text-xs text-muted max-w-2xl">
           {/* D2: no blanket authentication claim — only a unit with a real, approved inspection
               record shows an authentication badge on its own product page. */}
-          Buy immediately at the lowest ask, or place a size-specific bid. Units with a completed
-          lab inspection show their authentication report on the product page.
+          {resaleEnabled
+            ? "Buy immediately at the lowest ask, or place a size-specific bid. Units with a completed lab inspection show their authentication report on the product page."
+            : "Multi-brand footwear, apparel and made-to-measure tailoring — live size availability, dispatched nationwide from our Ahmedabad boutique."}
         </p>
         {activeCategoryName ? (
           <p className="font-mono text-label-caps uppercase text-ink">

@@ -39,7 +39,7 @@ export function FitStudioWidget({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="font-mono text-xs uppercase text-ink font-semibold">
-            Fit Studio (AI-04)
+            Fit Studio
           </span>
           <span className="font-mono text-[10px] text-muted border border-line px-1.5 py-0.2">
             Metric Sizing

@@ -73,6 +73,11 @@ function sizesFor(product: StoreProduct, resaleVariants?: VariantResaleData[]): 
 export default async function ProductPage({ params }: PageProps) {
   const { handle } = await params;
 
+  // Resale orderbook and the Fit Studio are separately gated add-ons; when a flag is off the
+  // matching data fetch and entry points are skipped entirely rather than rendered empty.
+  const resaleEnabled = process.env.NEXT_PUBLIC_ENABLE_RESALE === "true";
+  const fitStudioEnabled = process.env.NEXT_PUBLIC_FEATURE_FIT_STUDIO === "true";
+
   let product: StoreProduct | null = null;
   let error: string | null = null;
 
@@ -98,7 +103,7 @@ export default async function ProductPage({ params }: PageProps) {
 
   if (!product) notFound();
 
-  const resaleData = await fetchResaleProductIndex(handle).catch(() => null);
+  const resaleData = resaleEnabled ? await fetchResaleProductIndex(handle).catch(() => null) : null;
   const sizes = sizesFor(product, resaleData?.variants);
   const bespokeEnabled = isApparelProduct(product);
   const firstAvailable = (product.variants ?? []).find(isVariantAvailable);
@@ -188,11 +193,10 @@ export default async function ProductPage({ params }: PageProps) {
             </div>
           </div>
 
-          {/* Fit Studio Sizing Assistant (AI-04) */}
-          <FitStudioWidget
-            productTitle={product.title}
-            productHandle={product.handle}
-          />
+          {/* Fit Studio Sizing Assistant (AI-04) — gated on NEXT_PUBLIC_FEATURE_FIT_STUDIO */}
+          {fitStudioEnabled ? (
+            <FitStudioWidget productTitle={product.title} productHandle={product.handle} />
+          ) : null}
 
           <ProductBuyPanel
             sizes={sizes}
@@ -203,7 +207,7 @@ export default async function ProductPage({ params }: PageProps) {
           />
 
           {/* Secondary Market Orderbook & The Price Index (AI-02) */}
-          {process.env.NEXT_PUBLIC_ENABLE_RESALE === "true" && resaleData && resaleData.variants.length > 0 ? (
+          {resaleEnabled && resaleData && resaleData.variants.length > 0 ? (
             <PriceIndexCard
               variants={resaleData.variants}
               selectedVariantId={firstAvailable?.id}

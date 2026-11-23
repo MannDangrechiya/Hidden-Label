@@ -28,9 +28,11 @@ export async function SiteHeader() {
   ]);
 
   const enableResale = process.env.NEXT_PUBLIC_ENABLE_RESALE === "true";
+  const fitStudioEnabled = process.env.NEXT_PUBLIC_FEATURE_FIT_STUDIO === "true";
   const nav = [
+    { label: "Bespoke", href: "/collections/bespoke" },
+    ...(fitStudioEnabled ? [{ label: "Fit Studio", href: "/fit-studio" }] : []),
     ...(enableResale ? [{ label: "Sell", href: "/sell" }] : []),
-    { label: "Fit Studio", href: "/fit-studio" },
   ];
 
   return (
