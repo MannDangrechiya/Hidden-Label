@@ -11,6 +11,7 @@ import { InspectionViewer } from "@/components/inspection-viewer";
 import { FitStudioWidget } from "@/components/fit-studio-widget";
 import { ProductReviews } from "@/components/product-reviews";
 import { DeliveryChecker } from "@/components/delivery-checker";
+import { RETURN_WINDOW_DAYS } from "@/lib/return-window";
 import {
   fetchResaleProductIndex,
   fetchInspectionCertificate,
@@ -184,9 +185,6 @@ export default async function ProductPage({ params }: PageProps) {
                   Sold out — all sizes
                 </span>
               ) : null}
-              <span className="font-mono text-label-caps uppercase text-muted">
-                · Quick View enabled
-              </span>
             </div>
           </div>
 
@@ -281,8 +279,9 @@ export default async function ProductPage({ params }: PageProps) {
           <div className="border-t border-line pt-sp-3">
             <h2 className="mb-2 font-mono text-label-caps uppercase text-muted">Shipping &amp; returns</h2>
             <p className="font-sans text-body-sm text-on-surface-variant mb-3">
-              Dispatched in 2–4 working days. Returns accepted within the 7-day policy window if the item
-              is unworn with tags. All prices in INR, inclusive of duties and GST.
+              Dispatched in 2–4 working days. Returns accepted within the {RETURN_WINDOW_DAYS}-day
+              policy window if the item is unworn with tags. All prices in INR, inclusive of duties
+              and GST.
             </p>
             <DeliveryChecker />
           </div>

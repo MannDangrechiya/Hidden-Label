@@ -195,16 +195,66 @@ export async function POST(
   const operationId = claim.operationId;
 
   // 5. Gather Line Items & Create Order in Shiprocket
-  const orderItems = await pg("order_item")
-    .where({ order_id: orderId })
-    .whereNull("deleted_at");
+  //
+  // The values declared here are the parcel's insured/declared value, so they must be the real
+  // rupee amounts the customer paid. `order_item.unit_price` is null in Medusa 2.22 (the price
+  // lives on `order_line_item`) and the previous `/ 100` division under-declared every parcel by
+  // a factor of 100 while printing a confident number to the courier.
+  const orderItems = (await pg("order_item as oi")
+    .join("order_line_item as oli", "oli.id", "oi.item_id")
+    .where("oi.order_id", orderId)
+    .whereNull("oi.deleted_at")
+    .select(
+      "oi.id as id",
+      "oi.quantity as quantity",
+      "oli.product_title as product_title",
+      "oli.title as title",
+      "oli.variant_sku as variant_sku",
+      "oli.unit_price as unit_price",
+    )) as {
+    id: string;
+    quantity: number | string;
+    product_title: string | null;
+    title: string | null;
+    variant_sku: string | null;
+    unit_price: number | string | null;
+  }[];
 
-  const itemsPayload: ShiprocketOrderItem[] = orderItems.map((item: { title?: string; item_id: string; quantity: number; unit_price?: number }) => ({
-    name: item.title || "Luxury Fashion Item",
-    sku: item.item_id || "THL-SKU-01",
-    units: Number(item.quantity) || 1,
-    selling_price: Math.max(1, Number(item.unit_price || 1000) / 100),
-  }));
+  if (orderItems.length === 0) {
+    res.status(422).json({
+      type: "invalid_data",
+      message: "This order has no line items to declare to the courier.",
+    });
+    return;
+  }
+
+  const itemsPayload: ShiprocketOrderItem[] = [];
+  let declaredSubtotal = 0;
+
+  for (const item of orderItems) {
+    const unitPrice = Number(item.unit_price);
+    const units = Math.max(1, Number(item.quantity) || 1);
+
+    if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+      res.status(422).json({
+        type: "invalid_data",
+        message:
+          "At least one order line has no recorded price, so the courier declaration would be wrong. Fix the order line prices before dispatching.",
+      });
+      return;
+    }
+
+    itemsPayload.push({
+      name: item.product_title ?? item.title ?? "Luxury Fashion Item",
+      sku: item.variant_sku ?? item.id,
+      units,
+      selling_price: unitPrice,
+    });
+    declaredSubtotal += unitPrice * units;
+  }
+
+  // The declared subtotal is the sum of the real line amounts, never a guessed default.
+  declaredSubtotal = Math.round(declaredSubtotal * 100) / 100;
 
   const orderDateStr = new Date(order.created_at).toISOString().slice(0, 16).replace("T", " ");
 
@@ -226,7 +276,7 @@ export async function POST(
       shipping_is_billing: true,
       order_items: itemsPayload,
       payment_method: "Prepaid",
-      sub_total: Math.max(1, Number(order.total || 1000) / 100),
+      sub_total: declaredSubtotal,
       length: req.body?.length ?? 30,
       breadth: req.body?.breadth ?? 20,
       height: req.body?.height ?? 10,
@@ -239,9 +289,21 @@ export async function POST(
       courier_id: req.body?.courier_id,
     });
 
+    // D2: only an AWB that Shiprocket actually returned is recorded. When assignment has not
+    // produced one yet, the shipment is stored as "created" with a null AWB — never a fabricated
+    // SRMOCK… code, which would otherwise reach tracking emails and the customer's tracking page.
     const awbData = awbRes.response?.data;
-    const awbCode = awbData?.awb_code || `SRMOCK${Date.now()}`;
-    const courierName = awbData?.courier_name || "Shiprocket Express";
+    const awbCode =
+      typeof awbData?.awb_code === "string" && awbData.awb_code.trim()
+        ? awbData.awb_code.trim()
+        : null;
+    const courierName =
+      typeof awbData?.courier_name === "string" && awbData.courier_name.trim()
+        ? awbData.courier_name.trim()
+        : null;
+    const shipmentStatus: "pickup_scheduled" | "created" = awbCode
+      ? "pickup_scheduled"
+      : "created";
 
     // 7. Generate Label
     let labelUrl: string | null = null;
@@ -263,7 +325,7 @@ export async function POST(
         provider_shipment_id: String(srOrder.shipment_id),
         awb: awbCode,
         courier: courierName,
-        status: "pickup_scheduled",
+        status: shipmentStatus,
         label_url: labelUrl,
         last_synced_at: new Date(),
         created_at: new Date(),
@@ -272,11 +334,16 @@ export async function POST(
       .returning("*");
 
     await applyShipmentUpdate(pg as unknown as Knex.Transaction, shipmentRow, {
-      status: "pickup_scheduled",
-      awb: awbCode,
-      courier: courierName,
+      // Provider vocabulary, so the shared mapper lands on pickup_scheduled vs created — passing
+      // the internal status here previously mapped to "in_transit" and told customers their
+      // parcel had shipped before a courier had even scanned it.
+      status: awbCode ? "NEW" : "CREATED",
+      awb: awbCode ?? undefined,
+      courier: courierName ?? undefined,
       source: "admin",
-      note: `Shiprocket shipment created (SR Shipment ID: ${srOrder.shipment_id})`,
+      note:
+        `Shiprocket shipment created (SR Shipment ID: ${srOrder.shipment_id})` +
+        (awbCode ? "" : "; AWB assignment pending — no AWB is recorded until the courier returns one"),
     });
 
     // 9. Complete Operation Mutex
@@ -295,10 +362,11 @@ export async function POST(
       action: "shipment.dispatched",
       entityType: "shipment",
       entityId: shipmentId,
-      summary: `Shipment ${shipmentId} dispatched for Order THL-${order.display_id} via ${courierName} (AWB: ${awbCode})`,
+      summary: `Shipment ${shipmentId} created for Order THL-${order.display_id} via ${courierName ?? "Shiprocket"} (${awbCode ? `AWB ${awbCode}` : "AWB pending"})`,
       changes: {
         awb: awbCode,
         courier: courierName,
+        awb_pending: awbCode === null,
         sr_shipment_id: srOrder.shipment_id,
         warehouse: warehouse.pickup_location_code,
       },
@@ -313,7 +381,8 @@ export async function POST(
         awb: awbCode,
         courier: courierName,
         label_url: labelUrl,
-        status: "pickup_scheduled",
+        status: shipmentStatus,
+        awb_pending: awbCode === null,
         is_mock: client.isMock,
       },
     });

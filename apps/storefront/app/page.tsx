@@ -20,6 +20,11 @@ function priceOf(product: StoreProduct) {
 const POPULAR_SIZES = ["UK 6.0", "UK 7.0", "UK 7.5", "UK 8.0", "UK 8.5", "UK 9.0", "UK 9.5", "UK 10.0", "UK 11.0"];
 
 export default async function HomePage() {
+  // D7: the resale marketplace and the AI layer are separately gated. Copy that promises live
+  // bids, price history or the concierge is only rendered when the matching flag is actually on.
+  const resaleEnabled = process.env.NEXT_PUBLIC_ENABLE_RESALE === "true";
+  const aiLayerEnabled = process.env.NEXT_PUBLIC_FEATURE_AI_LAYER === "true";
+
   let products: StoreProduct[] = [];
   let error: string | null = null;
   let stockMap: Record<string, { available: number }> = {};
@@ -76,18 +81,20 @@ export default async function HomePage() {
                 inspection-before-fulfillment workflow backing it. */}
             <span className="inline-flex items-center gap-1.5 border border-emerald-500 bg-emerald-50 px-2.5 py-1 font-mono text-[11px] font-bold uppercase text-emerald-800">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
-              Resale Marketplace
+              {resaleEnabled ? "Resale Marketplace" : "Luxury Retail & Bespoke Atelier"}
             </span>
           </div>
 
           <h1 className="font-display text-headline-xl sm:text-5xl uppercase tracking-tight text-ink max-w-3xl leading-[1.08]">
-            India&rsquo;s Marketplace for Sneakers &amp; Streetwear.
+            {resaleEnabled
+              ? "India's Marketplace for Sneakers & Streetwear."
+              : "Curated Luxury Footwear & Apparel."}
           </h1>
 
           <p className="max-w-2xl font-sans text-body-md text-on-surface-variant leading-relaxed">
-            Trade pairs with size-specific market pricing, physical lab inspection records on
-            inspected units, instant buy now or custom bidding, and express domestic delivery
-            with zero import surprises.
+            {resaleEnabled
+              ? "Trade pairs with size-specific market pricing, physical lab inspection records on inspected units, instant buy now or custom bidding, and express domestic delivery with zero import surprises."
+              : "Size-specific inventory, complimentary nationwide dispatch or boutique collection at Sindhu Bhavan Road, and made-to-measure tailoring from the in-house atelier."}
           </p>
 
           <div className="flex flex-wrap items-center gap-3 pt-2">
@@ -137,7 +144,9 @@ export default async function HomePage() {
       <section className="mx-auto w-full max-w-page px-margin sm:px-margin-tablet lg:px-margin-desktop">
         <div className="mb-6 flex items-end justify-between gap-sp-3 border-b border-line pb-3">
           <div>
-            <span className="font-mono text-[11px] uppercase text-muted">Secondary Orderbook</span>
+            <span className="font-mono text-[11px] uppercase text-muted">
+              {resaleEnabled ? "Secondary Orderbook" : "The Vault"}
+            </span>
             <h2 className="font-display text-headline-md uppercase text-ink">Trending Vault Drops</h2>
           </div>
           <Link
@@ -245,9 +254,10 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* D2: no absolute "100% guarantee" / "every unit must" claim without an enforced
-          inspect-before-fulfilment workflow backing it (not built yet — see
-          docs/MASTER_PLAN.md §2). This section describes the capability honestly instead. */}
+      {/* D2/D7: the inspection, price-index and concierge programme belongs to the gated resale
+          and AI layer. With NEXT_PUBLIC_ENABLE_RESALE=false this block is not rendered at all,
+          so the storefront never advertises a marketplace it is not running. */}
+      {resaleEnabled ? (
       <section className="border-t border-b border-line bg-surface-container/20 py-16">
         <div className="mx-auto w-full max-w-page px-margin sm:px-margin-tablet lg:px-margin-desktop space-y-8">
           <div className="text-center max-w-xl mx-auto">
@@ -267,7 +277,7 @@ export default async function HomePage() {
             <div className="border border-line bg-surface p-5 space-y-2">
               <span className="font-mono text-lg">🔬</span>
               <h3 className="font-mono text-xs uppercase font-bold text-ink">
-                360° Physical Lab Inspection (AI-03)
+                360° Physical Lab Inspection
               </h3>
               <p className="font-sans text-xs text-muted leading-relaxed">
                 Multi-angle turntable photography and a manual review of box labelling, size
@@ -276,6 +286,7 @@ export default async function HomePage() {
               </p>
             </div>
 
+            {aiLayerEnabled ? (
             <div className="border border-line bg-surface p-5 space-y-2">
               <span className="font-mono text-lg">📊</span>
               <h3 className="font-mono text-xs uppercase font-bold text-ink">
@@ -285,17 +296,20 @@ export default async function HomePage() {
                 Size-specific secondary trade history with 30-day volatility curves, lowest active asks, and live buyer bids with zero hidden fees.
               </p>
             </div>
+            ) : null}
 
             <div className="border border-line bg-surface p-5 space-y-2">
               <span className="font-mono text-lg">📐</span>
               <h3 className="font-mono text-xs uppercase font-bold text-ink">
-                Fit Studio Sizing Engine (AI-04)
+                Fit Studio Sizing Engine
               </h3>
               <p className="font-sans text-xs text-muted leading-relaxed">
-                Metric foot length in millimeters mapped against silhouette toe-box geometry. Never order the wrong size again.
+                Metric foot length in millimetres mapped against silhouette toe-box geometry, so a
+                size is chosen from measurements rather than guesswork.
               </p>
             </div>
 
+            {aiLayerEnabled ? (
             <div className="border border-line bg-surface p-5 space-y-2">
               <span className="font-mono text-lg">✨</span>
               <h3 className="font-mono text-xs uppercase font-bold text-ink">
@@ -305,9 +319,11 @@ export default async function HomePage() {
                 Conversational stylist assembling streetwear rotations grounded in real-time catalogue inventory.
               </p>
             </div>
+            ) : null}
           </div>
         </div>
       </section>
+      ) : null}
     </main>
   );
 }

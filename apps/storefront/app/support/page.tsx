@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CmsPageRenderer } from "@/components/cms-page-renderer";
 import { SupportContactForm } from "@/components/support-contact-form";
 import { fetchCmsPage } from "@/lib/medusa";
+import { RETURN_WINDOW_DAYS } from "@/lib/return-window";
 import { getCurrentCustomer } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -52,7 +53,7 @@ export default async function SupportPage({ searchParams }: PageProps) {
               </p>
               <p>
                 <strong className="text-ink">How do returns work?</strong> Request a return from the
-                delivered order within 7 days; we arrange the reverse pickup.
+                delivered order within {RETURN_WINDOW_DAYS} days; we arrange the reverse pickup.
               </p>
               <p>
                 <strong className="text-ink">Refunds</strong> are returned to the same UPI account

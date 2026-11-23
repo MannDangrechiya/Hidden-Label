@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type MutableRefObject } from "react";
 import { addToCart } from "@/app/actions/cart";
 import { formatINR, moneyFromRupees } from "@thl/shared";
+import { RETURN_WINDOW_DAYS } from "@/lib/return-window";
 
 export interface SizeOption {
   variantId: string;
@@ -219,7 +220,9 @@ export function AddToBag({
                   : "Add to Bag"}
           </span>
           <span className="text-[10px] text-surface/70 tracking-normal normal-case font-sans">
-            {!chosen?.available ? "Notify concierge when restocked" : "Instant Dispatch · Guaranteed Authentic"}
+            {!chosen?.available
+              ? "Notify concierge when restocked"
+              : `Instant dispatch · ${RETURN_WINDOW_DAYS}-day returns`}
           </span>
         </button>
 
@@ -280,9 +283,9 @@ export function AddToBag({
         <div className="text-xs">
           <span className="font-mono uppercase font-bold text-ink block">Return policy</span>
           <p className="font-sans text-[11px] text-muted">
-            If something&rsquo;s wrong with your order, contact support within 7 days of delivery
-            — see the authentication report above (when available) for this unit&rsquo;s real
-            inspection status.
+            If something&rsquo;s wrong with your order, contact support within {RETURN_WINDOW_DAYS} days
+            of delivery — see the authentication report above (when available) for this
+            unit&rsquo;s real inspection status.
           </p>
         </div>
       </div>

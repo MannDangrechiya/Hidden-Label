@@ -2,6 +2,7 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import type { MedusaContainer, Logger } from "@medusajs/framework/types";
 import type { Knex } from "knex";
 import { orderEmailHtml, sendEmail } from "./email";
+import { RETURN_WINDOW_LABEL } from "./return-window";
 import { isWhatsappConfigured, sendWhatsappTemplate } from "./whatsapp";
 
 /**
@@ -309,7 +310,7 @@ export async function sendOrderDeliveredEmail(
     html: orderEmailHtml({
       heading: "Delivered",
       intro:
-        "Your order has been delivered. Returns are accepted within 7 days of delivery if the piece is unworn with its tags and original box.",
+        `Your order has been delivered. Returns are accepted within ${RETURN_WINDOW_LABEL} of delivery if the piece is unworn with its tags and original box.`,
       orderDisplayId: `THL-${order.display_id}`,
       total: inr(Number(order.total)),
       lines: [],

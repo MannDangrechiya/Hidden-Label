@@ -17,6 +17,11 @@ import {
 } from "../../../../../lib/refund-operations";
 import { MoneyParseError, toPaise, toRupeesNumber } from "../../../../../lib/money";
 import { resolveStockLocation } from "../../../../../lib/stock-location";
+import {
+  issueCancellationCreditNote,
+  refundCapturedPayment,
+  type RefundOutcome,
+} from "../../../../../lib/order-refunds";
 
 const ACTIONS = ["capture", "fulfill", "cancel", "refund"] as const;
 type Action = (typeof ACTIONS)[number];
@@ -68,6 +73,14 @@ export async function POST(
     res.status(404).json({ type: "not_found", message: "Order not found." });
     return;
   }
+
+  let cancellation:
+    | {
+        refund: RefundOutcome;
+        creditNote: { id: string; display_id: string } | null;
+        creditNoteError: string | null;
+      }
+    | null = null;
 
   try {
     if (action === "capture") {
@@ -132,6 +145,42 @@ export async function POST(
         return;
       }
       await cancelOrderWorkflow(req.scope).run({ input: { order_id: orderId } });
+
+      // R-08: cancelling a paid order returns the money and issues the GST credit note. Leaving
+      // simply a "cancelled" status kept the customer's captured payment with the provider and
+      // left the books without a statutory document for the cancelled supply.
+      const refund = await refundCapturedPayment({
+        pg,
+        scope: req.scope,
+        orderId,
+        reason: `order ${order.display_id} cancellation`,
+        actorId: actor.id,
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+
+      let creditNote: { id: string; display_id: string } | null = null;
+      let creditNoteError: string | null = null;
+
+      if (refund.kind === "refunded" || refund.kind === "already_refunded") {
+        try {
+          creditNote = await issueCancellationCreditNote(pg, {
+            orderId,
+            amountPaise: refund.amountPaise,
+            actorId: actor.id,
+            ip: meta.ip,
+            userAgent: meta.userAgent,
+          });
+        } catch (error) {
+          creditNoteError =
+            error instanceof Error ? error.message : "Credit note could not be issued.";
+          req.scope
+            .resolve(ContainerRegistrationKeys.LOGGER)
+            .warn(`Credit note for cancelled order ${orderId} failed: ${creditNoteError}`);
+        }
+      }
+
+      cancellation = { refund, creditNote, creditNoteError };
     }
 
     if (action === "refund") {
@@ -283,7 +332,7 @@ export async function POST(
     });
 
     const refreshed = await pg("order").where({ id: orderId }).first("id", "display_id", "status");
-    res.json({ order: refreshed, action });
+    res.json({ order: refreshed, action, ...(cancellation ? { cancellation } : {}) });
   } catch (error) {
     const logger = req.scope.resolve(ContainerRegistrationKeys.LOGGER);
     logger.error(`Order action ${action} failed: ${error instanceof Error ? error.stack : String(error)}`);

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { formatINR, moneyFromRupees } from "@thl/shared";
+import { cancelMyBid } from "@/lib/resale";
 
 interface CustomerBid {
   id: string;
@@ -36,14 +37,8 @@ export function CustomerBidsClient({
   const handleCancel = async (id: string) => {
     setCancellingId(id);
     try {
-      const res = await fetch(`http://localhost:9000/store/resale/bids/${id}`, {
-        method: "DELETE",
-        headers: {
-          authorization: `Bearer ${token}`,
-          "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "",
-        },
-      });
-      if (res.ok) {
+      const res = await cancelMyBid(id, token);
+      if (res.success) {
         setBids((prev) =>
           prev.map((b) => (b.id === id ? { ...b, status: "cancelled" } : b)),
         );

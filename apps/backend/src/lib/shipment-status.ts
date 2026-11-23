@@ -27,6 +27,9 @@ export const STATUS_RANK: Record<ShipmentStatus, number> = {
 };
 
 const SHIPROCKET_MAP: Record<string, ShipmentStatus> = {
+  // A Shiprocket order exists but no AWB has been assigned yet: the parcel is not in transit.
+  CREATED: "created",
+  "AWAITING AWB": "created",
   NEW: "pickup_scheduled",
   "PICKUP SCHEDULED": "pickup_scheduled",
   "PICKUP QUEUED": "pickup_scheduled",

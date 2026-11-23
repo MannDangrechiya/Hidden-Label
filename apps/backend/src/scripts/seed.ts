@@ -23,6 +23,7 @@ import {
 } from "@medusajs/medusa/core-flows";
 import { hsnForProduct, PACKAGE_BY_CATEGORY } from "../lib/hsn";
 import { ensureIndiaTaxSetup } from "../lib/tax";
+import { RETURN_WINDOW_LABEL } from "../lib/return-window";
 import { THL_MODULE } from "../modules/thl";
 import type ThlModuleService from "../modules/thl/service";
 
@@ -510,7 +511,7 @@ const PAGES = [
     slug: "policies/returns",
     kind: "policy",
     title: "Returns & refunds",
-    body: `## 7-day returns\n\nYou may request a return within 7 days of delivery if the item is unworn, with its original box and tags. Final-sale items and intimate apparel are not returnable.\n\n## How it works\n\nOpen the order in your account and choose Return. We arrange a reverse pickup. Once the item is received and inspected, the refund is issued to the original payment method within 5–7 working days.\n\n## Refund amount\n\nThe refund is based on the price you paid, not the current product price. Shipping charges are refunded only when the return is due to a fault on our side.`,
+    body: `## ${RETURN_WINDOW_LABEL} returns\n\nYou may request a return within ${RETURN_WINDOW_LABEL} of delivery if the item is unworn, with its original box and tags. Final-sale items and intimate apparel are not returnable.\n\n## How it works\n\nOpen the order in your account and choose Return. We arrange a reverse pickup. Once the item is received and inspected, the refund is issued to the original payment method within 5–7 working days.\n\n## Refund amount\n\nThe refund is based on the price you paid, not the current product price. Shipping charges are refunded only when the return is due to a fault on our side.`,
   },
   {
     slug: "policies/privacy",
@@ -546,7 +547,7 @@ const PAGES = [
     slug: "authenticity",
     kind: "page",
     title: "How we check every pair",
-    body: `## Our process\n\nEvery pair is inspected on arrival: box labelling, size tags, stitching, sole tooling and material feel. Anything that does not match the brand's own reference is returned to the supplier and never listed.\n\n## What we do not claim\n\nWe do not operate an RFID or serialised certificate programme, and we do not display a "verified authentic" badge. Our claim is the process described above, nothing more.\n\n## If something is wrong\n\nContact support within 7 days of delivery. If an inspection finds a fault, we refund in full and cover return shipping.`,
+    body: `## Our process\n\nEvery pair is inspected on arrival: box labelling, size tags, stitching, sole tooling and material feel. Anything that does not match the brand's own reference is returned to the supplier and never listed.\n\n## What we do not claim\n\nWe do not operate an RFID or serialised certificate programme, and we do not display a "verified authentic" badge. Our claim is the process described above, nothing more.\n\n## If something is wrong\n\nContact support within ${RETURN_WINDOW_LABEL} of delivery. If an inspection finds a fault, we refund in full and cover return shipping.`,
   },
 ];
 

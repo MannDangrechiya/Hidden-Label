@@ -353,3 +353,54 @@ export async function cancelMyAsk(askId: string, token: string): Promise<{ succe
     return { success: false, error: e instanceof Error ? e.message : "Network error" };
   }
 }
+
+export interface CustomerBidRecord {
+  id: string;
+  variant_id: string;
+  bid_price: number;
+  status: string;
+  expires_at: string;
+  created_at: string;
+  variant: { size: string; sku: string | null };
+  product: { id: string; title: string; handle: string; thumbnail: string | null };
+}
+
+/**
+ * Signed-in customer's own bids. Uses the configured backend origin — the account page used to
+ * fetch `http://localhost:9000` directly, which silently returned nothing on staging/production.
+ */
+export async function listMyBids(token: string): Promise<CustomerBidRecord[]> {
+  try {
+    const res = await fetch(`${MEDUSA_URL}/store/resale/bids`, {
+      headers: headers(token),
+      cache: "no-store",
+    });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { bids?: CustomerBidRecord[] };
+    return data.bids ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function cancelMyBid(
+  bidId: string,
+  token: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch(`${MEDUSA_URL}/store/resale/bids/${encodeURIComponent(bidId)}`, {
+      method: "DELETE",
+      headers: headers(token),
+    });
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as { message?: string };
+      return { success: false, error: err.message ?? "Failed to cancel bid." };
+    }
+    return { success: true };
+  } catch (e) {
+    return {
+      success: false,
+      error: e instanceof Error ? `Could not reach the marketplace: ${e.message}` : "Network error",
+    };
+  }
+}

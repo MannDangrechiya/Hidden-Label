@@ -10,8 +10,13 @@ import { computePackage } from "./package";
 import { createShiprocketReturn, isConfigured as shiprocketConfigured } from "./shiprocket";
 import { mergeRestockLines, restockReturn, type RestockLine, type RestockOutcome } from "./return-restock";
 import { resolveStockLocation } from "./stock-location";
+import { generateCreditNote } from "./credit-notes";
+import { formatPaise, toPaise } from "./money";
+import { refundCapturedPayment, type RefundOutcome } from "./order-refunds";
+import { RETURN_WINDOW_DAYS } from "./return-window";
 
-export const RETURN_WINDOW_DAYS = Number(process.env.RETURN_WINDOW_DAYS ?? 7);
+// Re-exported so existing callers/tests keep importing the window from this module.
+export { RETURN_WINDOW_DAYS };
 
 export interface ReturnEligibilityInput {
   /** The order's *fulfillment* status (Medusa's OrderFulfillmentStatus) — "delivered" lives
@@ -135,6 +140,76 @@ export async function processReturnAction(
         message: eligibility.reason ?? "This return is no longer eligible.",
       });
       return true;
+    }
+  }
+
+  // R-08: a refund is a money movement plus a statutory GST credit note, not merely a status
+  // change. The provider refund runs first (it cannot be wrapped in the DB transaction), the
+  // credit note is issued for the same amount, and only then is the request marked refunded.
+  let refundOutcome: RefundOutcome | null = null;
+  let creditNote: { id: string; display_id: string } | null = null;
+  let creditNoteError: string | null = null;
+
+  if (action === "refund") {
+    if (request.status === "refunded") {
+      res.status(422).json({
+        type: "invalid_state",
+        message: "This return has already been refunded.",
+      });
+      return true;
+    }
+
+    const requestedPaise =
+      Number(request.refund_amount) > 0 ? toPaise(request.refund_amount as string) : undefined;
+
+    const outcome = await refundCapturedPayment({
+      pg,
+      scope: req.scope,
+      orderId: request.order_id,
+      amountPaise: requestedPaise,
+      reason: `return ${request.display_id} refund`,
+      actorId: actor.id,
+      allowRetry: true,
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    if (outcome.kind === "in_progress") {
+      res.status(409).json({
+        type: "refund_in_progress",
+        message: "A refund for this return is already being processed. Retry in a moment.",
+      });
+      return true;
+    }
+
+    if (outcome.kind === "failed") {
+      res.status(502).json({
+        type: "refund_failed",
+        message: `The payment provider refund failed: ${outcome.message}. The return was not marked refunded.`,
+      });
+      return true;
+    }
+
+    refundOutcome = outcome;
+
+    // A credit note documents the returned supply. Issue it even when the money moves offline,
+    // but never let its failure hide a refund that has already happened.
+    try {
+      const note = await generateCreditNote(pg, {
+        orderId: request.order_id,
+        returnRequestId: request.id,
+        reason: "return_refund",
+        totalRefundPaise: outcome.kind === "no_payment" ? requestedPaise : outcome.amountPaise,
+        actorId: actor.id,
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+      creditNote = { id: note.creditNote.id, display_id: note.creditNote.display_id };
+    } catch (error) {
+      creditNoteError = error instanceof Error ? error.message : "Credit note could not be issued.";
+      req.scope
+        .resolve(ContainerRegistrationKeys.LOGGER)
+        .warn(`Credit note for return ${request.display_id} failed: ${creditNoteError}`);
     }
   }
 
@@ -371,14 +446,24 @@ export async function processReturnAction(
         ? "Return received, but no matching inventory level was found, so stock was not changed."
         : undefined;
 
+  const refundNote =
+    action === "refund" && refundOutcome
+      ? refundOutcome.kind === "no_payment"
+        ? "No captured online payment was found for this order — record the refund manually." +
+          (creditNote ? ` GST credit note ${creditNote.display_id} issued.` : "")
+        : `Refund of ₹${formatPaise(refundOutcome.amountPaise)} processed through the payment provider.` +
+          (creditNote
+            ? ` GST credit note ${creditNote.display_id} issued.`
+            : " The GST credit note could not be issued — see server logs.")
+      : undefined;
+
   res.json({
     return: updated,
     restock: restockOutcome ?? undefined,
-    note:
-      restockNote ??
-      (action === "refund" && request.refund_amount
-        ? "Refund recorded. Manual payments are settled offline; card payments refund through the provider."
-        : reversePickupNote),
+    refund: refundOutcome ?? undefined,
+    credit_note: creditNote ?? undefined,
+    ...(creditNoteError ? { credit_note_error: creditNoteError } : {}),
+    note: restockNote ?? refundNote ?? reversePickupNote,
   });
   return true;
 }

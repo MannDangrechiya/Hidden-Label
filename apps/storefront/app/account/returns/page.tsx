@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentCustomer } from "@/lib/session";
 import { listMyReturns, MedusaError, type StoreReturnRequest } from "@/lib/medusa";
+import { RETURN_WINDOW_DAYS } from "@/lib/return-window";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Returns & Exchanges" };
@@ -54,7 +55,7 @@ export default async function CustomerReturnsPage() {
       ) : returns.length === 0 ? (
         <EmptyState
           title="No returns requested"
-          description="Eligible delivered orders can be submitted for return or size exchange within 7 days of delivery."
+          description={`Eligible delivered orders can be submitted for return or size exchange within ${RETURN_WINDOW_DAYS} days of delivery.`}
           action={
             <Link
               href="/account/orders"

@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ReturnForm } from "@/components/return-form";
 import { getCurrentCustomer } from "@/lib/session";
 import { fetchOrder } from "@/lib/medusa";
+import { RETURN_WINDOW_DAYS } from "@/lib/return-window";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Request a return" };
@@ -40,8 +41,9 @@ export default async function ReturnRequestPage({ params }: PageProps) {
 
       <h1 className="type-headline-lg mb-2 uppercase">Request a return</h1>
       <p className="mb-sp-3 font-sans text-body-sm text-on-surface-variant">
-        Returns are accepted within 7 days of delivery for unworn items with original tags.
-        Final-sale items are not eligible. Eligibility is re-checked by our team on review.
+        Returns are accepted within {RETURN_WINDOW_DAYS} days of delivery for unworn items with
+        original tags. Final-sale items are not eligible. Eligibility is re-checked by our team on
+        review.
       </p>
 
       {bespokeItems.length > 0 && (

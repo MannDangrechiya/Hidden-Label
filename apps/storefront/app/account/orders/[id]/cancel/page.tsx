@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getCurrentCustomer } from "@/lib/session";
 import { fetchOrder } from "@/lib/medusa";
 import { CancelOrderForm } from "./cancel-client";
+import { RETURN_WINDOW_DAYS } from "@/lib/return-window";
 
 export const dynamic = "force-dynamic";
 
@@ -68,7 +69,9 @@ export default async function CancelOrderPage({ params }: PageProps) {
         <div className="border border-line bg-surface p-6">
           <p className="font-display text-headline-sm uppercase text-ink">Order already fulfilled</p>
           <p className="mt-2 font-sans text-body-sm text-muted">
-            Your order has already entered dispatch with the courier and can no longer be cancelled directly. You can request a return or exchange within 7 days once delivered.
+            Your order has already entered dispatch with the courier and can no longer be
+            cancelled directly. You can request a return or exchange within {RETURN_WINDOW_DAYS}{" "}
+            days once delivered.
           </p>
           <Link
             href={`/account/orders/${order.id}`}
