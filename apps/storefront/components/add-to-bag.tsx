@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useTransition, type MutableRefObject } fro
 import { addToCart } from "@/app/actions/cart";
 import { formatINR, moneyFromRupees } from "@thl/shared";
 import { RETURN_WINDOW_DAYS } from "@/lib/return-window";
+import { biddingEnabled, resaleEnabled } from "@/lib/feature-flags";
 
 export interface SizeOption {
   variantId: string;
@@ -168,7 +169,7 @@ export function AddToBag({
                   {size.available
                     ? price
                       ? formatPrice(price)
-                      : process.env.NEXT_PUBLIC_ENABLE_RESALE === "true"
+                      : resaleEnabled()
                         ? "Make Bid"
                         : "Available"
                     : "Sold Out"}
@@ -226,8 +227,9 @@ export function AddToBag({
           </span>
         </button>
 
-        {/* Place Bid Secondary CTA — disabled by default unless explicitly enabled via NEXT_PUBLIC_FEATURE_BIDDING */}
-        {process.env.NEXT_PUBLIC_FEATURE_BIDDING === "true" ? (
+        {/* Place Bid Secondary CTA — requires the resale programme AND the bidding flag; the
+            backend /store/resale/bids gate enforces the same state server-side. */}
+        {biddingEnabled() ? (
           <button
             type="button"
             onClick={handleBidClick}
@@ -242,7 +244,7 @@ export function AddToBag({
       </div>
 
       {/* Sell / Consign This Pair CTA */}
-      {process.env.NEXT_PUBLIC_ENABLE_RESALE === "true" ? (
+      {resaleEnabled() ? (
         <div className="flex items-center justify-between text-xs font-mono pt-0.5 px-0.5">
           <span className="text-muted">Got a pair in this silhouette?</span>
           <a

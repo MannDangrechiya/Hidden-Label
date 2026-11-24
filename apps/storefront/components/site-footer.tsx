@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { fitStudioEnabled, resaleEnabled } from "@/lib/feature-flags";
 
 export function SiteFooter() {
   return (
@@ -37,12 +38,12 @@ export function SiteFooter() {
           <Link href="/brands" className="inline-flex min-h-9 items-center font-sans text-body-sm text-white no-underline hover:underline">
             Brands Vault
           </Link>
-          {process.env.NEXT_PUBLIC_ENABLE_RESALE === "true" ? (
+          {resaleEnabled() ? (
             <Link href="/sell" className="inline-flex min-h-9 items-center font-sans text-body-sm text-white no-underline hover:underline">
               Sell / Consign
             </Link>
           ) : null}
-          {process.env.NEXT_PUBLIC_FEATURE_FIT_STUDIO === "true" ? (
+          {fitStudioEnabled() ? (
             <Link href="/fit-studio" className="inline-flex min-h-9 items-center font-sans text-body-sm text-white no-underline hover:underline">
               Fit Studio
             </Link>

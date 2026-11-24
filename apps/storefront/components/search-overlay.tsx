@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SearchBySight } from "@/components/search-by-sight";
+import { aiLayerEnabled } from "@/lib/feature-flags";
 
 interface Suggestion {
   products: { id: string; title: string; handle: string; thumbnail: string | null }[];
@@ -14,7 +15,7 @@ const EMPTY: Suggestion = { products: [], brands: [] };
 // D2/D7: Search by Sight is not yet backed by a real vision model — until
 // NEXT_PUBLIC_FEATURE_AI_LAYER is on (a real provider key is wired, see
 // docs/MASTER_PLAN.md §2.4), the entry point must not be shown to customers.
-const AI_LAYER_ENABLED = process.env.NEXT_PUBLIC_FEATURE_AI_LAYER === "true";
+const AI_LAYER_ENABLED = aiLayerEnabled();
 
 /**
  * U-06 Search Overlay — keyboard-navigable typeahead over `/api/search` (itself a same-origin

@@ -196,8 +196,13 @@ export default async function OrderInvoicePage({ params }: PageProps) {
               <p>IGST ({gst.igstPercent}%): ₹{gst.igst.toLocaleString("en-IN")}</p>
             )}
             <p>Total Tax: ₹{gst.totalTax.toLocaleString("en-IN")}</p>
+            {/* Trust note: factual only — no universal certification claim. Inspection reports
+                exist per unit (condition_inspection records) and are shown on the product page
+                and the /inspection/[serial] certificate route when one actually exists. */}
             <p className="mt-3 text-[11px] italic">
-              Every luxury good is checked and certified for authenticity prior to shipment.
+              Condition and provenance are described using the records we hold. Items that have
+              completed our physical inspection carry a per-unit inspection report, referenced on
+              the product page when available.
             </p>
           </div>
 

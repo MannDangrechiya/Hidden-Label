@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { VariantResaleData } from "@/lib/resale";
 import { formatINR, moneyFromRupees } from "@thl/shared";
 import { placeResaleBid } from "@/lib/resale";
+import { biddingEnabled as biddingEnabledFlag } from "@/lib/feature-flags";
 
 function formatRupees(amount: number): string {
   try {
@@ -71,7 +72,9 @@ export function PriceIndexCard({
   };
 
   const isUp = currentVariant.change_pct_30d >= 0;
-  const biddingEnabled = process.env.NEXT_PUBLIC_FEATURE_BIDDING === "true";
+  // Requires the resale programme too — the parent render already gates on resale, but this
+  // helper keeps the two flags coupled everywhere bidding is read.
+  const biddingEnabled = biddingEnabledFlag();
   const effectiveTab = biddingEnabled ? activeTab : "chart";
 
   return (

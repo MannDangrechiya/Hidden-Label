@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentCustomer } from "@/lib/session";
+import { resaleEnabled } from "@/lib/feature-flags";
 import { CustomerAsksClient } from "./asks-client";
 import { listMyAsks } from "@/lib/resale";
 
@@ -12,7 +13,7 @@ export const metadata = {
 
 export default async function CustomerAsksPage() {
   // Resale is a separately gated rollout; without this a direct URL still lists consignments.
-  if (process.env.NEXT_PUBLIC_ENABLE_RESALE !== "true") notFound();
+  if (!resaleEnabled()) notFound();
 
   const session = await getCurrentCustomer().catch(() => null);
   if (!session) redirect("/login");

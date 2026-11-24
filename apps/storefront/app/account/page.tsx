@@ -6,6 +6,7 @@ import { deleteAccountAction, updateProfileAction } from "@/app/actions/account"
 import { DownloadMyDataButton } from "@/components/download-my-data-button";
 import { ProfileForm } from "@/components/profile-form";
 import { getCurrentCustomer } from "@/lib/session";
+import { fitStudioEnabled, resaleEnabled } from "@/lib/feature-flags";
 import { listMyOrders, MedusaError } from "@/lib/medusa";
 
 export const dynamic = "force-dynamic";
@@ -95,7 +96,7 @@ export default async function AccountPage() {
             >
               Returns
             </Link>
-            {process.env.NEXT_PUBLIC_ENABLE_RESALE === "true" ? (
+            {resaleEnabled() ? (
               <>
                 <Link
                   href="/account/bids"
@@ -117,7 +118,7 @@ export default async function AccountPage() {
             >
               Wishlist
             </Link>
-            {process.env.NEXT_PUBLIC_FEATURE_FIT_STUDIO === "true" ? (
+            {fitStudioEnabled() ? (
               <Link
                 href="/fit-studio"
                 className="border border-ink px-4 py-2 font-mono text-label-caps uppercase text-ink no-underline hover:bg-ink hover:text-white"

@@ -4,6 +4,7 @@ import { MegaMenu } from "@/components/mega-menu";
 import { MobileNav } from "@/components/mobile-nav";
 import { SearchOverlay } from "@/components/search-overlay";
 import { readCartId } from "@/lib/cart-cookie";
+import { fitStudioEnabled, resaleEnabled } from "@/lib/feature-flags";
 import { fetchBrands, fetchCart, fetchCategories } from "@/lib/medusa";
 import { getCurrentCustomer } from "@/lib/session";
 
@@ -34,11 +35,11 @@ export async function SiteHeader() {
     fetchBrands().catch(() => ({ brands: [], count: 0 })),
   ]);
 
-  const enableResale = process.env.NEXT_PUBLIC_ENABLE_RESALE === "true";
-  const fitStudioEnabled = process.env.NEXT_PUBLIC_FEATURE_FIT_STUDIO === "true";
+  const enableResale = resaleEnabled();
+  const fitStudioOn = fitStudioEnabled();
   const nav = [
     { label: "Bespoke", href: "/collections/bespoke" },
-    ...(fitStudioEnabled ? [{ label: "Fit Studio", href: "/fit-studio" }] : []),
+    ...(fitStudioOn ? [{ label: "Fit Studio", href: "/fit-studio" }] : []),
     ...(enableResale ? [{ label: "Sell", href: "/sell" }] : []),
   ];
 

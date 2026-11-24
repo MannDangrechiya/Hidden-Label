@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getCurrentCustomer } from "@/lib/session";
+import { resaleEnabled } from "@/lib/feature-flags";
 import { fetchProducts } from "@/lib/medusa";
 import { SellClient } from "./sell-client";
 
@@ -15,7 +16,7 @@ export default async function SellPage({
 }: {
   searchParams: Promise<{ product?: string; size?: string }>;
 }) {
-  if (process.env.NEXT_PUBLIC_ENABLE_RESALE !== "true") {
+  if (!resaleEnabled()) {
     return (
       <main className="mx-auto w-full max-w-page px-margin py-sp-5 sm:px-margin-tablet lg:px-margin-desktop">
         <div className="max-w-xl mx-auto border border-line bg-surface p-10 text-center space-y-4">

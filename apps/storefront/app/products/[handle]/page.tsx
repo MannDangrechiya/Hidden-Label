@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import type { SizeOption } from "@/components/add-to-bag";
 import { ProductBuyPanel } from "@/components/product-buy-panel";
 import { isApparelProduct } from "@/lib/catalog";
+import { fitStudioEnabled, resaleEnabled } from "@/lib/feature-flags";
 import { WishlistButton } from "@/components/wishlist-button";
 import { PriceIndexCard } from "@/components/price-index-card";
 import { InspectionViewer } from "@/components/inspection-viewer";
@@ -75,8 +76,8 @@ export default async function ProductPage({ params }: PageProps) {
 
   // Resale orderbook and the Fit Studio are separately gated add-ons; when a flag is off the
   // matching data fetch and entry points are skipped entirely rather than rendered empty.
-  const resaleEnabled = process.env.NEXT_PUBLIC_ENABLE_RESALE === "true";
-  const fitStudioEnabled = process.env.NEXT_PUBLIC_FEATURE_FIT_STUDIO === "true";
+  const resaleOn = resaleEnabled();
+  const fitStudioOn = fitStudioEnabled();
 
   let product: StoreProduct | null = null;
   let error: string | null = null;
@@ -103,7 +104,7 @@ export default async function ProductPage({ params }: PageProps) {
 
   if (!product) notFound();
 
-  const resaleData = resaleEnabled ? await fetchResaleProductIndex(handle).catch(() => null) : null;
+  const resaleData = resaleOn ? await fetchResaleProductIndex(handle).catch(() => null) : null;
   const sizes = sizesFor(product, resaleData?.variants);
   const bespokeEnabled = isApparelProduct(product);
   const firstAvailable = (product.variants ?? []).find(isVariantAvailable);
@@ -194,7 +195,7 @@ export default async function ProductPage({ params }: PageProps) {
           </div>
 
           {/* Fit Studio Sizing Assistant (AI-04) — gated on NEXT_PUBLIC_FEATURE_FIT_STUDIO */}
-          {fitStudioEnabled ? (
+          {fitStudioOn ? (
             <FitStudioWidget productTitle={product.title} productHandle={product.handle} />
           ) : null}
 
@@ -207,7 +208,7 @@ export default async function ProductPage({ params }: PageProps) {
           />
 
           {/* Secondary Market Orderbook & The Price Index (AI-02) */}
-          {resaleEnabled && resaleData && resaleData.variants.length > 0 ? (
+          {resaleOn && resaleData && resaleData.variants.length > 0 ? (
             <PriceIndexCard
               variants={resaleData.variants}
               selectedVariantId={firstAvailable?.id}

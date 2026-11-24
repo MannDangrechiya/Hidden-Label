@@ -116,12 +116,59 @@ async function uploadRequestGuard(
  * from and settle consignor asks. Enabled only when explicitly set to "true";
  * `NEXT_PUBLIC_ENABLE_RESALE` is the fallback because that is the flag the apps already read.
  */
-function resaleEnabled(): boolean {
+export function resaleEnabled(): boolean {
   const flag = process.env.ENABLE_RESALE ?? process.env.NEXT_PUBLIC_ENABLE_RESALE;
   return flag === "true";
 }
 
-async function resaleGateMiddleware(
+/**
+ * AI rollout gate. Same principle as the resale gate: hiding the concierge widget and the
+ * Search-by-Sight entry point is presentation, not authorisation — without a server-side gate,
+ * POST /store/concierge/chat and POST /store/sight-search stay fully callable while the
+ * storefront hides the buttons. Both are honest keyword/grounded-catalogue features with a
+ * real optional Gemini backend, but they only ship to customers when the AI layer flag is
+ * explicitly approved on both sides. Enabled only when explicitly set to "true".
+ */
+export function aiLayerEnabled(): boolean {
+  const flag = process.env.FEATURE_AI_LAYER ?? process.env.NEXT_PUBLIC_FEATURE_AI_LAYER;
+  return flag === "true";
+}
+
+export async function aiLayerGateMiddleware(
+  _req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction,
+) {
+  if (aiLayerEnabled()) {
+    next();
+    return;
+  }
+  res.status(404).json({ type: "not_found", message: "This feature is not enabled on this store." });
+}
+
+/**
+ * Fit Studio rollout gate, mirroring the resale and AI gates: the storefront and admin hide
+ * their entries via NEXT_PUBLIC_FEATURE_FIT_STUDIO, and the fit profile / recommendation and
+ * fit-rule APIs refuse to operate without the same explicit approval.
+ */
+export function fitStudioEnabled(): boolean {
+  const flag = process.env.FEATURE_FIT_STUDIO ?? process.env.NEXT_PUBLIC_FEATURE_FIT_STUDIO;
+  return flag === "true";
+}
+
+export async function fitStudioGateMiddleware(
+  _req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction,
+) {
+  if (fitStudioEnabled()) {
+    next();
+    return;
+  }
+  res.status(404).json({ type: "not_found", message: "This feature is not enabled on this store." });
+}
+
+export async function resaleGateMiddleware(
   _req: MedusaRequest,
   res: MedusaResponse,
   next: MedusaNextFunction,
@@ -485,6 +532,32 @@ export default defineMiddlewares({
     {
       matcher: "/admin/inspections*",
       middlewares: [resaleGateMiddleware],
+    },
+    // Storefront inspection certificates are part of the resale programme: the /inspection/[serial]
+    // page is gated on the same flag, so the report API must refuse to serve when it is off.
+    {
+      matcher: "/store/inspections*",
+      middlewares: [resaleGateMiddleware],
+    },
+
+    // ---- AI rollout gate (server-side, not just hidden entry points) ------------------------
+    {
+      matcher: "/store/concierge/chat*",
+      middlewares: [aiLayerGateMiddleware],
+    },
+    {
+      matcher: "/store/sight-search*",
+      middlewares: [aiLayerGateMiddleware],
+    },
+
+    // ---- Fit Studio rollout gate -----------------------------------------------------------
+    {
+      matcher: "/store/fit/*",
+      middlewares: [fitStudioGateMiddleware],
+    },
+    {
+      matcher: "/admin/fit-rules*",
+      middlewares: [fitStudioGateMiddleware],
     },
 
     // ---- Write rate limits (public / authenticated) ------------------------------------------

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { fetchInspectionCertificate } from "@/lib/resale";
+import { resaleEnabled } from "@/lib/feature-flags";
 import { InspectionViewer } from "@/components/inspection-viewer";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ export async function generateMetadata({ params }: PageProps) {
 
 export default async function InspectionCertificatePage({ params }: PageProps) {
   // Authentication certificates belong to the resale programme and must not render when it is off.
-  if (process.env.NEXT_PUBLIC_ENABLE_RESALE !== "true") notFound();
+  if (!resaleEnabled()) notFound();
 
   const { serial } = await params;
   const inspection = await fetchInspectionCertificate(serial);

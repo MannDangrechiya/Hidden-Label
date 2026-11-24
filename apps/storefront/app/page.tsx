@@ -2,6 +2,11 @@ import { moneyFromRupees, formatINR } from "@thl/shared";
 import { ErrorState } from "@thl/ui";
 import Link from "next/link";
 import {
+  aiLayerEnabled,
+  fitStudioEnabled,
+  resaleEnabled,
+} from "@/lib/feature-flags";
+import {
   backendUrl,
   fetchBrands,
   fetchProducts,
@@ -22,9 +27,9 @@ const POPULAR_SIZES = ["UK 6.0", "UK 7.0", "UK 7.5", "UK 8.0", "UK 8.5", "UK 9.0
 export default async function HomePage() {
   // D7: the resale marketplace and the AI layer are separately gated. Copy that promises live
   // bids, price history or the concierge is only rendered when the matching flag is actually on.
-  const resaleEnabled = process.env.NEXT_PUBLIC_ENABLE_RESALE === "true";
-  const aiLayerEnabled = process.env.NEXT_PUBLIC_FEATURE_AI_LAYER === "true";
-  const fitStudioEnabled = process.env.NEXT_PUBLIC_FEATURE_FIT_STUDIO === "true";
+  const resaleOn = resaleEnabled();
+  const aiOn = aiLayerEnabled();
+  const fitStudioOn = fitStudioEnabled();
 
   let products: StoreProduct[] = [];
   let error: string | null = null;
@@ -82,18 +87,18 @@ export default async function HomePage() {
                 inspection-before-fulfillment workflow backing it. */}
             <span className="inline-flex items-center gap-1.5 border border-emerald-500 bg-emerald-50 px-2.5 py-1 font-mono text-[11px] font-bold uppercase text-emerald-800">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
-              {resaleEnabled ? "Resale Marketplace" : "Luxury Retail & Bespoke Atelier"}
+              {resaleOn ? "Resale Marketplace" : "Luxury Retail & Bespoke Atelier"}
             </span>
           </div>
 
           <h1 className="font-display text-headline-xl sm:text-5xl uppercase tracking-tight text-ink max-w-3xl leading-[1.08]">
-            {resaleEnabled
+            {resaleOn
               ? "India's Marketplace for Sneakers & Streetwear."
               : "Curated Luxury Footwear & Apparel."}
           </h1>
 
           <p className="max-w-2xl font-sans text-body-md text-on-surface-variant leading-relaxed">
-            {resaleEnabled
+            {resaleOn
               ? "Trade pairs with size-specific market pricing, physical lab inspection records on inspected units, instant buy now or custom bidding, and express domestic delivery with zero import surprises."
               : "Size-specific inventory, complimentary nationwide dispatch or boutique collection at Sindhu Bhavan Road, and made-to-measure tailoring from the in-house atelier."}
           </p>
@@ -105,7 +110,7 @@ export default async function HomePage() {
             >
               Explore The Vault →
             </Link>
-            {process.env.NEXT_PUBLIC_ENABLE_RESALE === "true" ? (
+            {resaleOn ? (
               <Link
                 href="/sell"
                 className="inline-flex min-h-12 items-center justify-center border border-emerald-600 bg-emerald-50 px-6 py-3.5 font-mono text-label-caps uppercase tracking-[0.12em] text-emerald-800 no-underline transition-colors hover:bg-emerald-100"
@@ -113,7 +118,7 @@ export default async function HomePage() {
                 Sell / Consign
               </Link>
             ) : null}
-            {fitStudioEnabled ? (
+            {fitStudioOn ? (
               <Link
                 href="/fit-studio"
                 className="inline-flex min-h-12 items-center justify-center border border-ink bg-transparent px-6 py-3.5 font-mono text-label-caps uppercase tracking-[0.12em] text-ink no-underline transition-colors hover:bg-surface-container"
@@ -148,7 +153,7 @@ export default async function HomePage() {
         <div className="mb-6 flex items-end justify-between gap-sp-3 border-b border-line pb-3">
           <div>
             <span className="font-mono text-[11px] uppercase text-muted">
-              {resaleEnabled ? "Secondary Orderbook" : "The Vault"}
+              {resaleOn ? "Secondary Orderbook" : "The Vault"}
             </span>
             <h2 className="font-display text-headline-md uppercase text-ink">Trending Vault Drops</h2>
           </div>
@@ -263,7 +268,7 @@ export default async function HomePage() {
       {/* D2/D7: the inspection, price-index and concierge programme belongs to the gated resale
           and AI layer. With NEXT_PUBLIC_ENABLE_RESALE=false this block is not rendered at all,
           so the storefront never advertises a marketplace it is not running. */}
-      {resaleEnabled ? (
+      {resaleOn ? (
       <section className="border-t border-b border-line bg-surface-container/20 py-16">
         <div className="mx-auto w-full max-w-page px-margin sm:px-margin-tablet lg:px-margin-desktop space-y-8">
           <div className="text-center max-w-xl mx-auto">
@@ -292,7 +297,7 @@ export default async function HomePage() {
               </p>
             </div>
 
-            {aiLayerEnabled ? (
+            {aiOn ? (
             <div className="border border-line bg-surface p-5 space-y-2">
               <span className="font-mono text-lg">📊</span>
               <h3 className="font-mono text-xs uppercase font-bold text-ink">
@@ -315,7 +320,7 @@ export default async function HomePage() {
               </p>
             </div>
 
-            {aiLayerEnabled ? (
+            {aiOn ? (
             <div className="border border-line bg-surface p-5 space-y-2">
               <span className="font-mono text-lg">✨</span>
               <h3 className="font-mono text-xs uppercase font-bold text-ink">

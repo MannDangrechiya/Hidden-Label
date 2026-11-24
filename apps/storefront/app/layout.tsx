@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/site-header";
 import { StyleConcierge } from "@/components/style-concierge";
 import { MarketTicker } from "@/components/market-ticker";
 import "./globals.css";
+import { aiLayerEnabled } from "@/lib/feature-flags";
 
 // Self-hosted at build time by next/font — no runtime CDN request, no layout shift.
 const syne = Syne({
@@ -38,7 +39,7 @@ export const metadata: Metadata = {
 // D2/D7: the concierge chat is not yet backed by a real LLM — until
 // NEXT_PUBLIC_FEATURE_AI_LAYER is on (a real provider key is wired, see
 // docs/MASTER_PLAN.md §2.4), it must not be shown to customers.
-const AI_LAYER_ENABLED = process.env.NEXT_PUBLIC_FEATURE_AI_LAYER === "true";
+const AI_LAYER_ENABLED = aiLayerEnabled();
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (

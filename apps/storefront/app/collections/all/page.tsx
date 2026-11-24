@@ -8,6 +8,7 @@ import {
   type StoreProduct,
 } from "@/lib/medusa";
 import { CatalogClient } from "./catalog-client";
+import { resaleEnabled } from "@/lib/feature-flags";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ interface PageProps {
 
 export default async function CatalogPage({ searchParams }: PageProps) {
   const { size, category, page } = await searchParams;
-  const resaleEnabled = process.env.NEXT_PUBLIC_ENABLE_RESALE === "true";
+  const resaleOn = resaleEnabled();
   const PAGE_SIZE = 24;
   const currentPage = Math.max(1, Number(page || 1));
   const offset = (currentPage - 1) * PAGE_SIZE;
@@ -58,14 +59,14 @@ export default async function CatalogPage({ searchParams }: PageProps) {
         <div className="flex items-center gap-2">
           <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
           <span className="font-mono text-label-caps uppercase text-muted">
-            {resaleEnabled ? "Secondary Marketplace Orderbook" : "The Vault"}
+            {resaleOn ? "Secondary Marketplace Orderbook" : "The Vault"}
           </span>
         </div>
         <h1 className="font-display text-headline-xl uppercase text-ink">The Vault Catalogue</h1>
         <p className="font-sans text-xs text-muted max-w-2xl">
           {/* D2: no blanket authentication claim — only a unit with a real, approved inspection
               record shows an authentication badge on its own product page. */}
-          {resaleEnabled
+          {resaleOn
             ? "Buy immediately at the lowest ask, or place a size-specific bid. Units with a completed lab inspection show their authentication report on the product page."
             : "Multi-brand footwear, apparel and made-to-measure tailoring — live size availability, dispatched nationwide from our Ahmedabad boutique."}
         </p>
