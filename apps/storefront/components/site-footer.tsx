@@ -22,28 +22,28 @@ export function SiteFooter() {
 
         <nav aria-label="Shop" className="flex flex-col gap-2">
           <span className="font-mono text-label-caps uppercase text-white/60">Shop</span>
-          <Link href="/collections/all" className="font-sans text-body-sm text-white no-underline hover:underline">
+          <Link href="/collections/all" className="inline-flex min-h-9 items-center font-sans text-body-sm text-white no-underline hover:underline">
             All Products
           </Link>
-          <Link href="/collections/bespoke" className="font-sans text-body-sm text-white no-underline hover:underline">
+          <Link href="/collections/bespoke" className="inline-flex min-h-9 items-center font-sans text-body-sm text-white no-underline hover:underline">
             Custom Bespoke Studio
           </Link>
-          <Link href="/collections/footwear" className="font-sans text-body-sm text-white no-underline hover:underline">
+          <Link href="/collections/footwear" className="inline-flex min-h-9 items-center font-sans text-body-sm text-white no-underline hover:underline">
             Footwear &amp; Sneakers
           </Link>
-          <Link href="/collections/menswear" className="font-sans text-body-sm text-white no-underline hover:underline">
+          <Link href="/collections/menswear" className="inline-flex min-h-9 items-center font-sans text-body-sm text-white no-underline hover:underline">
             Menswear
           </Link>
-          <Link href="/brands" className="font-sans text-body-sm text-white no-underline hover:underline">
+          <Link href="/brands" className="inline-flex min-h-9 items-center font-sans text-body-sm text-white no-underline hover:underline">
             Brands Vault
           </Link>
           {process.env.NEXT_PUBLIC_ENABLE_RESALE === "true" ? (
-            <Link href="/sell" className="font-sans text-body-sm text-white no-underline hover:underline">
+            <Link href="/sell" className="inline-flex min-h-9 items-center font-sans text-body-sm text-white no-underline hover:underline">
               Sell / Consign
             </Link>
           ) : null}
           {process.env.NEXT_PUBLIC_FEATURE_FIT_STUDIO === "true" ? (
-            <Link href="/fit-studio" className="font-sans text-body-sm text-white no-underline hover:underline">
+            <Link href="/fit-studio" className="inline-flex min-h-9 items-center font-sans text-body-sm text-white no-underline hover:underline">
               Fit Studio
             </Link>
           ) : null}
@@ -51,22 +51,22 @@ export function SiteFooter() {
 
         <nav aria-label="The House" className="flex flex-col gap-2">
           <span className="font-mono text-label-caps uppercase text-white/60">The House</span>
-          <Link href="/about" className="font-sans text-body-sm text-white no-underline hover:underline">
+          <Link href="/about" className="inline-flex min-h-9 items-center font-sans text-body-sm text-white no-underline hover:underline">
             About The House
           </Link>
-          <Link href="/authenticity" className="font-sans text-body-sm text-white no-underline hover:underline">
+          <Link href="/authenticity" className="inline-flex min-h-9 items-center font-sans text-body-sm text-white no-underline hover:underline">
             Authenticity Protocol
           </Link>
-          <Link href="/size-guide" className="font-sans text-body-sm text-white no-underline hover:underline">
+          <Link href="/size-guide" className="inline-flex min-h-9 items-center font-sans text-body-sm text-white no-underline hover:underline">
             Size &amp; Fit Guide
           </Link>
-          <Link href="/support" className="font-sans text-body-sm text-white no-underline hover:underline">
+          <Link href="/support" className="inline-flex min-h-9 items-center font-sans text-body-sm text-white no-underline hover:underline">
             Client Support &amp; FAQ
           </Link>
-          <Link href="/account/orders" className="font-sans text-body-sm text-white no-underline hover:underline">
+          <Link href="/account/orders" className="inline-flex min-h-9 items-center font-sans text-body-sm text-white no-underline hover:underline">
             Track an Order
           </Link>
-          <Link href="/account/orders" className="font-sans text-body-sm text-white no-underline hover:underline">
+          <Link href="/account/orders" className="inline-flex min-h-9 items-center font-sans text-body-sm text-white no-underline hover:underline">
             Return Request
           </Link>
         </nav>

@@ -134,7 +134,7 @@ export default async function ProductPage({ params }: PageProps) {
   }));
 
   return (
-    <main className="mx-auto w-full max-w-page px-margin py-sp-4 sm:px-margin-tablet lg:px-margin-desktop">
+    <main className="mx-auto w-full max-w-page px-margin pt-sp-4 pb-24 sm:px-margin-tablet md:pb-sp-4 lg:px-margin-desktop">
       <nav aria-label="Breadcrumb" className="mb-sp-3">
         <ol className="flex list-none gap-2 p-0 font-mono text-label-caps uppercase text-muted">
           <li>
@@ -154,7 +154,7 @@ export default async function ProductPage({ params }: PageProps) {
       </nav>
 
       <div className="grid gap-sp-4 lg:grid-cols-2 lg:gap-sp-5">
-        <div className="flex flex-col gap-2">
+        <div className="flex min-w-0 flex-col gap-2">
           <div className="relative aspect-[3/4] w-full overflow-hidden bg-surface-container">
             {product.thumbnail ? (
               <img
@@ -177,7 +177,7 @@ export default async function ProductPage({ params }: PageProps) {
           ) : null}
         </div>
 
-        <div className="flex flex-col gap-sp-4">
+        <div className="flex min-w-0 flex-col gap-sp-4">
           <div className="flex flex-col gap-2 border-b border-line pb-sp-3">
             {brand ? (
               <span className="font-mono text-label-caps uppercase text-muted">{brand}</span>
@@ -243,7 +243,7 @@ export default async function ProductPage({ params }: PageProps) {
             <h2 className="mb-2 font-mono text-label-caps uppercase text-muted">
               Product declarations
             </h2>
-            <dl className="m-0 grid grid-cols-[150px_1fr] gap-y-1 font-sans text-body-sm text-on-surface-variant">
+            <dl className="m-0 grid grid-cols-[104px_minmax(0,1fr)] gap-y-1 font-sans text-body-sm text-on-surface-variant [&>dd]:break-words sm:grid-cols-[150px_minmax(0,1fr)]">
               <dt className="font-mono text-[11px] uppercase text-muted">Country of origin</dt>
               <dd className="m-0">
                 {typeof product.metadata?.country_of_origin === "string" &&

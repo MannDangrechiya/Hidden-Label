@@ -132,7 +132,7 @@ export function AddToBag({
                 }}
                 aria-pressed={isSelected}
                 className={[
-                  "relative flex flex-col items-center justify-center border p-3 font-mono transition-all",
+                  "relative flex min-h-12 flex-col items-center justify-center border p-3 font-mono transition-all",
                   isSelected
                     ? "border-ink bg-ink text-surface shadow-md"
                     : size.available

@@ -81,7 +81,7 @@ export default async function CheckoutPage({ searchParams }: PageProps) {
         </nav>
       </header>
 
-      <div className="grid gap-sp-5 lg:grid-cols-[1fr_360px]">
+      <div className="grid grid-cols-1 gap-sp-5 lg:grid-cols-[1fr_360px]">
         <section>
           {step === "address" ? (
             <CheckoutAddressForm

@@ -75,9 +75,22 @@ export function SearchOverlay() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Search"
-        className="font-mono text-label-caps uppercase text-ink no-underline"
+        className="flex h-11 w-11 shrink-0 items-center justify-center border-0 bg-transparent font-mono text-label-caps uppercase text-ink no-underline sm:h-auto sm:w-auto"
       >
-        Search
+        {/* MOBILE-03: icon-only trigger below `sm` so the header row fits a 320px viewport; the
+            accessible name stays "Search" through aria-label above. */}
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          className="h-5 w-5 sm:hidden"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+        >
+          <circle cx="11" cy="11" r="6.5" />
+          <path d="M16 16l4.5 4.5" strokeLinecap="square" />
+        </svg>
+        <span className="hidden sm:inline">Search</span>
       </button>
 
       {open ? (

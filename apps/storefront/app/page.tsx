@@ -133,7 +133,7 @@ export default async function HomePage() {
                 <Link
                   key={size}
                   href={`/collections/all?size=${encodeURIComponent(size)}`}
-                  className="px-3 py-1.5 border border-line bg-surface font-mono text-xs text-ink hover:border-ink hover:bg-ink hover:text-white transition-colors no-underline"
+                  className="inline-flex min-h-11 items-center px-3 py-1.5 border border-line bg-surface font-mono text-xs text-ink hover:border-ink hover:bg-ink hover:text-white transition-colors no-underline"
                 >
                   {size}
                 </Link>
@@ -154,7 +154,7 @@ export default async function HomePage() {
           </div>
           <Link
             href="/collections/all"
-            className="font-mono text-xs uppercase underline text-muted hover:text-ink"
+            className="inline-flex min-h-11 items-center font-mono text-xs uppercase underline text-muted hover:text-ink"
           >
             View All ({products.length}) →
           </Link>

@@ -48,7 +48,7 @@ export function PromoCodeInput({ promotions = [] }: PromoCodeInputProps) {
             name="code"
             placeholder="ENTER CODE"
             required
-            className="flex-1 border border-line bg-surface px-3 py-2 font-mono text-xs uppercase placeholder:text-muted focus:border-ink focus:outline-none"
+            className="min-w-0 flex-1 border border-line bg-surface px-3 py-2 font-mono text-xs uppercase placeholder:text-muted focus:border-ink focus:outline-none"
           />
           <button
             type="submit"

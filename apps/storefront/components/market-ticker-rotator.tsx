@@ -39,14 +39,14 @@ export function MarketTickerRotator({ items }: { items: ResaleActivityItem[] }) 
   if (!event) return null;
 
   return (
-    <div className="flex items-center gap-2 truncate">
-      <span className="font-semibold text-surface truncate">{event.product_title}</span>
+    <div className="flex min-w-0 flex-1 items-center gap-2 truncate">
+      <span className="min-w-0 truncate font-semibold text-surface">{event.product_title}</span>
       {event.variant_title ? (
-        <span className="border border-surface/30 px-1.5 py-0.2 text-[10px] uppercase text-surface/80">
+        <span className="shrink-0 border border-surface/30 px-1.5 py-0.2 text-[10px] uppercase text-surface/80">
           {event.variant_title}
         </span>
       ) : null}
-      <span className="text-emerald-400 font-bold">
+      <span className="shrink-0 font-bold text-emerald-400">
         {formatINR(moneyFromRupees(event.unit_price))}
       </span>
       {showRelative ? (

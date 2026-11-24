@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { sendConciergeMessage } from "@/lib/resale";
 
 interface ChatMessage {
@@ -33,6 +34,7 @@ export function StyleConcierge() {
   ]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     // BUG-09: the session token is issued and signed by the backend. The browser only stores it;
@@ -101,13 +103,22 @@ export function StyleConcierge() {
     "Retro basketball icon under ₹40,000",
   ];
 
+  // MOBILE-05: the floating trigger must never sit on top of a checkout/payment action, so it
+  // is not rendered on the bag or checkout routes at all.
+  const suppressedRoute =
+    pathname === "/cart" ||
+    pathname === "/checkout" ||
+    pathname.startsWith("/checkout/");
+
   return (
     <>
       {/* Floating Trigger Button */}
+      {suppressedRoute ? null : (
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-5 right-5 z-40 flex items-center justify-center gap-2 rounded-full border border-ink bg-ink p-3 text-surface shadow-2xl transition-transform hover:scale-105 active:scale-95 sm:bottom-6 sm:right-6 sm:px-4 sm:py-3"
+        className="fixed right-4 z-30 flex items-center justify-center gap-2 rounded-full border border-ink bg-ink p-3 text-surface shadow-2xl transition-transform hover:scale-105 active:scale-95 sm:bottom-6 sm:right-6 sm:px-4 sm:py-3"
+        style={{ bottom: "max(1.25rem, env(safe-area-inset-bottom))" }}
         aria-label="Open Aura-7 Style Concierge"
       >
         <span className="flex h-2.5 w-2.5 items-center justify-center">
@@ -120,6 +131,7 @@ export function StyleConcierge() {
           A7
         </span>
       </button>
+      )}
 
       {/* Slide-over Drawer */}
       {isOpen && (

@@ -166,6 +166,19 @@
     font-family: var(--font-sans);
   }
 
+  /* MOBILE-06: while the product page's pinned quick-buy bar is shown, the document needs equal
+     bottom clearance or the footer's final rows sit permanently behind it. Mobile-only, matching
+     the bar's own md:hidden visibility. */
+  body.thl-quick-buy-active footer {
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+  }
+
+  @media (min-width: 768px) {
+    body.thl-quick-buy-active footer {
+      padding-bottom: 0;
+    }
+  }
+
   /* Money must always align in columns — see DESIGN_TOKENS.md §2. */
   .tabular {
     font-variant-numeric: tabular-nums;

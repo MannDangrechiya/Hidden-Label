@@ -43,7 +43,7 @@ export default async function AccountPage() {
         </form>
       </header>
 
-      <div className="grid gap-sp-5 lg:grid-cols-[1fr_360px]">
+      <div className="grid grid-cols-1 gap-sp-5 lg:grid-cols-[1fr_360px]">
         <section className="flex flex-col gap-sp-3">
           <div className="flex items-center justify-between border-b border-line pb-2">
             <h2 className="font-display text-headline-sm uppercase">Recent orders</h2>

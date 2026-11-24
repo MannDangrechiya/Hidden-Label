@@ -65,9 +65,21 @@ export function CartDrawer({ initialCount }: { initialCount: number }) {
         type="button"
         onClick={() => setOpen(true)}
         aria-label={`Bag, ${count} item${count === 1 ? "" : "s"}`}
-        className="whitespace-nowrap font-mono text-xs sm:text-label-caps uppercase text-ink no-underline"
+        className="flex h-11 min-w-11 shrink-0 items-center justify-center gap-1 whitespace-nowrap border-0 bg-transparent px-1 font-mono text-xs uppercase text-ink no-underline sm:h-auto sm:min-w-0 sm:px-0 sm:text-label-caps"
       >
-        Bag <span className="tabular">({count})</span>
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          className="h-5 w-5 sm:hidden"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+        >
+          <path d="M6 8h12l-1 12H7L6 8Z" />
+          <path d="M9 8V6a3 3 0 0 1 6 0v2" />
+        </svg>
+        <span className="sr-only sm:not-sr-only sm:inline">Bag</span>
+        <span className="tabular">({count})</span>
       </button>
 
       {open ? (
@@ -89,7 +101,7 @@ export function CartDrawer({ initialCount }: { initialCount: number }) {
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Close bag"
-                className="font-mono text-label-caps uppercase text-muted hover:text-ink"
+                className="-mr-2 flex h-11 min-w-11 items-center justify-center border-0 bg-transparent font-mono text-label-caps uppercase text-muted hover:text-ink"
               >
                 Close
               </button>

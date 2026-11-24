@@ -39,7 +39,7 @@ export default function GrievancePage() {
       <div className="mt-sp-4 grid gap-sp-4 lg:grid-cols-2">
         <section className="border border-line p-sp-3">
           <h2 className="mb-sp-2 font-display text-headline-sm uppercase">Officer details</h2>
-          <dl className="m-0 grid grid-cols-[120px_1fr] gap-y-2 font-sans text-body-sm">
+          <dl className="m-0 grid grid-cols-[92px_minmax(0,1fr)] gap-y-2 font-sans text-body-sm sm:grid-cols-[120px_minmax(0,1fr)] [&>dd]:break-words">
             <dt className="font-mono text-label-caps uppercase text-muted">Name</dt>
             <dd className="m-0 text-ink">{officerName}</dd>
             <dt className="font-mono text-label-caps uppercase text-muted">Email</dt>

@@ -189,7 +189,7 @@ export function CatalogClient({
       </nav>
 
       {/* Facets */}
-      <div className="grid gap-sp-3 border border-line bg-surface p-sp-3 lg:grid-cols-[1fr_1fr_1.1fr]">
+      <div className="grid grid-cols-1 gap-sp-3 border border-line bg-surface p-sp-3 lg:grid-cols-[1fr_1fr_1.1fr]">
         <div className="flex flex-col gap-2">
           <span className="font-mono text-label-caps uppercase text-muted">Price</span>
           <div className="flex flex-wrap gap-2">

@@ -114,7 +114,7 @@ export default async function OrderDetailPage({ params }: PageProps) {
         </div>
       </header>
 
-      <div className="grid gap-sp-5 lg:grid-cols-[1fr_360px]">
+      <div className="grid grid-cols-1 gap-sp-5 lg:grid-cols-[1fr_360px]">
         <section className="flex flex-col gap-sp-3">
           <h2 className="border-b border-line pb-2 font-display text-headline-sm uppercase">Items</h2>
           <ul className="m-0 flex list-none flex-col divide-y divide-line p-0">

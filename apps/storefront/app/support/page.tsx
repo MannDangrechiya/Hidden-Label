@@ -40,7 +40,7 @@ export default async function SupportPage({ searchParams }: PageProps) {
         </p>
       </header>
 
-      <div className="grid gap-sp-5 lg:grid-cols-[1fr_420px]">
+      <div className="grid grid-cols-1 gap-sp-5 lg:grid-cols-[1fr_420px]">
         <section>
           {page ? (
             <CmsPageRenderer page={page} />

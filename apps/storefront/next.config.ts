@@ -93,6 +93,10 @@ function imageRemotePatterns(): Array<{
 }
 
 const nextConfig: NextConfig = {
+  // The dev overlay/badge floats over customer-facing controls (including the mobile bag and
+  // checkout CTAs) while the storefront is being reviewed locally. It is development-only UI,
+  // so it is disabled for this app rather than nudged out of the way per screen.
+  devIndicators: false,
   // Workspace packages ship TypeScript source; Next transpiles them rather than needing a
   // build step in each package.
   transpilePackages: ["@thl/shared", "@thl/ui"],

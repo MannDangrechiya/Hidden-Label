@@ -104,6 +104,15 @@ export function ProductBuyPanel({
   const stickyPrice = rupees(selected?.lowestAsk);
   const canBuy = Boolean(selected?.available);
 
+  // MOBILE-06: the pinned bar covers the bottom ~92px of the document, so while it is shown the
+  // page gets matching bottom clearance (footer included) — otherwise the last footer rows are
+  // permanently unreachable behind the bar. The flag is mobile-only, like the bar itself.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.body.classList.toggle("thl-quick-buy-active", showSticky);
+    return () => document.body.classList.remove("thl-quick-buy-active");
+  }, [showSticky]);
+
   return (
     <div className="relative">
       {bespokeEnabled ? (

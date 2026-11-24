@@ -55,7 +55,7 @@ export default async function CartPage() {
           </Link>
         </div>
       ) : (
-        <div className="grid gap-sp-5 lg:grid-cols-[1fr_360px]">
+        <div className="grid grid-cols-1 gap-sp-5 lg:grid-cols-[1fr_360px]">
           <ul className="list-none divide-y divide-line p-0">
             {items.map((item) => (
               <li key={item.id} className="grid grid-cols-[96px_1fr] gap-sp-3 py-sp-3">
