@@ -308,13 +308,19 @@ export default class RazorpayPaymentProviderService extends AbstractPaymentProvi
 
   async refundPayment(input: RefundPaymentInput): Promise<RefundPaymentOutput> {
     const data = input.data ?? {};
-    const paymentId = data.razorpay_payment_id as string | undefined;
+    // The checkout callback arrives inside the `client` envelope (same key order as
+    // authorizePayment/capturePayment) — accept both shapes so admin refunds work on
+    // payments captured through either path.
+    const client = (data.client as Record<string, unknown> | undefined) ?? {};
+    const paymentId = (client.razorpay_payment_id ?? data.razorpay_payment_id) as string | undefined;
     if (!paymentId) {
       throw new MedusaError(MedusaError.Types.INVALID_DATA, "Missing Razorpay payment id to refund.");
     }
     const refund = await this.razorpayFetch<Record<string, unknown>>(`/payments/${paymentId}/refund`, {
       method: "POST",
-      body: { amount: Math.round(Number(input.amount)) },
+      // Provider boundary: Razorpay expects paise. input.amount is the DB-scale amount
+      // Medusa passes from the payment record, exactly like capturePayment does.
+      body: { amount: this.parseAmountToPaise(input.amount) },
     });
     return { data: { ...data, last_refund: refund } };
   }

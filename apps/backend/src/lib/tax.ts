@@ -92,7 +92,17 @@ export async function ensureIndiaTaxSetup(pg: Knex): Promise<TaxSeedResult> {
     .whereNot({ code: "GST18" })
     .update({ is_default: false, updated_at: new Date() });
 
-  const pricePreferenceUpdated = await ensureIndiaPricePreference(pg);
+  // Both rows must be ensured — short-circuiting `||` would skip the region row whenever the
+  // currency row needed a correction. The pricing preference must key on the *sales* region
+  // (the `region` module row that storefront contexts reference), not the tax_region row the
+  // rest of this script manages — Medusa resolves inclusivity against the region_id sent in
+  // the pricing context, which is always the sales region.
+  const currencyUpdated = await ensureIndiaPricePreference(pg);
+  const salesRegionId = await inrSalesRegionId(pg);
+  const regionUpdated = salesRegionId
+    ? await ensureRegionPricePreference(pg, salesRegionId)
+    : false;
+  const pricePreferenceUpdated = currencyUpdated || regionUpdated;
 
   return { regionId: region.id, createdRates: created, existingRates: existing, pricePreferenceUpdated };
 }
@@ -127,6 +137,54 @@ export async function ensureIndiaPricePreference(pg: Knex): Promise<boolean> {
     id: generateEntityId(undefined, "prpref"),
     attribute: "currency_code",
     value: "inr",
+    is_tax_inclusive: true,
+  });
+  return true;
+}
+
+/** The sales `region` (region module) row that INR storefront contexts reference, if any. */
+async function inrSalesRegionId(pg: Knex): Promise<string | null> {
+  const hasTable = await pg("information_schema.tables")
+    .where({ table_schema: "public", table_name: "region" })
+    .first<{ table_name: string }>("table_name");
+  if (!hasTable) return null;
+  const row = await pg("region")
+    .where({ currency_code: "inr" })
+    .whereNull("deleted_at")
+    .orderBy("created_at", "asc")
+    .first<{ id: string }>("id");
+  return row?.id ?? null;
+}
+
+/**
+ * Keeps the INR *region* price preference tax-inclusive as well.
+ *
+ * Medusa's pricing module resolves inclusivity as: if a region-scoped price RULE exists for the
+ * context region AND a `region_id` preference row exists, the REGION preference wins over the
+ * currency one. Medusa seeds that region row as `false`, so the moment an operator adds any
+ * region-scoped price rule (a sale price list, a regional promo price) the resolved value flips
+ * back to tax-exclusive and the GST-stacking bug returns — silently, only for that rule's
+ * prices. Correcting the region row keeps both resolution paths agreeing.
+ *
+ * Idempotent: creates the row once; corrects a row that exists with the wrong value.
+ */
+export async function ensureRegionPricePreference(pg: Knex, regionId: string): Promise<boolean> {  const existing = await pg("price_preference")
+    .where({ attribute: "region_id", value: regionId })
+    .whereNull("deleted_at")
+    .first<{ id: string; is_tax_inclusive: boolean }>("id", "is_tax_inclusive");
+
+  if (existing) {
+    if (existing.is_tax_inclusive) return false;
+    await pg("price_preference")
+      .where({ id: existing.id })
+      .update({ is_tax_inclusive: true, updated_at: new Date() });
+    return true;
+  }
+
+  await pg("price_preference").insert({
+    id: generateEntityId(undefined, "prpref"),
+    attribute: "region_id",
+    value: regionId,
     is_tax_inclusive: true,
   });
   return true;

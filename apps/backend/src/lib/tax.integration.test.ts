@@ -66,6 +66,15 @@ describe("India tax setup seeds the tax-inclusive INR price preference", () => {
   it("ensureIndiaTaxSetup seeds region, GST slabs and the price preference together, idempotently", async () => {
     const { db, dispose } = await createIsolatedDatabase();
     try {
+      // The pricing preference keys on the *sales* region (the id storefront contexts send),
+      // not the tax_region row this setup manages.
+      const SALES_REGION_ID = "reg_india_inr";
+      await db("region").insert({
+        id: SALES_REGION_ID,
+        name: "India",
+        currency_code: "inr",
+      });
+
       const first = await ensureIndiaTaxSetup(db);
       expect(first.createdRates.sort()).toEqual(GST_SLABS.map((s) => s.code).sort());
       expect(first.pricePreferenceUpdated).toBe(true);
@@ -95,6 +104,43 @@ describe("India tax setup seeds the tax-inclusive INR price preference", () => {
         .whereNull("deleted_at")
         .count<{ total: string }>("id as total");
       expect(Number(preferenceCount[0].total)).toBe(1);
+
+      // The INR *sales-region* preference is seeded too, and matches the currency preference.
+      const regionPref = await db("price_preference")
+        .where({ attribute: "region_id", value: SALES_REGION_ID })
+        .whereNull("deleted_at")
+        .first("is_tax_inclusive");
+      expect(regionPref).toMatchObject({ is_tax_inclusive: true });
+    } finally {
+      await dispose();
+    }
+  });
+
+  it("corrects a Medusa-seeded region preference stored as tax-exclusive (sale price-list landmine)", async () => {
+    const { db, dispose } = await createIsolatedDatabase();
+    try {
+      const SALES_REGION_ID = "reg_india_inr";
+      await db("region").insert({
+        id: SALES_REGION_ID,
+        name: "India",
+        currency_code: "inr",
+      });
+      await ensureIndiaTaxSetup(db);
+
+      // Medusa seeds the region row as false. If an operator later adds a region-scoped price
+      // rule (sale price list), Medusa's isTaxInclusive resolves via the REGION preference —
+      // flipping those prices back to tax-exclusive and stacking GST on top again.
+      await db("price_preference")
+        .where({ attribute: "region_id", value: SALES_REGION_ID })
+        .update({ is_tax_inclusive: false });
+
+      expect(await ensureIndiaTaxSetup(db)).toMatchObject({ pricePreferenceUpdated: true });
+
+      const regionPref = await db("price_preference")
+        .where({ attribute: "region_id", value: SALES_REGION_ID })
+        .whereNull("deleted_at")
+        .first("is_tax_inclusive");
+      expect(regionPref.is_tax_inclusive).toBe(true);
     } finally {
       await dispose();
     }

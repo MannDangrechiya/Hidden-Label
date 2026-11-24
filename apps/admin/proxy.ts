@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const COOKIE_NAME = process.env.ADMIN_SESSION_COOKIE ?? "thl_admin_token";
-const PUBLIC_PATHS = ["/login"];
+// /api/health must stay public: container orchestrators and reverse proxies probe it without a
+// session cookie, and redirecting it to /login would make the healthcheck probe a login page.
+const PUBLIC_PATHS = ["/login", "/api/health"];
 
 /**
  * Redirects to /login when there is no session cookie. This is a UX convenience only — the

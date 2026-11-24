@@ -366,6 +366,16 @@ const SCHEMA_STATEMENTS = [
    )`,
   `create unique index price_preference_attribute_value
      on price_preference (attribute, value) where deleted_at is null`,
+  // Real Medusa region-module DDL (sales regions — the ids storefront pricing contexts send).
+  // Needed so tax setup can key the region price preference on a real sales region.
+  `create table "region" (
+     id text primary key,
+     name text not null,
+     currency_code text not null,
+     created_at timestamptz not null default now(),
+     updated_at timestamptz not null default now(),
+     deleted_at timestamptz null
+   )`,
   // Real Medusa tax-module DDL (module @medusajs/tax migrations), mirrored here so the tax
   // seeding code under test runs against the same shape it targets in production.
   `create table tax_provider (

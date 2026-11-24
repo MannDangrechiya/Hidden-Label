@@ -186,6 +186,40 @@ describe("RazorpayPaymentProviderService (apps/backend/src/modules/razorpay/serv
     });
   });
 
+  describe("refundPayment", () => {
+    it("refunds the paise-converted amount using the client-envelope payment id", async () => {
+      const init = await service.initiatePayment({ amount: 8490, currency_code: "inr" });
+      const { paymentId } = sandbox.simulateSuccessfulPayment(init.id, 849000);
+
+      const output = await service.refundPayment({
+        // Medusa passes the payment record data: id inside the checkout `client` envelope,
+        // amount at DB scale (rupees) — the provider must receive paise.
+        data: { client: { razorpay_order_id: init.id, razorpay_payment_id: paymentId, razorpay_signature: "x" } },
+        amount: 8490,
+      });
+
+      const refund = output.data.last_refund as { id: string; amount: number; status: string };
+      expect(refund.amount).toBe(849000);
+      expect(refund.status).toBe("processed");
+      expect(sandbox.refunds.get(refund.id)?.payment_id).toBe(paymentId);
+    });
+
+    it("accepts a top-level razorpay_payment_id and rejects a payment with no id", async () => {
+      const init = await service.initiatePayment({ amount: 1200, currency_code: "inr" });
+      const { paymentId } = sandbox.simulateSuccessfulPayment(init.id, 120000);
+
+      const output = await service.refundPayment({
+        data: { razorpay_payment_id: paymentId },
+        amount: 600,
+      });
+      expect((output.data.last_refund as { amount: number }).amount).toBe(60000);
+
+      await expect(
+        service.refundPayment({ data: { client: {} }, amount: 100 }),
+      ).rejects.toMatchObject({ message: "Missing Razorpay payment id to refund." });
+    });
+  });
+
   describe("getWebhookActionAndData", () => {
     it("verifies webhook signature and maps payment.captured with session_id", async () => {
       const delivery = sandbox.generateWebhookDelivery(

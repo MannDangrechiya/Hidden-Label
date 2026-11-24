@@ -11,6 +11,18 @@ import { RAZORPAY_PROVIDER, type FulfilmentMode } from "@/lib/fulfilment";
 
 type Method = "upi" | "cards";
 
+/**
+ * Razorpay key ids that are dev-seeded template placeholders, not real credentials. A checkout
+ * dialog opened with one of these fails inside the gateway, so the payment step must treat
+ * them as "not configured" and say so honestly (same rule as the backend env-guard).
+ */
+const RAZORPAY_PLACEHOLDER_KEY_IDS = ["rzp_test_thl_sandbox", "rzp_live_PROD_KEY_ID"];
+
+function razorpayKeyIsReal(keyId: string | null | undefined): keyId is string {
+  if (!keyId) return false;
+  return !RAZORPAY_PLACEHOLDER_KEY_IDS.includes(keyId.trim());
+}
+
 type RazorpayInstance = { open: () => void };
 
 declare global {
@@ -102,7 +114,7 @@ export function CheckoutPaymentForm({
 }) {
   const router = useRouter();
   const providerLinked = availableProviderIds.includes(RAZORPAY_PROVIDER);
-  const gatewayAvailable = providerLinked && Boolean(razorpayKeyId);
+  const gatewayAvailable = providerLinked && razorpayKeyIsReal(razorpayKeyId);
 
   const [method, setMethod] = useState<Method>("upi");
   const [consent, setConsent] = useState(false);
