@@ -38,7 +38,12 @@ export async function SiteHeader() {
   const enableResale = resaleEnabled();
   const fitStudioOn = fitStudioEnabled();
   const nav = [
+    { label: "New In", href: "/collections/all?sort=newest" },
+    { label: "Footwear", href: "/collections/all?category=footwear" },
+    { label: "Apparel", href: "/collections/all?category=menswear" },
+    { label: "Accessories", href: "/collections/all?category=accessories" },
     { label: "Bespoke", href: "/collections/bespoke" },
+    { label: "Brands", href: "/brands" },
     ...(fitStudioOn ? [{ label: "Fit Studio", href: "/fit-studio" }] : []),
     ...(enableResale ? [{ label: "Sell", href: "/sell" }] : []),
   ];
@@ -62,15 +67,36 @@ export async function SiteHeader() {
           The Hidden Label
         </Link>
 
-        <nav aria-label="Primary" className="hidden items-center gap-sp-4 sm:flex">
+        <nav aria-label="Primary" className="hidden items-center gap-sp-4 lg:flex">
           <MegaMenu categories={categories} brands={brandsResult.brands} />
+          {nav.map((item) => (
+            <Link
+              key={item.label}
+              href={item.href}
+              className="font-mono text-label-caps uppercase text-on-surface-variant no-underline transition-colors hover:text-ink"
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+
+        {/* Between sm and xl the full primary row does not fit: a condensed editorial subset keeps
+            the header uncluttered while the mega-menu still exposes the whole tree. */}
+        <nav aria-label="Primary (condensed)" className="hidden items-center gap-sp-3 lg:hidden sm:flex">
+          <MegaMenu categories={categories} brands={brandsResult.brands} />
+          <Link
+            href="/collections/all?sort=newest"
+            className="font-mono text-label-caps uppercase text-on-surface-variant no-underline transition-colors hover:text-ink"
+          >
+            New In
+          </Link>
           <Link
             href="/brands"
             className="font-mono text-label-caps uppercase text-on-surface-variant no-underline transition-colors hover:text-ink"
           >
             Brands
           </Link>
-          {nav.map((item) => (
+          {nav.filter((item) => item.label === "Bespoke" || item.label === "Sell" || item.label === "Fit Studio").map((item) => (
             <Link
               key={item.label}
               href={item.href}

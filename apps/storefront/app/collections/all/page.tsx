@@ -18,11 +18,15 @@ export const metadata = {
 };
 
 interface PageProps {
-  searchParams: Promise<{ size?: string; category?: string; page?: string }>;
+  searchParams: Promise<{ size?: string; category?: string; page?: string; sort?: string }>;
 }
 
+const SORT_KEYS = ["trending", "newest", "price_asc", "price_desc"] as const;
+type SortKey = (typeof SORT_KEYS)[number];
+
 export default async function CatalogPage({ searchParams }: PageProps) {
-  const { size, category, page } = await searchParams;
+  const { size, category, page, sort } = await searchParams;
+  const initialSort = (SORT_KEYS as readonly string[]).includes(sort ?? "") ? (sort as SortKey) : "trending";
   const resaleOn = resaleEnabled();
   const PAGE_SIZE = 24;
   const currentPage = Math.max(1, Number(page || 1));
@@ -86,6 +90,7 @@ export default async function CatalogPage({ searchParams }: PageProps) {
         <CatalogClient
           initialProducts={products}
           initialSizeFilter={size}
+          initialSort={initialSort}
           totalCount={totalCount}
           currentPage={currentPage}
           totalPages={totalPages}

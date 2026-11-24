@@ -24,6 +24,7 @@ interface CatalogClientProps {
   initialProducts: StoreProduct[];
   initialSizeFilter?: string;
   initialCategory?: CategoryKey;
+  initialSort?: "trending" | "newest" | "price_asc" | "price_desc";
   totalCount?: number;
   currentPage?: number;
   totalPages?: number;
@@ -43,6 +44,7 @@ export function CatalogClient({
   initialProducts,
   initialSizeFilter,
   initialCategory = "all",
+  initialSort = "trending",
   totalCount,
   currentPage = 1,
   totalPages = 1,
@@ -52,7 +54,7 @@ export function CatalogClient({
   const [brands, setBrands] = useState<string[]>([]);
   const [priceBuckets, setPriceBuckets] = useState<string[]>([]);
   const [sizes, setSizes] = useState<string[]>(initialSizeTokens(initialSizeFilter));
-  const [sortBy, setSortBy] = useState<"trending" | "price_asc" | "price_desc">("trending");
+  const [sortBy, setSortBy] = useState<"trending" | "newest" | "price_asc" | "price_desc">(initialSort);
   const [quickViewProduct, setQuickViewProduct] = useState<StoreProduct | null>(null);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [addingToBag, setAddingToBag] = useState(false);
@@ -129,6 +131,14 @@ export function CatalogClient({
     });
 
     return rows.sort((a, b) => {
+      if (sortBy === "newest") {
+        const stampA = a.created_at ? Date.parse(a.created_at) : null;
+        const stampB = b.created_at ? Date.parse(b.created_at) : null;
+        if (stampA === null && stampB === null) return 0;
+        if (stampA === null) return 1;
+        if (stampB === null) return -1;
+        return stampB - stampA;
+      }
       if (sortBy === "trending") return 0;
       const priceA = productPriceRupees(a);
       const priceB = productPriceRupees(b);
@@ -213,6 +223,7 @@ export function CatalogClient({
               className="h-10 border border-line bg-surface px-2 font-mono text-body-sm text-ink outline-none focus:border-ink"
             >
               <option value="trending">Featured order</option>
+              <option value="newest">Newest first</option>
               <option value="price_asc">Price: low to high</option>
               <option value="price_desc">Price: high to low</option>
             </select>

@@ -67,7 +67,7 @@ export function SiteFooter() {
           <Link href="/account/orders" className="inline-flex min-h-9 items-center font-sans text-body-sm text-white no-underline hover:underline">
             Track an Order
           </Link>
-          <Link href="/account/orders" className="inline-flex min-h-9 items-center font-sans text-body-sm text-white no-underline hover:underline">
+          <Link href="/account/returns" className="inline-flex min-h-9 items-center font-sans text-body-sm text-white no-underline hover:underline">
             Return Request
           </Link>
         </nav>

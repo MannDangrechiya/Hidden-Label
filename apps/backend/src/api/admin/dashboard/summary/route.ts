@@ -39,6 +39,21 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     .limit(8)
     .select("id", "display_id", "email", "status", "created_at", "currency_code");
 
+  // Rolling 24-hour window so the dashboard can label its period honestly ("last 24 hours",
+  // not "today" which depends on timezone interpretation).
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const ordersToday = await pg("order")
+    .whereNull("deleted_at")
+    .where("created_at", ">=", dayAgo)
+    .count<{ count: string }[]>("id as count");
+  const revenueToday = await pg("payment")
+    .whereNotNull("captured_at")
+    .where("captured_at", ">=", dayAgo)
+    .sum<{ total: string }[]>("amount as total");
+  const returnsAwaitingReview = await pg("return_request")
+    .where("status", "requested")
+    .count<{ count: string }[]>("id as count");
+
   res.setHeader("Cache-Control", "no-store");
   res.json({
     orders_by_status: ordersByStatus.map((row) => ({
@@ -50,6 +65,9 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     low_stock_count: Number(lowStock[0]?.count ?? 0),
     open_returns: Number(openReturns[0]?.count ?? 0),
     pending_shipments: Number(pendingShipments[0]?.count ?? 0),
+    orders_last_24h: Number(ordersToday[0]?.count ?? 0),
+    revenue_captured_last_24h: Number(revenueToday[0]?.total ?? 0),
+    returns_awaiting_review: Number(returnsAwaitingReview[0]?.count ?? 0),
     recent_orders: recentOrders,
     actor: { id: actor.id, role: actor.role },
   });

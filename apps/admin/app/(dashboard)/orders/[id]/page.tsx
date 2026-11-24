@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { ErrorState, StatusChip, Table } from "@thl/ui";
 import { formatINR, moneyFromRupees } from "@thl/shared";
 import { fetchOrder } from "../../../../lib/api/orders";
@@ -9,6 +10,23 @@ import { BespokePipeline } from "./bespoke-pipeline";
 import { OrderActionBar } from "./order-action-bar";
 
 export const metadata: Metadata = { title: "Order detail" };
+
+const STATUS_TONE: Record<string, "neutral" | "positive" | "warning" | "critical"> = {
+  pending: "warning",
+  completed: "positive",
+  archived: "neutral",
+  canceled: "critical",
+  requires_action: "warning",
+  not_fulfilled: "neutral",
+  fulfilled: "positive",
+  partially_fulfilled: "warning",
+  shipped: "positive",
+  delivered: "positive",
+  not_paid: "warning",
+  awaiting: "warning",
+  captured: "positive",
+  refunded: "neutral",
+};
 
 /** A-08 — Admin Order Detail: line items, action bar, and (A-10) payments/refunds read off the order. */
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -51,10 +69,14 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
               : "Home delivery · courier dispatch"}
           </p>
         </div>
-        <div className="flex gap-3">
-          <StatusChip tone="neutral">{order.status}</StatusChip>
-          <StatusChip tone="neutral">{order.fulfillment_status}</StatusChip>
-          <StatusChip tone="neutral">{order.payment_status}</StatusChip>
+        <div className="flex gap-2">
+          <StatusChip tone={STATUS_TONE[order.status] ?? "neutral"}>{order.status}</StatusChip>
+          <StatusChip tone={STATUS_TONE[order.fulfillment_status] ?? "neutral"}>
+            {order.fulfillment_status}
+          </StatusChip>
+          <StatusChip tone={STATUS_TONE[order.payment_status] ?? "neutral"}>
+            {order.payment_status}
+          </StatusChip>
         </div>
       </div>
 
@@ -99,9 +121,29 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+      <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div>
-          <h2 className="mb-3 font-display text-headline-sm">Shipping address</h2>
+          <h2 className="mb-3 font-mono text-label-caps uppercase text-muted">Customer</h2>
+          <div className="border border-line bg-surface p-4 font-sans text-body-sm">
+            <p className="text-ink">{order.email ?? order.customer?.email ?? "Guest"}</p>
+            {order.customer && (order.customer.first_name || order.customer.last_name) ? (
+              <p className="text-on-surface-variant">
+                {[order.customer.first_name, order.customer.last_name].filter(Boolean).join(" ")}
+              </p>
+            ) : null}
+            {order.customer?.id ? (
+              <Link
+                href={`/customers/${order.customer.id}`}
+                className="mt-1 inline-block font-mono text-label-caps uppercase text-ink underline"
+              >
+                Open customer record →
+              </Link>
+            ) : null}
+          </div>
+        </div>
+
+        <div>
+          <h2 className="mb-3 font-mono text-label-caps uppercase text-muted">Shipping address</h2>
           {address ? (
             <address className="not-italic font-sans text-body-sm text-on-surface-variant">
               {address.first_name} {address.last_name}
@@ -125,7 +167,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </div>
 
         <div>
-          <h2 className="mb-3 font-display text-headline-sm">Payments &amp; refunds</h2>
+          <h2 className="mb-3 font-mono text-label-caps uppercase text-muted">Payments &amp; refunds</h2>
           {payments.length === 0 ? (
             <p className="font-sans text-body-sm text-muted">No payment attached to this order.</p>
           ) : (

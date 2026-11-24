@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
-import { Nav } from "../../components/nav";
+import { MobileAdminNav, Nav } from "../../components/nav";
 import { LogoutButton } from "../../components/logout-button";
 import { requireSessionToken, isUnauthorized } from "../../lib/backend";
 import { fetchCurrentAdmin, isNoRoleAssigned } from "../../lib/api/auth";
@@ -47,9 +47,12 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     throw error;
   }
 
+  const email = actor.user.email ?? actor.user.id;
+
   return (
     <div className="flex min-h-screen">
-      <aside className="flex w-60 shrink-0 flex-col bg-ink text-white">
+      {/* Sidebar lives on desktop only; below `lg` the header hamburger opens the grouped drawer. */}
+      <aside className="hidden w-60 shrink-0 flex-col bg-ink text-white lg:flex">
         <div className="border-b border-white/10 px-4 py-5">
           <p className="font-display text-headline-sm uppercase tracking-wide">THL Admin</p>
           <p className="mt-1 font-mono text-[11px] uppercase text-white/50">Operations console</p>
@@ -59,17 +62,22 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-line bg-surface px-6 py-4">
-          <div />
+        <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-line bg-surface/95 px-4 py-3 backdrop-blur-sm sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <MobileAdminNav role={actor.role} actorEmail={email} actorRole={actor.role} />
+            <p className="truncate font-display text-headline-sm uppercase tracking-wide text-ink lg:hidden">
+              THL Admin
+            </p>
+          </div>
           <div className="flex items-center gap-4">
-            <div className="text-right">
-              <p className="font-sans text-body-sm text-ink">{actor.user.email ?? actor.user.id}</p>
+            <div className="hidden text-right sm:block">
+              <p className="max-w-[220px] truncate font-sans text-body-sm text-ink">{email}</p>
               <p className="font-mono text-[11px] uppercase text-muted">{actor.role}</p>
             </div>
             <LogoutButton />
           </div>
         </header>
-        <main className="flex-1 bg-canvas px-6 py-8">{children}</main>
+        <main className="flex-1 bg-canvas px-4 py-6 sm:px-6 sm:py-8">{children}</main>
       </div>
     </div>
   );

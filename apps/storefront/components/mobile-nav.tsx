@@ -171,15 +171,6 @@ export function MobileNav({
                   </Link>
                 </li>
               ))}
-              <li className="border-b border-line">
-                <Link
-                  href="/brands"
-                  onClick={close}
-                  className="flex min-h-12 items-center font-mono text-label-caps uppercase tracking-[0.12em] text-ink no-underline"
-                >
-                  Brands
-                </Link>
-              </li>
             </ul>
 
             {categories.length > 0 ? (

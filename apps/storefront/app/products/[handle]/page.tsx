@@ -1,9 +1,11 @@
-import { hsnForProduct, moneyFromRupees } from "@thl/shared";
+import { hsnForProduct, moneyFromRupees, type Money } from "@thl/shared";
 import { Price } from "@thl/ui";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { SizeOption } from "@/components/add-to-bag";
 import { ProductBuyPanel } from "@/components/product-buy-panel";
+import { ProductGallery } from "@/components/product-gallery";
+import { ProductCardLink } from "@/components/product-card-link";
 import { isApparelProduct } from "@/lib/catalog";
 import { fitStudioEnabled, resaleEnabled } from "@/lib/feature-flags";
 import { WishlistButton } from "@/components/wishlist-button";
@@ -20,6 +22,7 @@ import {
 } from "@/lib/resale";
 import {
   fetchProduct,
+  fetchProducts,
   fetchWishlist,
   fetchProductReviews,
   isVariantAvailable,
@@ -134,6 +137,35 @@ export default async function ProductPage({ params }: PageProps) {
     stats: { count: 0, average_rating: 0, distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } },
   }));
 
+  // Related pieces: real catalogue products sharing the same brand, this one excluded. Kept to
+  // three so the row stays editorial rather than a second catalogue.
+  let related: Array<{ product: StoreProduct; price: Money | null; available: boolean }> = [];
+  if (brand) {
+    try {
+      const pool = await fetchProducts({ limit: 12 });
+      related = pool.products
+        .filter((candidate) => candidate.id !== product.id)
+        .filter(
+          (candidate) =>
+            (typeof candidate.metadata?.brand === "string" ? candidate.metadata.brand : null) === brand,
+        )
+        .slice(0, 3)
+        .map((candidate) => {
+          const candidateAmount = candidate.variants?.[0]?.calculated_price?.calculated_amount;
+          return {
+            product: candidate,
+            price:
+              candidateAmount === null || candidateAmount === undefined
+                ? null
+                : moneyFromRupees(candidateAmount),
+            available: (candidate.variants ?? []).some(isVariantAvailable),
+          };
+        });
+    } catch {
+      related = [];
+    }
+  }
+
   return (
     <main className="mx-auto w-full max-w-page px-margin pt-sp-4 pb-24 sm:px-margin-tablet md:pb-sp-4 lg:px-margin-desktop">
       <nav aria-label="Breadcrumb" className="mb-sp-3">
@@ -156,19 +188,7 @@ export default async function ProductPage({ params }: PageProps) {
 
       <div className="grid gap-sp-4 lg:grid-cols-2 lg:gap-sp-5">
         <div className="flex min-w-0 flex-col gap-2">
-          <div className="relative aspect-[3/4] w-full overflow-hidden bg-surface-container">
-            {product.thumbnail ? (
-              <img
-                src={product.thumbnail}
-                alt={product.title}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center font-mono text-label-caps uppercase text-muted">
-                Image pending
-              </div>
-            )}
-          </div>
+          <ProductGallery title={product.title} thumbnail={product.thumbnail} images={product.images} />
 
           {/* 360° Inspection Viewer & Lab Authentication (AI-03) */}
           {inspection ? (
@@ -292,6 +312,26 @@ export default async function ProductPage({ params }: PageProps) {
           </div>
         </div>
       </div>
+
+      {/* Related pieces — same brand, real catalogue products only. */}
+      {related.length > 0 ? (
+        <section aria-labelledby="related-heading" className="mt-sp-5 border-t border-line pt-sp-4">
+          <h2 id="related-heading" className="mb-sp-3 font-display text-headline-md uppercase text-ink">
+            More from {brand}
+          </h2>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            {related.map(({ product: candidate, price, available }) => (
+              <ProductCardLink
+                key={candidate.id}
+                product={candidate}
+                price={price}
+                brand={brand}
+                available={available}
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {/* Verified Client Reviews & Ratings (Phase 5) */}
       <ProductReviews

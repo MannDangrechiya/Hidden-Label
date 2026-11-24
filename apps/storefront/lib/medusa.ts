@@ -137,6 +137,9 @@ export interface StoreProduct {
   subtitle?: string | null;
   description?: string | null;
   thumbnail: string | null;
+  /** Real additional imagery from Medusa (`*` field set). Never fabricated client-side. */
+  images?: { id: string; url: string }[] | null;
+  created_at?: string | null;
   metadata: Record<string, unknown> | null;
   options?: { id: string; title: string; values?: string[] }[] | null;
   variants?: StoreVariant[] | null;
@@ -235,7 +238,12 @@ export async function resolveRegionId(): Promise<string | null> {
 /*  Catalog                                                                   */
 /* -------------------------------------------------------------------------- */
 
-const PRODUCT_FIELDS = "*variants.calculated_price,*variants,*options,*collection";
+/* Medusa v2 returns only the fields you list once `fields` is passed — and it drops top-level
+ * properties entirely, so every top-level property the storefront reads must be named here
+ * explicitly. `metadata` was previously missing, silently losing brand, HSN and origin data;
+ * `created_at` backs the catalogue's "Newest first" sort. `*x` pulls whole relations. */
+const PRODUCT_FIELDS =
+  "id,title,handle,subtitle,description,thumbnail,metadata,created_at,*variants.calculated_price,*variants,*options,*collection";
 
 export async function fetchProducts(params?: {
   limit?: number;

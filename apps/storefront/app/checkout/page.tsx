@@ -120,8 +120,20 @@ export default async function CheckoutPage({ searchParams }: PageProps) {
           <ul className="m-0 mb-sp-3 flex list-none flex-col gap-3 divide-y divide-line p-0">
             {cart.items.map((item) => (
               <li key={item.id} className="flex items-center justify-between gap-3 pt-3 first:pt-0">
-                <span className="font-sans text-body-sm text-ink">
-                  {item.product_title ?? item.title} × {item.quantity}
+                <span className="flex min-w-0 items-center gap-2">
+                  {item.thumbnail ? (
+                    <img
+                      src={item.thumbnail}
+                      alt=""
+                      className="h-14 w-11 flex-none bg-surface-container object-cover"
+                    />
+                  ) : null}
+                  <span className="min-w-0 font-sans text-body-sm text-ink">
+                    <span className="block truncate">{item.product_title ?? item.title}</span>
+                    <span className="font-mono text-label-caps uppercase text-muted">
+                      {item.variant_title ? `${item.variant_title} · ` : ""}× {item.quantity}
+                    </span>
+                  </span>
                 </span>
                 <Price value={moneyFromRupees(lineTotal(item))} />
               </li>

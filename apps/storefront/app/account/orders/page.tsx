@@ -79,34 +79,37 @@ export default async function OrderHistoryPage({ searchParams }: PageProps) {
         />
       ) : (
         <>
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="border-b border-line text-left font-mono text-label-caps uppercase text-muted">
-                <th className="py-2 font-normal">Order</th>
-                <th className="py-2 font-normal">Date</th>
-                <th className="py-2 font-normal">Status</th>
-                <th className="py-2 text-right font-normal">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map((order) => (
-                <tr key={order.id} className="border-b border-line">
-                  <td className="py-3">
-                    <Link href={`/account/orders/${order.id}`} className="font-mono text-body-sm uppercase text-ink underline-offset-4 hover:underline">
-                      THL-{order.display_id}
-                    </Link>
-                  </td>
-                  <td className="py-3 font-sans text-body-sm text-on-surface-variant">
-                    {new Date(order.created_at).toLocaleDateString("en-IN")}
-                  </td>
-                  <td className="py-3 font-sans text-body-sm capitalize text-on-surface-variant">{order.status}</td>
-                  <td className="py-3 text-right font-mono text-currency-md tabular text-ink">
+          {/* Card list instead of a wide table: order rows stay readable at 320px where a
+              four-column table would overflow. */}
+          <ul className="m-0 flex list-none flex-col divide-y divide-line p-0">
+            {orders.map((order) => (
+              <li key={order.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-sp-3">
+                <div className="min-w-0">
+                  <Link
+                    href={`/account/orders/${order.id}`}
+                    className="font-mono text-body-sm uppercase text-ink underline-offset-4 hover:underline"
+                  >
+                    THL-{order.display_id}
+                  </Link>
+                  <p className="mt-0.5 font-sans text-body-sm text-on-surface-variant">
+                    {new Date(order.created_at).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </p>
+                </div>
+                <div className="flex items-baseline gap-4">
+                  <span className="font-mono text-label-caps uppercase text-on-surface-variant">
+                    {order.status}
+                  </span>
+                  <span className="font-mono text-currency-md tabular text-ink">
                     ₹{order.total.toLocaleString("en-IN")}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
 
           <LoadMore
             shown={Math.min(offset + orders.length, count)}
@@ -114,7 +117,7 @@ export default async function OrderHistoryPage({ searchParams }: PageProps) {
             hasMore={offset + orders.length < count}
             action={
               <Link
-                href={`/account/orders?offset=${offset + PAGE_SIZE}`}
+                href={`/account/orders?offset=${offset + PAGE_SIZE}${status ? `&status=${encodeURIComponent(status)}` : ""}`}
                 className="inline-flex min-h-12 items-center justify-center border border-ink px-6 py-3 font-mono text-label-caps uppercase tracking-[0.12em] text-ink no-underline transition-colors hover:bg-ink hover:text-white"
               >
                 Load more
