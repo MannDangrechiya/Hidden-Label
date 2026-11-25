@@ -207,6 +207,8 @@ export default async function HomePage() {
                 <img
                   src={heroRow.product.thumbnail}
                   alt={heroRow.product.title}
+                  fetchPriority="high"
+                  decoding="async"
                   className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
                 />
               ) : null}
