@@ -18,6 +18,7 @@ import {
   createServiceZonesWorkflow,
   createShippingOptionsWorkflow,
   createStockLocationsWorkflow,
+  createUserAccountWorkflow,
   linkSalesChannelsToApiKeyWorkflow,
   linkSalesChannelsToStockLocationWorkflow,
 } from "@medusajs/medusa/core-flows";
@@ -1049,6 +1050,40 @@ export default async function seed({ container }: ExecArgs) {
   /* --- Ensure the thl service can read its tables ----------------------- */
   const brandCount = await thl.listBrands({}, { take: 1 });
   logger.info(`thl brand module responding: ${brandCount.length >= 0 ? "yes" : "yes"}`);
+
+  /* --- Bootstrap admin owner ------------------------------------------- */
+  // A fresh install otherwise has no account that can log into the admin (Medusa creates none
+  // by default). The account is registered through the same emailpass auth flow the admin
+  // login route uses, then created with an explicit owner role in metadata. Idempotent: any
+  // existing user with this email is left exactly as it is.
+  const ADMIN_EMAIL = "admin@thehiddenlabel.com";
+  const ADMIN_PASSWORD = "AdminOwner!2026";
+  const existingAdmin = await pg("user").where({ email: ADMIN_EMAIL }).first("id", "metadata");
+  if (existingAdmin) {
+    logger.info(`admin owner already present: ${ADMIN_EMAIL} (${existingAdmin.id})`);
+  } else {
+    const authModule = container.resolve(Modules.AUTH);
+    const registration = await authModule.register("emailpass", {
+      body: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+    });
+    const authIdentityId = registration?.authIdentity?.id;
+    if (!registration?.success || !authIdentityId) {
+      throw new Error("The bootstrap admin owner could not be registered.");
+    }
+
+    const { result: adminUser } = await createUserAccountWorkflow(container).run({
+      input: {
+        authIdentityId,
+        userData: {
+          email: ADMIN_EMAIL,
+          first_name: "The Hidden Label",
+          // SEC-01: the role must be explicit in metadata — a missing role is denied.
+          metadata: { role: "owner" },
+        },
+      },
+    });
+    logger.info(`admin owner created: ${ADMIN_EMAIL} (${adminUser.id}, role=owner)`);
+  }
 
   logger.info("─".repeat(60));
   if (publishableToken) {
