@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Button, EmptyState, ErrorState } from "@thl/ui";
 import { fetchProducts, type ProductStatus } from "../../../lib/api/products";
+import { fetchInventory } from "../../../lib/api/inventory";
 import { fetchCurrentAdmin, roleAtLeast } from "../../../lib/api/auth";
 import { BackendError } from "../../../lib/backend";
 import { ProductsBulkTable } from "./products-bulk-table";
@@ -21,16 +22,29 @@ export default async function ProductsPage({
 
   let result;
   let canWrite = false;
+  let stockByProduct = new Map<string, number>();
   try {
-    [result, canWrite] = await Promise.all([
+    // Variant stock is not expandable through /admin/products fields, so the list reads the
+    // inventory levels endpoint and aggregates `available` per product (A-06's source).
+    const [productsResult, inventoryLevels, adminCheck] = await Promise.all([
       fetchProducts({
         q,
         offset,
         limit: LIMIT,
         status: status ? [status as ProductStatus] : undefined,
       }),
+      fetchInventory(),
       fetchCurrentAdmin().then((a) => roleAtLeast(a.role, "manager")),
     ]);
+    result = productsResult;
+    canWrite = adminCheck;
+    for (const level of inventoryLevels) {
+      if (!level.product_id) continue;
+      stockByProduct.set(
+        level.product_id,
+        (stockByProduct.get(level.product_id) ?? 0) + (Number(level.available) || 0),
+      );
+    }
   } catch (error) {
     const message = error instanceof BackendError ? error.message : "Could not load products.";
     return <ErrorState message={message} />;
@@ -94,7 +108,7 @@ export default async function ProductsPage({
         />
       ) : (
         <>
-          <ProductsBulkTable products={result.products} canWrite={canWrite} />
+          <ProductsBulkTable products={result.products} canWrite={canWrite} stockByProduct={stockByProduct} />
 
           <div className="flex items-center justify-between">
             <p className="font-mono text-label-caps uppercase text-muted">

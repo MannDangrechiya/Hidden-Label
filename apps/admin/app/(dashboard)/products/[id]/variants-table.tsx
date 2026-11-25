@@ -39,10 +39,13 @@ export function VariantsTable({
   productId,
   variants,
   canWrite,
+  stockByVariant,
 }: {
   productId: string;
   variants: AdminVariant[];
   canWrite: boolean;
+  /** Aggregated available stock per variant, built by the page from /admin/inventory levels. */
+  stockByVariant: Map<string, number>;
 }) {
   if (variants.length === 0) {
     return <p className="font-sans text-body-sm text-muted">This product has no variants yet.</p>;
@@ -53,7 +56,7 @@ export function VariantsTable({
       columns={[
         { key: "title", header: "Variant", render: (v) => v.title, sticky: true },
         { key: "sku", header: "SKU", render: (v) => v.sku ?? "—" },
-        { key: "stock", header: "Stock", render: (v) => v.inventory_quantity ?? "—", align: "right" },
+        { key: "stock", header: "Stock", render: (v) => stockByVariant.get(v.id) ?? 0, align: "right" },
         {
           key: "price",
           header: "Price (₹)",

@@ -13,12 +13,22 @@ const STATUS_TONE: Record<ProductStatus, "neutral" | "positive" | "warning" | "c
   rejected: "critical",
 };
 
-function stockOf(product: AdminProduct): number {
+function stockOf(product: AdminProduct, stockByProduct?: Map<string, number>): number {
+  if (stockByProduct) return stockByProduct.get(product.id) ?? 0;
   return (product.variants ?? []).reduce((sum, v) => sum + (v.inventory_quantity ?? 0), 0);
 }
 
 /** MF-26: select several products and publish/draft/delete them in one action. */
-export function ProductsBulkTable({ products, canWrite }: { products: AdminProduct[]; canWrite: boolean }) {
+export function ProductsBulkTable({
+  products,
+  canWrite,
+  stockByProduct,
+}: {
+  products: AdminProduct[];
+  canWrite: boolean;
+  /** Aggregated available stock per product, built by the page from /admin/inventory levels. */
+  stockByProduct: Map<string, number>;
+}) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pending, startTransition] = useTransition();
 
@@ -124,7 +134,7 @@ export function ProductsBulkTable({ products, canWrite }: { products: AdminProdu
             render: (p) => <StatusChip tone={STATUS_TONE[p.status]}>{p.status}</StatusChip>,
           },
           { key: "variants", header: "Variants", render: (p) => p.variants?.length ?? 0, align: "right" },
-          { key: "stock", header: "Stock", render: (p) => stockOf(p), align: "right" },
+          { key: "stock", header: "Stock", render: (p) => stockOf(p, stockByProduct), align: "right" },
           {
             key: "categories",
             header: "Categories",

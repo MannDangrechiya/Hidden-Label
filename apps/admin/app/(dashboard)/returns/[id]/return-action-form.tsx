@@ -61,10 +61,13 @@ export function ReturnActionForm({ request }: { request: ReturnRequest }) {
           ) : null}
           <Input label="Note" name="note" />
           {state.error ? <p className="font-sans text-body-sm text-error">{state.error}</p> : null}
-          {state.success ? <p className="font-sans text-body-sm text-on-surface">Done.</p> : null}
-          <Button type="submit" loading={pending}>
-            Confirm {action}
-          </Button>
+          {state.success ? (
+            <p className="font-sans text-body-sm text-on-surface">Done.</p>
+          ) : (
+            <Button type="submit" loading={pending}>
+              Confirm {action}
+            </Button>
+          )}
         </form>
       ) : null}
     </div>

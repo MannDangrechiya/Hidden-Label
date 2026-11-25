@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ErrorState, StatusChip } from "@thl/ui";
 import { fetchProduct } from "../../../../lib/api/products";
+import { fetchInventory } from "../../../../lib/api/inventory";
 import { fetchCurrentAdmin, roleAtLeast } from "../../../../lib/api/auth";
 import { BackendError } from "../../../../lib/backend";
 import { EditProductForm } from "./edit-product-form";
@@ -23,10 +24,21 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
   let product;
   let canWrite = false;
+  let stockByVariant = new Map<string, number>();
   try {
-    [product, canWrite] = await Promise.all([
+    // Variant stock is not expandable through /admin/products fields, so the detail view reads
+    // the inventory levels endpoint and aggregates `available` per variant (A-06's source).
+    [product, canWrite, stockByVariant] = await Promise.all([
       fetchProduct(id),
       fetchCurrentAdmin().then((a) => roleAtLeast(a.role, "manager")),
+      fetchInventory().then((levels) => {
+        const map = new Map<string, number>();
+        for (const level of levels) {
+          if (!level.variant_id) continue;
+          map.set(level.variant_id, (map.get(level.variant_id) ?? 0) + (Number(level.available) || 0));
+        }
+        return map;
+      }),
     ]);
   } catch (error) {
     const message = error instanceof BackendError ? error.message : "Could not load this product.";
@@ -79,7 +91,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
       <section>
         <h2 className="mb-3 font-display text-headline-sm">Variants &amp; pricing</h2>
-        <VariantsTable productId={product.id} variants={product.variants ?? []} canWrite={canWrite} />
+        <VariantsTable productId={product.id} variants={product.variants ?? []} canWrite={canWrite} stockByVariant={stockByVariant} />
       </section>
     </div>
   );
