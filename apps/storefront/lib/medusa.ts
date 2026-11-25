@@ -923,6 +923,7 @@ export interface StoreReturnRequest {
   id: string;
   display_id: string;
   order_id: string;
+  order_display_id: number;
   status: string;
   reason_code: string;
   reason_note: string | null;

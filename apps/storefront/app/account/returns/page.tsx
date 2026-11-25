@@ -78,7 +78,7 @@ export default async function CustomerReturnsPage() {
                     RMA: {ret.display_id}
                   </span>
                   <span className="font-mono text-[11px] uppercase text-muted">
-                    Order Ref: {ret.order_id}
+                    Order Ref: THL-{ret.order_display_id ?? ret.order_id}
                   </span>
                 </div>
                 <span className="border border-ink/20 bg-surface-container/40 px-3 py-1 font-mono text-label-caps uppercase text-ink font-medium">
