@@ -576,11 +576,23 @@ export async function createIsolatedDatabase(): Promise<IsolatedDatabase> {
 
   const db = knexFactory({
     client: "pg",
-    connection: {
-      connectionString: url,
-      options: `-c search_path=${schema}`,
-    } as unknown as string,
-    pool: { min: 0, max: 12 },
+    connection: { connectionString: url },
+    pool: {
+      min: 0,
+      max: 12,
+      // Startup parameters (`-c search_path`) are not honoured by every Postgres-compatible
+      // server (e.g. PGlite over the wire protocol). Setting search_path on every pooled
+      // connection keeps schema isolation working everywhere.
+      afterCreate: (
+        rawConnection: unknown,
+        done: (error: unknown, connection: unknown) => void,
+      ) => {
+        const client = rawConnection as {
+          query: (sql: string, callback: (error: unknown) => void) => void;
+        };
+        client.query(`set search_path to "${schema}"`, (error: unknown) => done(error, rawConnection));
+      },
+    },
   });
 
   try {
