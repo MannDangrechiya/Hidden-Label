@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import type { Knex } from "knex";
 import { applyStockDelta, type AdjustStockAudit } from "./stock-adjustment";
 
@@ -104,6 +105,19 @@ export async function restockReturn(
 
     if (outcome.ok) {
       units += line.quantity;
+      // D1: a restock is a real stock mutation, so it gets a row in the immutable
+      // stock_movement ledger (same shape as the PO receipt flow), not only an audit event.
+      await trx("stock_movement").insert({
+        id: `sm_${randomBytes(8).toString("hex")}`,
+        inventory_item_id: line.inventoryItemId,
+        location_id: input.locationId,
+        delta: line.quantity,
+        movement_type: "return_restock",
+        reference_id: input.returnRequestId,
+        actor_id: input.audit.actorId,
+        notes: input.displayId ? `Restocked via RMA ${input.displayId}` : null,
+        balance_after: Number(outcome.level.stocked_quantity),
+      });
     } else {
       skipped.push({ inventoryItemId: line.inventoryItemId, reason: outcome.code });
     }

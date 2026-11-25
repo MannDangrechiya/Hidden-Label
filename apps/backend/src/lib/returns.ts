@@ -217,8 +217,15 @@ export async function processReturnAction(
   // unknown location refuses the request instead of silently skipping the restock.
   let restockPlan: { locationId: string; lines: RestockLine[] } | null = null;
   if (action === "receive" && body.condition === "resellable") {
+    // D1: `return_request_item.order_item_id` stores Medusa's `order_item` ids
+    // (`orditem_...`, written by the storefront return route), not `order_line_item` ids. The
+    // variant lives on the order line the order item points at via `item_id`, so the join is
+    // two hops: return_request_item → order_item → order_line_item. Joining the line item
+    // directly on `order_item_id` resolved `variant_id` to null and every resellable receive
+    // silently restocked nothing.
     const rows = (await pg("return_request_item as rri")
-      .join("order_line_item as oli", "oli.id", "rri.order_item_id")
+      .join("order_item as oi", "oi.id", "rri.order_item_id")
+      .join("order_line_item as oli", "oli.id", "oi.item_id")
       .where("rri.return_request_id", request.id)
       .select("oli.variant_id as variant_id", "rri.quantity as quantity")) as {
       variant_id: string | null;
@@ -363,8 +370,10 @@ export async function processReturnAction(
           > | undefined)
         : undefined;
 
+      // Same two-hop join as the restock plan above (D1): the RMA stores an order_item id.
       const items = (await pg("return_request_item as rri")
-        .join("order_line_item as oli", "oli.id", "rri.order_item_id")
+        .join("order_item as oi", "oi.id", "rri.order_item_id")
+        .join("order_line_item as oli", "oli.id", "oi.item_id")
         .leftJoin("product as p", "p.id", "oli.product_id")
         .where("rri.return_request_id", request.id)
         .select(

@@ -80,6 +80,15 @@ async function seedReturn(
     variant_id: "variant_returns",
     unit_price: "1500.00",
   });
+  // D1: the storefront return route stores Medusa's per-version `order_item` id
+  // (`orditem_...`) in `return_request_item.order_item_id`; the order line is reached via
+  // `order_item.item_id`. Mirror that shape exactly here.
+  await iso.db("order_item").insert({
+    id: `orditem_${returnId}`,
+    order_id: orderId,
+    item_id: `oli_${returnId}`,
+    quantity: 2,
+  });
   await iso.db("return_request").insert({
     id: returnId,
     display_id: displayId,
@@ -89,7 +98,7 @@ async function seedReturn(
   await iso.db("return_request_item").insert({
     id: `rri_${returnId}`,
     return_request_id: returnId,
-    order_item_id: `oli_${returnId}`,
+    order_item_id: `orditem_${returnId}`,
     quantity: 2,
   });
 }
