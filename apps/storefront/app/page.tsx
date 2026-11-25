@@ -142,7 +142,7 @@ export default async function HomePage() {
               {resaleOn ? "Resale Marketplace" : "Luxury Retail & Bespoke Atelier"}
             </span>
 
-            <h1 className="font-display text-display-hero uppercase leading-[1.02] text-ink max-w-[13ch] sm:max-w-none">
+            <h1 className="font-display type-display-hero uppercase leading-[1.02] text-ink max-w-[13ch] sm:max-w-none">
               {resaleOn
                 ? "India's Marketplace for Sneakers & Streetwear."
                 : "Curated Luxury Footwear & Apparel."}
