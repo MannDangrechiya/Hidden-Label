@@ -1,10 +1,10 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
+import { ContainerRegistrationKeys, generateEntityId } from "@medusajs/framework/utils";
 import { requestMeta } from "../../../lib/audit";
 import { requireRole } from "../../../lib/admin-auth";
 import {
   ADJUST_REASONS,
-  adjustStock,
+  applyStockDelta,
   type AdjustReason,
 } from "../../../lib/stock-adjustment";
 
@@ -91,16 +91,58 @@ export async function POST(req: MedusaRequest<AdjustBody>, res: MedusaResponse) 
   const pg = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION);
   const meta = requestMeta(req);
 
-  const outcome = await adjustStock(
-    pg,
-    {
-      inventoryItemId: body.inventory_item_id,
-      locationId: body.location_id,
-      delta,
-      reason: body.reason as AdjustReason,
-    },
-    { actorId: actor.id, ip: meta.ip, userAgent: meta.userAgent },
-  );
+  // D2: a newly created variant has no inventory_level row yet, so a plain adjust used to 404
+  // ("Inventory level not found") and new variants could never be stocked. Create the missing
+  // level at zero inside the same transaction, then apply the delta through the shared locked
+  // mutation exactly like every other adjustment. A level that appears concurrently (or an
+  // unknown inventory item / stock location) is handled below.
+  const outcome = await pg.transaction(async (trx) => {
+    const existing = await trx("inventory_level")
+      .where({
+        inventory_item_id: body.inventory_item_id,
+        location_id: body.location_id,
+      })
+      .first("id");
+
+    if (!existing) {
+      try {
+        await trx("inventory_level").insert({
+          id: generateEntityId(undefined, "ilev"),
+          inventory_item_id: body.inventory_item_id,
+          location_id: body.location_id,
+          stocked_quantity: 0,
+          reserved_quantity: 0,
+        });
+      } catch (error) {
+        const code = (error as { code?: string }).code;
+        if (code === "23503") {
+          // Foreign key: the inventory item or the stock location does not exist.
+          return {
+            ok: false as const,
+            status: 404 as const,
+            code: "not_found" as const,
+            message: "Inventory item or stock location not found.",
+          };
+        }
+        if (code === "23505") {
+          // Unique violation: another request created the level first — adjust it.
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    return applyStockDelta(
+      trx,
+      {
+        inventoryItemId: body.inventory_item_id as string,
+        locationId: body.location_id as string,
+        delta,
+        reason: body.reason as AdjustReason,
+      },
+      { actorId: actor.id, ip: meta.ip, userAgent: meta.userAgent },
+    );
+  });
 
   if (!outcome.ok) {
     res.status(outcome.status).json({ type: outcome.code, message: outcome.message });

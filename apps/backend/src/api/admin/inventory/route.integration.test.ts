@@ -146,4 +146,51 @@ describe("POST /admin/inventory (route level)", () => {
     const level = await iso.db("inventory_level").where({ id: "il_route" }).first();
     expect(Number(level.stocked_quantity)).toBe(15);
   });
+
+  it("creates a missing level for a brand-new variant instead of 404ing (D2)", async () => {
+    const result = await callRoute("user_ops", {
+      inventory_item_id: "iitem_new_variant",
+      location_id: LOCATION,
+      delta: 7,
+      reason: "stock_count",
+    });
+
+    expect(result.statusCode).toBe(200);
+    expect(result.body?.available).toBe(7);
+
+    const level = await iso.db("inventory_level")
+      .where({ inventory_item_id: "iitem_new_variant", location_id: LOCATION })
+      .first();
+    expect(level).toBeDefined();
+    expect(String(level.id)).toMatch(/^ilev_/);
+    expect(Number(level.stocked_quantity)).toBe(7);
+
+    // A second adjust on the now-existing level works like any other adjustment.
+    const second = await callRoute("user_ops", {
+      inventory_item_id: "iitem_new_variant",
+      location_id: LOCATION,
+      delta: -2,
+      reason: "sample",
+    });
+    expect(second.statusCode).toBe(200);
+    expect(second.body?.available).toBe(5);
+  }, 30_000);
+
+  it("does not leave a stocked level when the delta would go negative (D2)", async () => {
+    const result = await callRoute("user_ops", {
+      inventory_item_id: "iitem_also_new",
+      location_id: LOCATION,
+      delta: -1,
+      reason: "damaged",
+    });
+
+    expect(result.statusCode).toBe(422);
+    // The missing level was created at zero (documenting that the location now tracks this
+    // item), but the negative adjustment was refused, so it holds no stock.
+    const level = await iso.db("inventory_level")
+      .where({ inventory_item_id: "iitem_also_new", location_id: LOCATION })
+      .first();
+    expect(level).toBeDefined();
+    expect(Number(level.stocked_quantity)).toBe(0);
+  }, 30_000);
 });
