@@ -74,9 +74,35 @@ describe("Admin request decisions", () => {
     }
   });
 
-  it("denies readonly access to operational records", () => {
-    const decision = decideAdminRequest({ ...base, role: "readonly" });
-    expect(decision.allow).toBe(false);
+  it("lets readonly read operational records but denies every write (D3)", () => {
+    const readPaths = [
+      "/admin/orders",
+      "/admin/products",
+      "/admin/inventory",
+      "/admin/customers",
+      "/admin/returns",
+      "/admin/payments",
+      "/admin/reports",
+      "/admin/audit",
+    ];
+    for (const path of readPaths) {
+      expect(decideAdminRequest({ ...base, role: "readonly", path })).toEqual({
+        allow: true,
+        stripPrivilegedMetadata: false,
+      });
+      expect(
+        decideAdminRequest({ ...base, role: "readonly", path, method: "POST" }).allow,
+      ).toBe(false);
+      expect(
+        decideAdminRequest({ ...base, role: "readonly", path, method: "DELETE" }).allow,
+      ).toBe(false);
+    }
+  });
+
+  it("still keeps readonly out of staff management", () => {
+    expect(
+      decideAdminRequest({ ...base, role: "readonly", path: "/admin/users" }).allow,
+    ).toBe(false);
   });
 
   it("denies write actions to readonly on user management", () => {

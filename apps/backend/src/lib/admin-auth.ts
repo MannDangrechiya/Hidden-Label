@@ -219,11 +219,18 @@ export function decideAdminRequest(input: AdminRequestDecisionInput): AdminReque
     return { allow: true, stripPrivilegedMetadata: false };
   }
 
+  // D3: readonly is read-only, not blind. GET/HEAD/OPTIONS on the operational read paths
+  // (orders, products, inventory, customers, returns, payments, reports, audit, …) may pass;
+  // every write stays 403. Staff management is still gate-kept to manager+ above, and the
+  // self-profile POST above still refuses privileged metadata.
   if (role === "readonly") {
+    if (isReadMethod(method)) {
+      return { allow: true, stripPrivilegedMetadata: false };
+    }
     return {
       allow: false,
       status: 403,
-      message: "Readonly role does not have access to this resource.",
+      message: "Readonly role cannot perform write actions.",
     };
   }
 
