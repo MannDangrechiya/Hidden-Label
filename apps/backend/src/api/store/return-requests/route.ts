@@ -38,13 +38,30 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   }
 
   const thl = req.scope.resolve<ThlModuleService>(THL_MODULE);
+  const pg = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION);
   const requests = await thl.listReturnRequests(
     { customer_id: customerId },
     { order: { requested_at: "DESC" } },
   );
 
+  // The return_request rows only carry the raw order id; customers see "THL-<display_id>"
+  // everywhere else, so join the order's display id in — the returns page renders it as the
+  // human order reference instead of an opaque order_01M89… id.
+  const orderIds = [...new Set(requests.map((r) => r.order_id).filter(Boolean))];
+  const displayIds = new Map<string, number | string>();
+  if (orderIds.length > 0) {
+    const orders = await pg("order")
+      .whereIn("id", orderIds)
+      .select("id", "display_id");
+    for (const o of orders) displayIds.set(o.id, o.display_id);
+  }
+  const returns = requests.map((r) => ({
+    ...r,
+    order_display_id: displayIds.get(r.order_id) ?? null,
+  }));
+
   res.setHeader("Cache-Control", "private, no-store");
-  res.json({ returns: requests });
+  res.json({ returns });
 }
 
 /**

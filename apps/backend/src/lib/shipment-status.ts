@@ -71,8 +71,33 @@ export function isStale(lastSyncedAt: string | Date | null | undefined): boolean
   return Date.now() - at > 12 * 60 * 60 * 1000;
 }
 
+/**
+ * Marks the Medusa fulfillment for an order delivered, so return eligibility (which reads
+ * fulfillment.delivered_at — see /store/return-requests) opens no matter which path recorded
+ * the delivery: the operator's manual update in admin or the Shiprocket webhook. Idempotent —
+ * an already-recorded delivered_at is never overwritten, so replayed delivered scans keep the
+ * first courier-confirmed time.
+ */
+export async function markFulfillmentDelivered(
+  trx: Knex.Transaction | Knex,
+  orderId: string,
+): Promise<string | null> {
+  const link = (await trx("order_fulfillment")
+    .where({ order_id: orderId })
+    .whereNull("deleted_at")
+    .first("fulfillment_id")) as { fulfillment_id: string } | undefined;
+  if (!link?.fulfillment_id) return null;
+
+  const updated = await trx("fulfillment")
+    .where({ id: link.fulfillment_id })
+    .whereNull("delivered_at")
+    .update({ delivered_at: new Date(), updated_at: new Date() });
+  return updated > 0 ? link.fulfillment_id : null;
+}
+
 export interface ShipmentRow {
   id: string;
+  order_id: string;
   status: string;
   awb: string | null;
   courier: string | null;
@@ -165,6 +190,22 @@ export async function applyShipmentUpdate(
     .onConflict(["shipment_id", "event_key"])
     .ignore()
     .returning("id");
+
+  // The single delivered handshake: BOTH the admin manual update and the Shiprocket webhook go
+  // through here, so marking an order delivered in admin now opens returns exactly like a
+  // courier-confirmed webhook scan does. Reflection failure is logged, never fatal — the scan
+  // itself is already saved above.
+  if (targetStatus === "delivered") {
+    try {
+      await markFulfillmentDelivered(trx, shipment.order_id);
+    } catch (error) {
+      console.warn(
+        `[shipment:delivered] Could not mark fulfillment delivered for order ${shipment.order_id}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  }
 
   return {
     shipment: row ?? shipment,

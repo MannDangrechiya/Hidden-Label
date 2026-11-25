@@ -27,7 +27,7 @@ interface OrderRow {
  *  unconfigured account never touches the order's own state. */
 async function notifyWhatsapp(
   container: MedusaContainer,
-  order: OrderRow,
+  order: Omit<OrderRow, "total">,
   template: string,
   params: string[],
 ): Promise<void> {
@@ -292,9 +292,10 @@ export async function sendOrderDeliveredEmail(
 ): Promise<{ status: "sent" | "skipped_unconfigured" | "skipped_duplicate" | "failed"; reason?: string }> {
   const pg = container.resolve(ContainerRegistrationKeys.PG_CONNECTION) as Knex;
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER) as Logger;
-  const order = (await pg("order")
-    .where({ id: orderId })
-    .first("id", "display_id", "email", "total", "shipping_address_id")) as OrderRow | undefined;
+  // resolveOrderWithTotal reads the safe columns and the total from `order_summary` — the
+  // Medusa order table has no `total` column, and selecting it here used to make every
+  // delivery email throw (taking the Shiprocket webhook down to a 500 with it).
+  const order = await resolveOrderWithTotal(pg, orderId);
   if (!order?.email) return { status: "skipped_unconfigured", reason: "Order has no email address." };
 
   await notifyWhatsapp(

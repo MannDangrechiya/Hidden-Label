@@ -110,30 +110,20 @@ export async function POST(req: MedusaRequest<ShiprocketWebhookBody>, res: Medus
     }),
   );
 
-  // 4. If delivered, reflect into Medusa fulfillment and trigger delivery notification
+  // 4. If delivered, trigger the delivery notification. The Medusa fulfillment is already
+  // marked delivered inside applyShipmentUpdate (shared with the admin path). Email failure
+  // degrades gracefully: the scan is saved above, so the webhook must still answer 200 with
+  // the skip logged — the same honest pattern as the order confirmation email.
   if (result.status === "delivered" && !result.deduped) {
     try {
-      await pg.transaction(async (trx) => {
-        const link = (await trx("order_fulfillment")
-          .where({ order_id: shipment.order_id })
-          .whereNull("deleted_at")
-          .first("fulfillment_id")) as { fulfillment_id: string } | undefined;
-
-        if (link?.fulfillment_id) {
-          await trx("fulfillment")
-            .where({ id: link.fulfillment_id })
-            .update({ delivered_at: new Date(), updated_at: new Date() });
-        }
-      });
+      await sendOrderDeliveredEmail(req.scope, shipment.order_id);
     } catch (error) {
       logger.warn(
-        `Delivered scan could not be reflected into Medusa fulfilment for order ${shipment.order_id}: ${
+        `[notification:email:skipped] Order ${shipment.order_id} delivery email could not be sent: ${
           error instanceof Error ? error.message : String(error)
         }`,
       );
     }
-
-    await sendOrderDeliveredEmail(req.scope, shipment.order_id);
   }
 
   // 5. Audit Event
