@@ -16,7 +16,8 @@ import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { connect } from "node:net";
 import { resolve } from "node:path";
-import { Client } from "pg";
+import pgPackage from "pg";
+const { Client } = pgPackage;
 
 const PORT = Number(process.env.PGHOSTPORT ?? 5437);
 const HOST = "127.0.0.1";
