@@ -19,9 +19,11 @@
     "@medusajs/cli": "2.22.7",
     "@medusajs/framework": "2.22.7",
     "@medusajs/medusa": "2.22.7",
-    "ioredis": "^5.11.1"
+    "ioredis": "^5.11.1",
+    "knex": "3.2.10"
   },
   "devDependencies": {
+    "@medusajs/utils": "2.22.7",
     "@types/node": "^22.10.0",
     "ts-node": "10.9.2",
     "typescript": "5.9.3"
