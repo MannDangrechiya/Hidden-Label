@@ -28,7 +28,11 @@ export default async function CatalogPage({ searchParams }: PageProps) {
   const { size, category, page, sort } = await searchParams;
   const initialSort = (SORT_KEYS as readonly string[]).includes(sort ?? "") ? (sort as SortKey) : "trending";
   const resaleOn = resaleEnabled();
-  const PAGE_SIZE = 24;
+  // One server fetch covers the whole published catalogue so the client-side category/brand/
+  // price/size filters and sort operate over real totals — not a 24-item slice that makes
+  // filters silently miss products and pagination lie. Revisit with server-side filtering if
+  // the catalogue grows past this page size.
+  const PAGE_SIZE = 100;
   const currentPage = Math.max(1, Number(page || 1));
   const offset = (currentPage - 1) * PAGE_SIZE;
 

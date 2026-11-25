@@ -3,6 +3,7 @@ import { ErrorState } from "@thl/ui";
 import Link from "next/link";
 import {
   aiLayerEnabled,
+  fitStudioEnabled,
   resaleEnabled,
 } from "@/lib/feature-flags";
 import {
@@ -55,6 +56,7 @@ export default async function HomePage() {
   // bids, price history or the concierge is only rendered when the matching flag is actually on.
   const resaleOn = resaleEnabled();
   const aiOn = aiLayerEnabled();
+  const fitStudioOn = fitStudioEnabled();
 
   let error: string | null = null;
   let heroRow: CardRow | null = null;
@@ -125,18 +127,8 @@ export default async function HomePage() {
       }));
     }
   } catch {
-    // Fall back to documented catalogue brands if backend is warming up
-  }
-
-  if (brandList.length === 0) {
-    brandList = [
-      { name: "Jordan", handle: "jordan", count: "Vault Series" },
-      { name: "Nike", handle: "nike", count: "Vault Series" },
-      { name: "Adidas", handle: "adidas", count: "Vault Series" },
-      { name: "New Balance", handle: "new-balance", count: "Vault Series" },
-      { name: "Salomon", handle: "salomon", count: "Vault Series" },
-      { name: "ASICS", handle: "asics", count: "Vault Series" },
-    ];
+    // No hardcoded fallback: fabricating brand names when the backend is unreachable would
+    // present invented data as real. The section simply renders nothing (see below).
   }
 
   return (
@@ -350,7 +342,8 @@ export default async function HomePage() {
             </div>
           </section>
 
-          {/* -------------------------------------------------------- Brand discovery */}
+          {/* -------------------------------------------------------- Brand discovery (only real, backend-backed brands) */}
+          {brandList.length > 0 ? (
           <section aria-labelledby="brands-heading" className="mx-auto w-full max-w-page px-margin pt-sp-5 sm:px-margin-tablet lg:px-margin-desktop">
             <div className="mb-sp-3 border-b border-line pb-3">
               <span className="font-mono text-[11px] uppercase text-muted">Houses worth queuing for</span>
@@ -371,6 +364,7 @@ export default async function HomePage() {
               ))}
             </div>
           </section>
+          ) : null}
         </>
       )}
 
@@ -463,6 +457,7 @@ export default async function HomePage() {
             </div>
             ) : null}
 
+            {fitStudioOn ? (
             <div className="border border-line bg-surface p-5 space-y-2">
               <h3 className="font-mono text-xs uppercase font-semibold text-ink">
                 Fit Studio Sizing Engine
@@ -472,6 +467,7 @@ export default async function HomePage() {
                 size is chosen from measurements rather than guesswork.
               </p>
             </div>
+            ) : null}
 
             {aiOn ? (
             <div className="border border-line bg-surface p-5 space-y-2">

@@ -131,7 +131,7 @@ export async function generateCreditNote(
   const sellerStateName = process.env.BUSINESS_STATE_NAME || "Gujarat";
   const sellerGstin = process.env.BUSINESS_GSTIN || "";
   const sellerLegalName =
-    process.env.BUSINESS_LEGAL_NAME || "The Hidden Label Luxury Retail Pvt Ltd";
+    process.env.BUSINESS_LEGAL_NAME || "The Hidden Label";
   const isSellerConfigured = Boolean(process.env.BUSINESS_GSTIN && process.env.BUSINESS_LEGAL_NAME);
 
   // 4. Buyer Place of Supply

@@ -114,6 +114,13 @@ export default async function ProductPage({ params }: PageProps) {
   const amount = firstAvailable?.calculated_price?.calculated_amount ?? null;
   const brand = typeof product.metadata?.brand === "string" ? product.metadata.brand : null;
   const soldOut = sizes.length > 0 && sizes.every((size) => !size.available);
+  // Legal Metrology: MRP is the declared maximum retail price, which may sit above the current
+  // selling price. Only show an MRP when product data actually declares one; the selling price
+  // is shown as a price, never relabelled as MRP.
+  const declaredMrp =
+    typeof product.metadata?.mrp === "number" && product.metadata.mrp > 0
+      ? product.metadata.mrp
+      : null;
 
   const session = await getCurrentCustomer().catch(() => null);
   const sampleSerial = resaleData?.variants?.find((v) => v.inspection_summary?.unit_serial)
@@ -276,8 +283,9 @@ export default async function ProductPage({ params }: PageProps) {
               <dd className="m-0">1 unit</dd>
               <dt className="font-mono text-[11px] uppercase text-muted">MRP</dt>
               <dd className="m-0">
-                {amount === null ? "—" : `₹${amount.toLocaleString("en-IN")}`} inclusive of all
-                taxes
+                {declaredMrp === null
+                  ? `₹${(amount ?? 0).toLocaleString("en-IN")} (selling price, inclusive of all taxes) — declared MRP to be published`
+                  : `₹${declaredMrp.toLocaleString("en-IN")} inclusive of all taxes`}
               </dd>
               <dt className="font-mono text-[11px] uppercase text-muted">HSN</dt>
               <dd className="m-0">
@@ -290,13 +298,12 @@ export default async function ProductPage({ params }: PageProps) {
               </dd>
               <dt className="font-mono text-[11px] uppercase text-muted">Marketed by</dt>
               <dd className="m-0">
-                {process.env.BUSINESS_LEGAL_NAME ?? "The Hidden Label Luxury Retail Pvt Ltd"},
-                Ahmedabad, Gujarat
+                {process.env.BUSINESS_LEGAL_NAME ?? "The Hidden Label"}, Ahmedabad, Gujarat
               </dd>
               <dt className="font-mono text-[11px] uppercase text-muted">Consumer care</dt>
               <dd className="m-0">
-                {process.env.SUPPORT_EMAIL ?? "concierge@thehiddenlabel.com"} ·{" "}
-                {process.env.SUPPORT_PHONE ?? "+91 79 4000 0000"}
+                {process.env.SUPPORT_EMAIL ?? "grievance@thehiddenlabel.com"}
+                {process.env.SUPPORT_PHONE ? ` · ${process.env.SUPPORT_PHONE}` : ""}
               </dd>
             </dl>
           </div>

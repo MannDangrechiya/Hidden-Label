@@ -16,7 +16,9 @@ export const metadata = {
 export default function GrievancePage() {
   const officerName = process.env.GRIEVANCE_OFFICER_NAME ?? "Grievance Officer";
   const officerEmail = process.env.GRIEVANCE_OFFICER_EMAIL ?? "grievance@thehiddenlabel.com";
-  const officerPhone = process.env.GRIEVANCE_OFFICER_PHONE ?? "+91 79 4000 0000";
+  // No invented fallback phone number: a fabricated statutory contact is worse than none.
+  // The owner-supplied number (GRIEVANCE_OFFICER_PHONE) is the only source.
+  const officerPhone = process.env.GRIEVANCE_OFFICER_PHONE ?? "";
   const officerAddress =
     process.env.GRIEVANCE_OFFICER_ADDRESS ??
     "Steller, 205, 2nd Floor, Sindhu Bhavan Road, Bodakdev, Ahmedabad, Gujarat 380059, India";
@@ -50,9 +52,13 @@ export default function GrievancePage() {
             </dd>
             <dt className="font-mono text-label-caps uppercase text-muted">Phone</dt>
             <dd className="m-0 text-ink">
-              <a href={`tel:${officerPhone.replace(/\s/g, "")}`} className="underline">
-                {officerPhone}
-              </a>
+              {officerPhone ? (
+                <a href={`tel:${officerPhone.replace(/\s/g, "")}`} className="underline">
+                  {officerPhone}
+                </a>
+              ) : (
+                "To be published"
+              )}
             </dd>
             <dt className="font-mono text-label-caps uppercase text-muted">Hours</dt>
             <dd className="m-0 text-ink">{hours}</dd>

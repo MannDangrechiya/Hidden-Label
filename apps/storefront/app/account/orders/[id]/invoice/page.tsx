@@ -43,7 +43,7 @@ export default async function OrderInvoicePage({ params }: PageProps) {
   const sellerStateCode = process.env.BUSINESS_STATE_CODE ?? "24";
   const sellerStateName = process.env.BUSINESS_STATE_NAME ?? "Gujarat";
   const sellerGstin = process.env.BUSINESS_GSTIN ?? "";
-  const sellerLegalName = process.env.BUSINESS_LEGAL_NAME ?? "The Hidden Label Luxury Retail Pvt Ltd";
+  const sellerLegalName = process.env.BUSINESS_LEGAL_NAME ?? "The Hidden Label";
   const sellerAddress =
     process.env.BUSINESS_ADDRESS ?? "Steller, 205, 2nd Floor, Sindhu Bhavan Road, Bodakdev, Ahmedabad, Gujarat 380059, India";
 
@@ -228,7 +228,7 @@ export default async function OrderInvoicePage({ params }: PageProps) {
         <div className="mt-10 pt-6 border-t border-line flex items-end justify-between text-xs text-muted">
           <div>
             <p>Computer generated tax invoice. No signature required.</p>
-            <p className="mt-1">For support inquiries: concierge@thehiddenlabel.com</p>
+            <p className="mt-1">For support inquiries: {process.env.SUPPORT_EMAIL ?? "grievance@thehiddenlabel.com"}</p>
           </div>
           <div className="text-right">
             <p className="font-display uppercase text-ink font-semibold">The Hidden Label</p>

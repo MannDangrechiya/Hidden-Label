@@ -1,5 +1,5 @@
 import { ErrorState } from "@thl/ui";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { fetchProducts, MedusaError, type StoreProduct } from "@/lib/medusa";
 import { CatalogClient } from "../all/catalog-client";
 import { CATEGORIES, type CategoryKey } from "@/lib/catalog";
@@ -11,7 +11,7 @@ interface PageProps {
   searchParams: Promise<{ size?: string; page?: string }>;
 }
 
-function resolveCategory(handle: string): CategoryKey {
+function resolveCategory(handle: string): CategoryKey | null {
   const h = handle.toLowerCase();
   if (h === "all") return "all";
   if (h === "footwear" || h === "sneakers" || h === "shoes") return "footwear";
@@ -19,13 +19,14 @@ function resolveCategory(handle: string): CategoryKey {
   if (h === "menswear" || h === "men") return "menswear";
   if (h === "womenswear" || h === "women") return "womenswear";
   if (h === "accessories" || h === "bags" || h === "eyewear") return "accessories";
-  return "all";
+  // An unknown handle must not silently render the whole catalogue under a made-up label.
+  return null;
 }
 
 export async function generateMetadata({ params }: PageProps) {
   const { handle } = await params;
   const cat = resolveCategory(handle);
-  const label = CATEGORIES.find((c) => c.key === cat)?.label ?? handle.toUpperCase();
+  const label = (cat && CATEGORIES.find((c) => c.key === cat)?.label) ?? handle.toUpperCase();
   return {
     title: `${label} Collection — The Hidden Label`,
     description: `Curated ${label} collection with real-time size valuation in INR.`,
@@ -36,12 +37,16 @@ export default async function CollectionHandlePage({ params, searchParams }: Pag
   const { handle } = await params;
   if (handle === "all") redirect("/collections/all");
 
+  const initialCategory = resolveCategory(handle);
+  if (!initialCategory) notFound();
+
   const { size, page } = await searchParams;
-  const PAGE_SIZE = 24;
+  // Full-catalogue fetch so category filtering and pagination reflect real totals (see
+  // collections/all for the rationale).
+  const PAGE_SIZE = 100;
   const currentPage = Math.max(1, Number(page || 1));
   const offset = (currentPage - 1) * PAGE_SIZE;
 
-  const initialCategory = resolveCategory(handle);
   const categoryLabel = CATEGORIES.find((c) => c.key === initialCategory)?.label ?? handle;
 
   let products: StoreProduct[] = [];

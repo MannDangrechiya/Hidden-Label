@@ -190,7 +190,7 @@ export function AddToBag({
             </span>
           </div>
           <p className="font-sans text-[11px] text-muted m-0">
-            Atelier restock is underway. For priority allocation or custom made-to-measure sizing, contact our concierge at concierge@thehiddenlabel.com.
+            Atelier restock is underway. For priority allocation or custom made-to-measure sizing, contact our concierge via the support page.
           </p>
         </div>
       )}
