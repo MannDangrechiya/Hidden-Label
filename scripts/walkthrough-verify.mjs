@@ -11,7 +11,8 @@ const ADMIN_URL = "http://localhost:7001";
 // The publishable key is regenerated on every seed; read it from the environment (or the
 // storefront's .env.local) instead of pinning a stale literal from a previous database.
 const PUBLISHABLE_KEY =
-  process.env.MEDUSA_PUBLISHABLE_KEY ?? "pk_a3d88b55c71fffa6ac8c8d0aabbb4fcb16879ab5cd26f7c63a26aae32cd6d525";
+  process.env.MEDUSA_PUBLISHABLE_KEY ??
+  "pk_492b845c4ded3ca1ff24d7a04ee4805770405dc5c1a8e6410c8c4b3e53e2bcfd";
 
 function storeHeaders(token, extra = {}) {
   const h = {
