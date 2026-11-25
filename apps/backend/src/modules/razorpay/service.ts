@@ -107,7 +107,15 @@ export default class RazorpayPaymentProviderService extends AbstractPaymentProvi
   }
 
   private getBaseUrl(): string {
-    return this.options.api_url || process.env.RAZORPAY_API_URL || "https://api.razorpay.com/v1";
+    const explicit = this.options.api_url || process.env.RAZORPAY_API_URL;
+    if (explicit) return explicit;
+    // Placeholder sandbox keys (see the backend env-guard) must never reach the real gateway:
+    // a 401 from api.razorpay.com would surface as a broken checkout. Route them to the local
+    // sandbox emulator (`pnpm dev:sandbox`, port 9099) which emulates the v1 API contract.
+    if (this.options.key_id === "rzp_test_thl_sandbox") {
+      return "http://127.0.0.1:9099";
+    }
+    return "https://api.razorpay.com/v1";
   }
 
   private async razorpayFetch<T>(path: string, init?: { method?: string; body?: unknown }): Promise<T> {

@@ -4,7 +4,8 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { Client } from "pg";
+import pgPackage from "pg";
+const { Client } = pgPackage;
 
 const SF = "http://localhost:3000";
 const BE = "http://localhost:9000";

@@ -2,12 +2,16 @@
  * End-to-End Walkthrough Verification Script
  * Validates Phase 3 (modules), Phase 4 (storefront customer journey), Phase 5 (admin RBAC & operations)
  */
-import { Client } from "pg";
+import pgPackage from "pg";
+const { Client } = pgPackage;
 
 const STOREFRONT_URL = "http://localhost:3000";
 const BACKEND_URL = "http://localhost:9000";
 const ADMIN_URL = "http://localhost:7001";
-const PUBLISHABLE_KEY = "pk_a3d88b55c71fffa6ac8c8d0aabbb4fcb16879ab5cd26f7c63a26aae32cd6d525";
+// The publishable key is regenerated on every seed; read it from the environment (or the
+// storefront's .env.local) instead of pinning a stale literal from a previous database.
+const PUBLISHABLE_KEY =
+  process.env.MEDUSA_PUBLISHABLE_KEY ?? "pk_a3d88b55c71fffa6ac8c8d0aabbb4fcb16879ab5cd26f7c63a26aae32cd6d525";
 
 function storeHeaders(token, extra = {}) {
   const h = {
@@ -148,7 +152,7 @@ async function run() {
   const searchRes = await (await fetch(`${BACKEND_URL}/store/search/suggest?q=Samba`, { headers: storeHeaders() })).json();
   console.log(`Search suggestions for 'Samba': ${searchRes.products?.length ?? 0} products, ${searchRes.brands?.length ?? 0} brands`);
 
-  console.log("\n=== 5. Cart & COD Checkout Workflow ===");
+  console.log("\n=== 5. Cart & Razorpay Sandbox Checkout Workflow ===");
   // Create cart
   const cartRes = await fetch(`${BACKEND_URL}/store/carts`, {
     method: "POST",
@@ -234,14 +238,56 @@ async function run() {
   const { payment_collection } = await payColRes.json();
   console.log(`Payment collection created: ${payment_collection.id}`);
 
-  // Create Payment Session for Cash on Delivery (pp_system_default)
+  // Create Payment Session for Razorpay (prepaid only — COD is deliberately unlinked, so the
+  // backend rejects pp_system_default; see setup-payments.ts). The sandbox razorpay module
+  // returns a gateway order reference in the session data.
   const paySessRes = await fetch(`${BACKEND_URL}/store/payment-collections/${payment_collection.id}/payment-sessions`, {
     method: "POST",
     headers: storeHeaders(customerToken),
-    body: JSON.stringify({ provider_id: "pp_system_default" }),
+    body: JSON.stringify({ provider_id: "pp_razorpay_razorpay" }),
   });
   if (!paySessRes.ok) throw new Error(`Create payment session failed: ${paySessRes.status} ${await paySessRes.text()}`);
-  console.log("Payment session for Cash on Delivery created (pp_system_default)");
+  const { payment_collection: withSession } = await paySessRes.json();
+  const razorpaySessions = (withSession.payment_sessions ?? []).filter(
+    (s) => s.provider_id === "pp_razorpay_razorpay",
+  );
+  const session = razorpaySessions[razorpaySessions.length - 1];
+  if (!session) throw new Error("No Razorpay payment session was created");
+  const razorpayOrderId = session.data?.razorpay_order_id;
+  console.log(
+    `Payment session created (pp_razorpay_razorpay), gateway order: ${
+      typeof razorpayOrderId === "string" ? razorpayOrderId : "MISSING"
+    }`,
+  );
+  if (typeof razorpayOrderId !== "string") {
+    throw new Error("Sandbox Razorpay did not return an order reference — payment initiation is broken");
+  }
+
+  // Emulate the gateway checkout: in production the browser opens Razorpay checkout.js and the
+  // signed result comes back to confirmRazorpayPaymentAction. The sandbox exposes the signed
+  // payment for the order at /orders/:id/simulated-payment — post it to the session exactly as
+  // the storefront handler does, so the provider verifies the HMAC and authorizes.
+  const simRes = await fetch(`http://127.0.0.1:9099/v1/orders/${razorpayOrderId}/simulated-payment`);
+  if (!simRes.ok) throw new Error(`Sandbox simulated-payment fetch failed: ${simRes.status}`);
+  const simulated = await simRes.json();
+  const updateSessRes = await fetch(
+    `${BACKEND_URL}/store/payment-collections/${payment_collection.id}/payment-sessions/${session.id}`,
+    {
+      method: "POST",
+      headers: storeHeaders(customerToken),
+      body: JSON.stringify({
+        client_data: {
+          razorpay_order_id: razorpayOrderId,
+          razorpay_payment_id: simulated.payment_id,
+          razorpay_signature: simulated.signature,
+        },
+      }),
+    },
+  );
+  if (!updateSessRes.ok) {
+    throw new Error(`Update payment session failed: ${updateSessRes.status} ${await updateSessRes.text()}`);
+  }
+  console.log(`Gateway payment simulated and posted to the session (${simulated.payment_id})`);
 
   // Complete Cart (Place Order)
   const completeRes = await fetch(`${BACKEND_URL}/store/carts/${cart.id}/complete`, {
@@ -349,7 +395,7 @@ async function run() {
   const adminLoginRes = await fetch(`${BACKEND_URL}/auth/user/emailpass`, {
     method: "POST",
     headers: adminHeaders(),
-    body: JSON.stringify({ email: "admin@thehiddenlabel.com", password: "AdminPass123!" }),
+    body: JSON.stringify({ email: "admin@thehiddenlabel.com", password: "AdminOwner!2026" }),
   });
   if (!adminLoginRes.ok) throw new Error(`Admin login failed: ${adminLoginRes.status} ${await adminLoginRes.text()}`);
   const { token: adminToken } = await adminLoginRes.json();
