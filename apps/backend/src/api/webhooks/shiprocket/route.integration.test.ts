@@ -1,6 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { createIsolatedDatabase, type IsolatedDatabase } from "../../../../test/integration-db";
 import { POST } from "./route";
+import { sendOrderDeliveredEmail } from "../../../../lib/order-email";
+
+// Mocked so a delivered scan can exercise both an email failure and success without a mail
+// provider. Regression: a delivered webhook used to answer 500 after saving the scan when the
+// delivery email threw (Defect 2) — it must degrade to a logged skip and still return 200.
+vi.mock("../../../../lib/order-email", () => ({ sendOrderDeliveredEmail: vi.fn() }));
 
 describe("Shiprocket Webhook Route (Integration)", () => {
   let iso: IsolatedDatabase;
@@ -9,7 +15,21 @@ describe("Shiprocket Webhook Route (Integration)", () => {
 
   beforeEach(async () => {
     process.env.SHIPROCKET_WEBHOOK_TOKEN = TEST_TOKEN;
+    vi.mocked(sendOrderDeliveredEmail).mockReset();
+    vi.mocked(sendOrderDeliveredEmail).mockResolvedValue({
+      sent: false,
+      status: "skipped_unconfigured",
+      reason: "RESEND_API_KEY is not configured.",
+    });
     iso = await createIsolatedDatabase();
+
+    // Seed order + fulfillment so the delivered handshake can be verified end to end
+    await iso.db("order").insert({ id: "order_wh_test_01", display_id: 11 });
+    await iso.db("fulfillment").insert({ id: "ful_wh_test_01" });
+    await iso.db("order_fulfillment").insert({
+      order_id: "order_wh_test_01",
+      fulfillment_id: "ful_wh_test_01",
+    });
 
     // Seed test shipment
     await iso.db("shipment").insert({
@@ -206,5 +226,54 @@ describe("Shiprocket Webhook Route (Integration)", () => {
     // Shipment remains delivered
     shipment = await iso.db("shipment").where({ id: "shp_wh_test_01" }).first();
     expect(shipment.status).toBe("delivered");
+  });
+
+  it("marks the Medusa fulfillment delivered on a delivered scan", async () => {
+    const req = mockRequest({
+      headers: { "x-webhook-token": TEST_TOKEN },
+      body: {
+        event_id: "sr_evt_fulfillment_01",
+        awb: "SRMOCK-TEST-WH-01",
+        current_status: "DELIVERED",
+        scan_date: "2026-11-21 18:00:00",
+      },
+    });
+    const res = mockResponse();
+    await POST(req, res as unknown as Parameters<typeof POST>[1]);
+
+    expect(res.getStatusCode()).toBe(200);
+    const fulfillment = await iso.db("fulfillment").where({ id: "ful_wh_test_01" }).first();
+    expect(fulfillment.delivered_at).not.toBeNull();
+  });
+
+  it("returns 200 and keeps the delivery state even when the delivery email throws", async () => {
+    vi.mocked(sendOrderDeliveredEmail).mockRejectedValue(
+      new Error("column order.total does not exist"),
+    );
+
+    const req = mockRequest({
+      headers: { "x-webhook-token": TEST_TOKEN },
+      body: {
+        event_id: "sr_evt_email_fail_01",
+        awb: "SRMOCK-TEST-WH-01",
+        current_status: "DELIVERED",
+        scan_date: "2026-11-21 19:00:00",
+      },
+    });
+    const res = mockResponse();
+    await POST(req, res as unknown as Parameters<typeof POST>[1]);
+
+    expect(res.getStatusCode()).toBe(200);
+    const body = res.getBody() as { received: boolean; matched: boolean; status: string };
+    expect(body.received).toBe(true);
+    expect(body.matched).toBe(true);
+    expect(body.status).toBe("delivered");
+
+    // Delivery state saved despite the email failure
+    const shipment = await iso.db("shipment").where({ id: "shp_wh_test_01" }).first();
+    expect(shipment.status).toBe("delivered");
+    expect(shipment.delivered_at).not.toBeNull();
+    const fulfillment = await iso.db("fulfillment").where({ id: "ful_wh_test_01" }).first();
+    expect(fulfillment.delivered_at).not.toBeNull();
   });
 });
