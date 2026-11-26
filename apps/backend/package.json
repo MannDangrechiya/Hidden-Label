@@ -20,7 +20,11 @@
     "@medusajs/framework": "2.22.7",
     "@medusajs/medusa": "2.22.7",
     "ioredis": "^5.11.1",
-    "knex": "3.2.10"
+    "knex": "3.2.10",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "@medusajs/dashboard": "2.22.7",
+    "@medusajs/admin-shared": "2.22.7"
   },
   "devDependencies": {
     "@medusajs/utils": "2.22.7",
